@@ -1,12 +1,11 @@
-"""
-Move all fims from the submodel folders to the FIM library location
-"""
-
 import os
 import shutil
 
 
-def move_fims_to_library(submodels_dir, library_dir):
+def move_fims_to_library(submodels_dir: str, library_dir: str) -> None:
+    """
+    Moves all FIMs from the submodel folders to the FIM library directory.
+    """
     for submodel in os.listdir(submodels_dir):
         dirs = os.listdir(f"{submodels_dir}/{submodel}")
         if "fims" in dirs:
@@ -24,5 +23,4 @@ def move_fims_to_library(submodels_dir, library_dir):
 if __name__ == "__main__":
     submodels_dir = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\submodels"
     library_dir = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library"
-
     move_fims_to_library(submodels_dir, library_dir)

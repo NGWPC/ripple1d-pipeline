@@ -2,8 +2,10 @@ import os
 import sqlite3
 
 
-def process_reach_db(submodel, reach_db_path, library_conn):
-    """Process a reach_id.db file and insert rating curves into the library database."""
+def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Connection) -> None:
+    """
+    Processes a reach database and inserts rating curves into the central library database.
+    """
     reach_conn = sqlite3.connect(reach_db_path)
     reach_cursor = reach_conn.cursor()
     reach_cursor.execute(
@@ -26,15 +28,14 @@ def process_reach_db(submodel, reach_db_path, library_conn):
     reach_conn.close()
 
 
-def load_all_rating_curves(library_dir, db_path):
+def load_all_rating_curves(library_dir: str, db_path: str) -> None:
+    """
+    Loads all rating curves from submodel databases into the central library database.
+    """
     conn = sqlite3.connect(db_path)
 
     for submodel in os.listdir(library_dir):
-        sub_db_path = os.path.join(
-            library_dir,
-            submodel,
-            f"{submodel}.db",
-        )
+        sub_db_path = os.path.join(library_dir, submodel, f"{submodel}.db")
         if os.path.exists(sub_db_path):
             process_reach_db(submodel, sub_db_path, conn)
             os.remove(sub_db_path)
@@ -44,10 +45,6 @@ def load_all_rating_curves(library_dir, db_path):
 
 
 if __name__ == "__main__":
-    # Paths
     db_path = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library.sqlite"
     library_dir = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library"
-
     load_all_rating_curves(library_dir, db_path)
-
-# %%

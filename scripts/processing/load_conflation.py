@@ -1,19 +1,20 @@
-"""
-Expects network table with id and to_id coloumns already populated for each reach
-"""
-
 import json
 import sqlite3
 
 
-def load_json(file_path):
-    """"""
+def load_json(file_path: str) -> dict:
+    """
+    Loads JSON data from a given file path.
+    """
     with open(file_path, "r") as file:
         data = json.load(file)
     return data
 
 
-def update_model_key_and_eclipsed(db_path, data, model_key):
+def update_model_key_and_eclipsed(db_path: str, data: dict, model_key: str) -> None:
+    """
+    Updates the model_key and eclipsed status in the network table based on upstream and downstream reach data.
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -29,22 +30,18 @@ def update_model_key_and_eclipsed(db_path, data, model_key):
             cursor.execute(
                 """
                 UPDATE network
-                SET
-                    model_key = ?,
-                    eclipsed = True
+                SET model_key = ?, eclipsed = True
                 WHERE reach_id = ?;
-            """,
+                """,
                 (model_key, key),
             )
         else:
             cursor.execute(
                 """
                 UPDATE network
-                SET
-                    model_key = ?,
-                    eclipsed = False
+                SET model_key = ?, eclipsed = False
                 WHERE reach_id = ?;
-            """,
+                """,
                 (model_key, key),
             )
 
@@ -52,7 +49,10 @@ def update_model_key_and_eclipsed(db_path, data, model_key):
     conn.close()
 
 
-def load_conflation(model_keys, source_models_directory, db_path):
+def load_conflation(model_keys: list, source_models_directory: str, db_path: str) -> None:
+    """
+    Loads conflation data into the network table from the specified model keys and source models directory.
+    """
     for model_key in model_keys:
         json_data = load_json(f"{source_models_directory}\\{model_key}\\{model_key}.conflation.json")
         update_model_key_and_eclipsed(db_path, json_data, model_key)
@@ -61,8 +61,7 @@ def load_conflation(model_keys, source_models_directory, db_path):
 
 
 if __name__ == "__main__":
-
-    db_path = "data/library.sqlite"  # Update this as necessary
-    model_keys = ["Baxter"]  # Update this as necessary
-    source_models_directory = "data/source_models"  # Update this as necessary
+    db_path = "data/library.sqlite"
+    model_keys = ["Baxter"]
+    source_models_directory = "data/source_models"
     load_conflation(db_path, model_keys, source_models_directory)

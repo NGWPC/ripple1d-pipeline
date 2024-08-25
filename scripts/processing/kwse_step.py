@@ -10,59 +10,49 @@ from typing import List, Optional, Tuple
 
 import requests
 
+from ..config import RIPPLE1D_API_URL
 from .job_utils import check_job_status, update_processing_table
 
 
-def get_upstream_reaches(updated_to_id: int, db_path, db_lock) -> List[int]:
-    """Fetch upstream reach IDs from the 'network' table."""
+def get_upstream_reaches(updated_to_id: int, db_path: str, db_lock: Lock) -> List[int]:
+    """
+    Fetch upstream reach IDs from the 'network' table.
+    """
     with db_lock:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT reach_id FROM network
-            WHERE updated_to_id = ?
-        """,
-            (updated_to_id,),
-        )
+        cursor.execute("SELECT reach_id FROM network WHERE updated_to_id = ?", (updated_to_id,))
         result = [row[0] for row in cursor.fetchall()]
         conn.close()
         return result
 
 
-def check_fim_lib_created(reach_id: int, db_path, db_lock) -> bool:
-    """"""
+def check_fim_lib_created(reach_id: int, db_path: str, db_lock: Lock) -> bool:
+    """
+    Check if FIM library has been created for a reach.
+    """
     with db_lock:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-
-        cursor.execute(
-            """
-            SELECT create_fim_lib_job_id
-            FROM processing
-            WHERE reach_id = ?;
-        """,
-            (reach_id,),
-        )
-
+        cursor.execute("SELECT create_fim_lib_job_id FROM processing WHERE reach_id = ?", (reach_id,))
         result = cursor.fetchone()
         conn.close()
 
         if result is None:
             raise ValueError(f"No record found for reach_id {reach_id}")
 
-        create_fim_lib_job_id = result[0]
-        return create_fim_lib_job_id is not None
+        return result[0] is not None
 
 
 def get_min_max_elevation(
-    downstream_id: int, submodels_directory, db_lock, use_central_db: bool, db_path=""
+    downstream_id: int, submodels_directory: str, db_lock: Lock, use_central_db: bool, db_path: str
 ) -> Tuple[Optional[float], Optional[float]]:
-    """Fetch min and max elevation from the submodel database."""
-
+    """
+    Fetch min and max elevation from the submodel database.
+    """
     if use_central_db:
         if not os.path.exists(db_path):
-            print(f"central database not found for")
+            print("central database not found")
             return None, None
         with db_lock:
             conn = sqlite3.connect(db_path)
@@ -88,21 +78,16 @@ def get_min_max_elevation(
 def process_reach(
     reach_id: int,
     downstream_id: Optional[int],
-    submodels_directory,
+    submodels_directory: str,
     task_queue: Queue,
-    db_path,
-    db_lock,
-    use_central_db,
+    db_path: str,
+    db_lock: Lock,
+    use_central_db: bool,
 ) -> None:
-    """Process a single reach."""
+    """
+    Process a single reach.
+    """
     try:
-
-        # if check_fim_lib_created(reach_id):
-        #     upstream_reaches = get_upstream_reaches(reach_id)
-        #     for upstream_reach in upstream_reaches:
-        #         task_queue.put((upstream_reach, reach_id))
-        #     return
-
         submodel_directory_path = os.path.join(submodels_directory, str(reach_id))
         headers = {"Content-Type": "application/json"}
 
@@ -111,11 +96,10 @@ def process_reach(
                 downstream_id, submodels_directory, db_lock, use_central_db, db_path
             )
             if min_elevation is None or max_elevation is None:
-                print(min_elevation, max_elevation)
                 print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
                 return
 
-            url = "http://localhost/processes/run_known_wse/execution"
+            url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
             payload = json.dumps(
                 {
                     "submodel_directory": submodel_directory_path,
@@ -132,10 +116,10 @@ def process_reach(
             response_json = response.json()
             job_id = response_json.get("jobID")
             if not job_id or not check_job_status(job_id):
-                print(f"KWSE run failed for {reach_id} api job ID: {job_id}")
+                print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
                 with db_lock:
                     update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", db_path)
-                upstream_reaches = get_upstream_reaches(reach_id)
+                upstream_reaches = get_upstream_reaches(reach_id, db_path, db_lock)
                 for upstream_reach in upstream_reaches:
                     task_queue.put((upstream_reach, None))
                 return
@@ -143,7 +127,7 @@ def process_reach(
             with db_lock:
                 update_processing_table([(reach_id, job_id)], "run_known_wse", "successful", db_path)
 
-        fim_url = "http://localhost/processes/create_fim_lib/execution"
+        fim_url = f"{RIPPLE1D_API_URL}/processes/create_fim_lib/execution"
         fim_payload = json.dumps(
             {
                 "submodel_directory": submodel_directory_path,
@@ -175,9 +159,11 @@ def process_reach(
 
 
 def execute_kwse_for_network(
-    initial_reaches: List[Tuple[int, Optional[int]]], submodels_directory, db_path, use_central_db
+    initial_reaches: List[Tuple[int, Optional[int]]], submodels_directory: str, db_path: str, use_central_db: bool
 ) -> None:
-    """Start processing the network from the given list of initial reaches."""
+    """
+    Start processing the network from the given list of initial reaches.
+    """
     task_queue = Queue()
     db_lock = Lock()
     for reach_pair in initial_reaches:
@@ -201,17 +187,15 @@ def execute_kwse_for_network(
                 )
                 futures.append(future)
 
-            # Remove completed futures from the list
             for future in futures.copy():
                 if future.done():
                     futures.remove(future)
 
-            time.sleep(1)  # Add a small delay to avoid busy-waiting
+            time.sleep(1)
 
 
 if __name__ == "__main__":
     submodels_directory = r"D:\Users\abdul.siddiqui\workbench\projects\production\submodels"
     db_path = r"D:\Users\abdul.siddiqui\workbench\projects\production\library.sqlite"
     initial_reaches = [(10434118, None), (10434182, None)]
-
     execute_kwse_for_network(initial_reaches, submodels_directory, db_path, use_central_db=False)
