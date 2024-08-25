@@ -2,39 +2,48 @@ import sqlite3
 from typing import List, Tuple
 
 
-def get_valid_reaches(db_path) -> List[Tuple[int, int]]:
-    """Get reaches that are not eclipsed."""
+def get_valid_reaches(db_path: str) -> List[Tuple[int, int]]:
+    """
+    Get reaches that are not eclipsed by joining the network and processing tables.
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT reach_id, nwm_to_id FROM network
-        WHERE eclipsed IS FALSE
-    """
+        SELECT n.reach_id, n.nwm_to_id
+        FROM network n
+        JOIN processing p ON n.reach_id = p.reach_id
+        WHERE p.eclipsed IS FALSE
+        """
     )
     result = cursor.fetchall()
     conn.close()
     return result
 
 
-def get_eclipsed_reaches(db_path) -> List[Tuple[int, int]]:
-    """Get reaches that are eclipsed."""
+def get_eclipsed_reaches(db_path: str) -> List[Tuple[int, int]]:
+    """
+    Get reaches that are eclipsed by joining the network and processing tables.
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT reach_id, nwm_to_id FROM network
-        WHERE eclipsed IS TRUE
-    """
+        SELECT n.reach_id, n.nwm_to_id
+        FROM network n
+        JOIN processing p ON n.reach_id = p.reach_id
+        WHERE p.eclipsed IS TRUE
+        """
     )
     result = cursor.fetchall()
     conn.close()
     return result
 
 
-def update_to_id_batch(updates: List[Tuple[int, int]], db_path) -> None:
-    """Batch update the updated_to_id for multiple reaches."""
-
+def update_to_id_batch(updates: List[Tuple[int, int]], db_path: str) -> None:
+    """
+    Batch update the updated_to_id for multiple reaches.
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.executemany(
@@ -42,16 +51,17 @@ def update_to_id_batch(updates: List[Tuple[int, int]], db_path) -> None:
         UPDATE network
         SET updated_to_id = ?
         WHERE reach_id = ?
-    """,
+        """,
         updates,
     )
     conn.commit()
     conn.close()
-    return
 
 
-def update_network(db_path):
-    """Build the modified network by updating updated_to_id."""
+def update_network(db_path: str) -> None:
+    """
+    Build the modified network by updating updated_to_id based on valid and eclipsed reaches.
+    """
     valid_reaches = get_valid_reaches(db_path)
     eclipsed_reaches = get_eclipsed_reaches(db_path)
 

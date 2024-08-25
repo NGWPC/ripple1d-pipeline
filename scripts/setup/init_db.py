@@ -5,14 +5,23 @@ def init_db(db_path):
     connection = sqlite3.connect(db_path)
     cursor = connection.cursor()
 
+    # # Create models table to store model-level information
+    # cursor.execute(
+    #     """
+    #     CREATE TABLE IF NOT EXISTS models (
+    #         model_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #         model_key TEXT UNIQUE NOT NULL
+    #     );
+    # """
+    # )
+
+    # Create network table to store network relationships
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS network (
             reach_id INTEGER PRIMARY KEY,
             nwm_to_id INTEGER,
-            updated_to_id INTEGER,
-            model_key TEXT,
-            eclipsed BOOL CHECK(eclipsed IN (0, 1))
+            updated_to_id INTEGER
         );
     """
     )
@@ -52,11 +61,14 @@ def init_db(db_path):
     """
     )
 
+    # Create processing table to store reach-specific processing information
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS processing (
             reach_id INTEGER PRIMARY KEY,
+            -- model_id INTEGER,
             model_key TEXT,
+            eclipsed BOOL CHECK(eclipsed IN (0, 1))
             extract_submodel_job_id TEXT,
             extract_submodel_status TEXT,
             create_ras_terrain_job_id TEXT,
@@ -69,15 +81,23 @@ def init_db(db_path):
             run_known_wse_status TEXT,
             create_fim_lib_job_id TEXT,
             create_fim_lib_status TEXT
+            -- FOREIGN KEY (model_id) REFERENCES models (model_id)
         );
     """
     )
 
+    # # Create metrics table to store reach-specific metrics
+    # cursor.execute(
+    #     """
+    #     CREATE TABLE IF NOT EXISTS metrics (
+    #         reach_id INTEGER PRIMARY KEY,
+    #         conflation_metric REAL,
+    #         xs_floods_metric REAL,
+    #         FOREIGN KEY (reach_id) REFERENCES processing (reach_id)
+    #     );
+    # """
+    # )
+
     connection.commit()
     connection.close()
     print(f"Database initialized successfully at {db_path}")
-
-
-if __name__ == "__main__":
-    db_path = "data/library.sqlite"  # Update this as necessary
-    init_db(db_path)

@@ -5,7 +5,7 @@ import boto3
 import pystac_client
 
 
-def get_models(stac_endpoint, stac_collection):
+def get_models_from_stac(stac_endpoint, stac_collection):
     # to do add filter
     """
     Retrieves GeoPackage and Conflation file URLs for models in an STAC collection.
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     stac_collection = "ripple_test_data"  # Collection name
     source_models_dir = "data/source_models"  # Local folder to store downloaded models
     # Step 1: Retrieve model data
-    models_data = get_models(stac_endpoint, stac_collection)
+    models_data = get_models_from_stac(stac_endpoint, stac_collection)
 
     # Step 2: Download model files
     download_model_files(models_data, source_models_dir)

@@ -1,8 +1,9 @@
 import json
 import sqlite3
+from typing import Dict, List
 
 
-def load_json(file_path: str) -> dict:
+def load_json(file_path: str) -> Dict:
     """
     Loads JSON data from a given file path.
     """
@@ -11,9 +12,10 @@ def load_json(file_path: str) -> dict:
     return data
 
 
-def update_model_key_and_eclipsed(db_path: str, data: dict, model_key: str) -> None:
+def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> None:
     """
-    Updates the model_key and eclipsed status in the network table based on upstream and downstream reach data.
+    Updates the model_key and eclipsed status in the processing table
+    based on upstream and downstream reach data.
     """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -26,32 +28,25 @@ def update_model_key_and_eclipsed(db_path: str, data: dict, model_key: str) -> N
         ds_xs_reach = value.get("ds_xs", {}).get("reach", None)
         ds_xs_id = value.get("ds_xs", {}).get("xs_id", None)
 
-        if (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river):
-            cursor.execute(
-                """
-                UPDATE network
-                SET model_key = ?, eclipsed = True
-                WHERE reach_id = ?;
-                """,
-                (model_key, key),
-            )
-        else:
-            cursor.execute(
-                """
-                UPDATE network
-                SET model_key = ?, eclipsed = False
-                WHERE reach_id = ?;
-                """,
-                (model_key, key),
-            )
+        # Check if upstream and downstream cross-sections match
+        eclipsed = (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river)
+
+        cursor.execute(
+            """
+            UPDATE processing
+            SET model_key = ?, eclipsed = ?
+            WHERE reach_id = ?;
+            """,
+            (model_key, eclipsed, key),
+        )
 
     conn.commit()
     conn.close()
 
 
-def load_conflation(model_keys: list, source_models_directory: str, db_path: str) -> None:
+def load_conflation(model_keys: List[str], source_models_directory: str, db_path: str) -> None:
     """
-    Loads conflation data into the network table from the specified model keys and source models directory.
+    Loads conflation data into the processing table from the specified model keys and source models directory.
     """
     for model_key in model_keys:
         json_data = load_json(f"{source_models_directory}\\{model_key}\\{model_key}.conflation.json")
@@ -64,4 +59,4 @@ if __name__ == "__main__":
     db_path = "data/library.sqlite"
     model_keys = ["Baxter"]
     source_models_directory = "data/source_models"
-    load_conflation(db_path, model_keys, source_models_directory)
+    load_conflation(model_keys, source_models_directory, db_path)
