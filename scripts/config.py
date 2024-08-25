@@ -42,4 +42,4 @@ PAYLOAD_TEMPLATES = {
 }
 
 # Poll wait time for job status checks
-POLL_WAIT = 3
+DEFAULT_POLL_WAIT = 3
