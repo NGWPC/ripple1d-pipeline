@@ -3,6 +3,7 @@ from .kwse_step import execute_kwse_for_network
 from .load_conflation import load_conflation
 from .load_rating_curves import load_all_rating_curves
 from .move_fims_to_library import move_fims_to_library
+from .run_flows2fim import run_flows2fim
 from .source_models_from_stac import *
 from .step_runner import execute_step
 from .test import print_num
