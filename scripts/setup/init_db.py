@@ -68,7 +68,7 @@ def init_db(db_path):
             reach_id INTEGER PRIMARY KEY,
             -- model_id INTEGER,
             model_key TEXT,
-            eclipsed BOOL CHECK(eclipsed IN (0, 1))
+            eclipsed BOOL CHECK(eclipsed IN (0, 1)),
             extract_submodel_job_id TEXT,
             extract_submodel_status TEXT,
             create_ras_terrain_job_id TEXT,
