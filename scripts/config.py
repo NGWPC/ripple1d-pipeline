@@ -1,5 +1,8 @@
 # config.py
 
+# ENV Variable # to do move to .env file
+AWS_PROFILE = ""
+
 # API Base URL
 RIPPLE1D_API_URL = "http://localhost"
 

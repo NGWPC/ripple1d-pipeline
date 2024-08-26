@@ -4,16 +4,16 @@ import urllib.request
 import boto3
 import pystac_client
 
+from ..config import AWS_PROFILE
+
 
 def get_models_from_stac(stac_endpoint, stac_collection):
     # to do add filter
     """
     Retrieves GeoPackage and Conflation file URLs for models in an STAC collection.
-
     Parameters:
     - stac_endpoint (str): The STAC API endpoint.
     - stac_collection (str): The name of the STAC collection.
-
     Returns:
     - models_data (dict): Dictionary containing model IDs and their file URLs.
     """
@@ -23,20 +23,19 @@ def get_models_from_stac(stac_endpoint, stac_collection):
     models_data = {}
     for item in collection.get_items():
         i += 1
-        if (
-            all(
-                [
-                    "ras version" in item.properties.keys(),
-                    "GeoPackage_file" in item.assets.keys(),
-                    "NWM_Conflation" in item.assets.keys(),
-                ]
-            )
-            and not item.properties["ras version"][0] == "3"
-        ):
-            models_data[item.id] = {}
-            models_data[item.id]["gpkg"] = item.assets["GeoPackage_file"].href
-            models_data[item.id]["conflation"] = item.assets["NWM_Conflation"].href
-
+        conflation_key, gpkg_key = None, None
+        for _, asset in item.assets.items():
+            if "nwm-conflation" in asset.roles:
+                conflation_key = asset.href
+                # print(conflation_key)
+            if "ras-geometry-gpkg" in asset.roles:
+                gpkg_key = asset.href
+                # print("gpkg_key")
+        if conflation_key and gpkg_key:
+            models_data[os.path.basename(gpkg_key).split(".")[0]] = {
+                "gpkg": gpkg_key,
+                "conflation": conflation_key,
+            }
     print(f"Total {i} models in this collection")
     print(f"Total {len(models_data)} filtered models.")
     return models_data
@@ -50,7 +49,7 @@ def download_model_files(models_data, source_models_dir):
     - models_data (dict): Dictionary containing model IDs and their file URLs.
     - source_models_dir (str): The local directory to store the downloaded models.
     """
-    session = boto3.Session()
+    session = boto3.Session(profile_name=AWS_PROFILE)
     s3_client = session.client("s3")
 
     for id, files in models_data.items():
