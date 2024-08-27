@@ -1,6 +1,7 @@
 # Ripple1D Pipeline
 
-Currently works with ripple1d==0.4.1
+Compatible with ripple1d==0.4.2
+Use repository tags to get older versions
 
 ## Workflow
 
@@ -52,10 +53,7 @@ This guide provides instructions for setting up and running the Ripple1D pipelin
 #### 3. **Update the Configuration File**
    - Modify the `config.py` file if needed to suit your collection-specific requirements (e.g., STAC_COLLECTION, TERRAIN_SOURCE_URL, RIPPLE1D_API_URL, etc).
 
-#### 4. **Update Notebooks Parameters**
-   - In the parameters cell of the notebooks, update the relevant paths and parameters to point to the working folder you created for the collection.
-
-#### 5. **Run the Notebooks**
+#### 4. **Access Notebooks**
    - **Option 1: Using VSCode**
      1. Open the notebook in VSCode.
      2. Point the kernel to the IPython kernel in your virtual environment.
@@ -65,9 +63,13 @@ This guide provides instructions for setting up and running the Ripple1D pipelin
         ```bash
         jupyter lab
         ```
-     2. Open `localhost:8888` in your browser to access Jupyter Lab and run the notebooks.
+     2. Open `localhost:8888` in your browser to access Jupyter Lab and open the notebooks.
 
-#### 6. **Export Notebooks as HTML**
+#### 5. **Update Notebooks Parameters**
+   - In the parameters cell of the notebooks, update the relevant paths and parameters to point to the working folder you created for the collection.
+
+#### 6. **Execute and Export Notebooks as HTML**
+   - Execute `setup_<collection_name>.ipynb` first and then `process_<collection_name>.ipynb`
    - Once the notebooks are executed, export them as HTML files and move them into the working folder created for the collection.
 
 #### 7. **Send for Quality Review**
