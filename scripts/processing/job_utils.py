@@ -55,8 +55,8 @@ def wait_for_jobs(
     failed = []
     for reach_job_id in reach_job_ids:
         if check_job_status(reach_job_id[1], poll_wait):
-            succeeded.append(reach_job_id)
+            succeeded.append((reach_job_id[0], reach_job_id[1], "successful"))
         else:
-            failed.append(reach_job_id)
+            failed.append((reach_job_id[0], reach_job_id[1], "failed"))
 
     return succeeded, failed

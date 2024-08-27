@@ -37,7 +37,7 @@ def execute_request(
     """
     Executes an API request for a given process and returns the job ID and status.
     """
-    sleep(random.uniform(1, 4))  # Sleep to avoid database locked error on Ripple API side
+    sleep(random.uniform(1, 10))  # Sleep to avoid database locked error on Ripple API side
     url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
     payload = json.dumps(
         format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_key, source_model_dir, submodels_dir)
@@ -49,7 +49,7 @@ def execute_request(
         job_id = response.json().get("jobID")
         return nwm_reach_id, job_id, "accepted"
     else:
-        print(f"Failed to process nwm_reach_id {nwm_reach_id}, status code: {response.status_code}")
+        print(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
         return nwm_reach_id, "", "not_accepted"
 
 
