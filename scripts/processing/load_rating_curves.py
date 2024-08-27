@@ -7,6 +7,7 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
     Processes a reach database and inserts rating curves into the central library database.
     """
     reach_conn = sqlite3.connect(reach_db_path)
+
     reach_cursor = reach_conn.cursor()
     reach_cursor.execute(
         "SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition FROM rating_curves"
@@ -16,7 +17,7 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
     cursor = library_conn.cursor()
     cursor.executemany(
         """
-        INSERT INTO rating_curves (
+        INSERT OR IGNORE INTO rating_curves (
             reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
         )
         VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -24,7 +25,6 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         rows,
     )
     library_conn.commit()
-
     reach_conn.close()
 
 

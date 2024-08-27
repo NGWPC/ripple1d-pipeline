@@ -18,7 +18,7 @@ def insert_table_to_sqlite(table, sqlite_db):
     # Prepare rows for insertion
     cursor.executemany(
         """
-        INSERT INTO network (reach_id, nwm_to_id)
+        INSERT OR IGNORE INTO network (reach_id, nwm_to_id)
         VALUES (?, ?)
     """,
         table,
@@ -27,7 +27,7 @@ def insert_table_to_sqlite(table, sqlite_db):
     # Insert reaches into the processing table
     cursor.executemany(
         """
-        INSERT INTO processing (reach_id)
+        INSERT OR IGNORE INTO processing (reach_id)
         VALUES (?)
     """,
         [(row[0],) for row in table],
