@@ -18,30 +18,32 @@ def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> N
     based on upstream and downstream reach data.
     """
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    for key, value in data.items():
-        us_xs_river = value["us_xs"].get("river", None)
-        us_xs_reach = value["us_xs"].get("reach", None)
-        us_xs_id = value["us_xs"].get("xs_id", None)
-        ds_xs_river = value.get("ds_xs", {}).get("river", None)
-        ds_xs_reach = value.get("ds_xs", {}).get("reach", None)
-        ds_xs_id = value.get("ds_xs", {}).get("xs_id", None)
+        for key, value in data.items():
+            us_xs_river = value["us_xs"].get("river", None)
+            us_xs_reach = value["us_xs"].get("reach", None)
+            us_xs_id = value["us_xs"].get("xs_id", None)
+            ds_xs_river = value.get("ds_xs", {}).get("river", None)
+            ds_xs_reach = value.get("ds_xs", {}).get("reach", None)
+            ds_xs_id = value.get("ds_xs", {}).get("xs_id", None)
 
-        # Check if upstream and downstream cross-sections match
-        eclipsed = (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river)
+            # Check if upstream and downstream cross-sections match
+            eclipsed = (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river)
 
-        cursor.execute(
-            """
-            UPDATE processing
-            SET model_key = ?, eclipsed = ?
-            WHERE reach_id = ?;
-            """,
-            (model_key, eclipsed, key),
-        )
+            cursor.execute(
+                """
+                UPDATE processing
+                SET model_key = ?, eclipsed = ?
+                WHERE reach_id = ?;
+                """,
+                (model_key, eclipsed, key),
+            )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def load_conflation(model_keys: List[str], source_models_directory: str, db_path: str) -> None:

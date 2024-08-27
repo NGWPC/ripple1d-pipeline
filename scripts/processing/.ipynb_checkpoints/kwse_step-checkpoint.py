@@ -17,16 +17,18 @@ def get_upstream_reaches(updated_to_id: int, db_path, db_lock) -> List[int]:
     """Fetch upstream reach IDs from the 'network' table."""
     with db_lock:
         conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT reach_id FROM network
-            WHERE updated_to_id = ?
-        """,
-            (updated_to_id,),
-        )
-        result = [row[0] for row in cursor.fetchall()]
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT reach_id FROM network
+                WHERE updated_to_id = ?
+            """,
+                (updated_to_id,),
+            )
+            result = [row[0] for row in cursor.fetchall()]
+        finally:
+            conn.close()
         return result
 
 
@@ -34,19 +36,21 @@ def check_fim_lib_created(reach_id: int, db_path, db_lock) -> bool:
     """"""
     with db_lock:
         conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        cursor.execute(
-            """
-            SELECT create_fim_lib_job_id
-            FROM processing
-            WHERE reach_id = ?;
-        """,
-            (reach_id,),
-        )
+            cursor.execute(
+                """
+                SELECT create_fim_lib_job_id
+                FROM processing
+                WHERE reach_id = ?;
+            """,
+                (reach_id,),
+            )
 
-        result = cursor.fetchone()
-        conn.close()
+            result = cursor.fetchone()
+        finally:
+            conn.close()
 
         if result is None:
             raise ValueError(f"No record found for reach_id {reach_id}")
@@ -66,10 +70,14 @@ def get_min_max_elevation(
             return None, None
         with db_lock:
             conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves WHERE reach_ID = ?", (downstream_id,))
-            min_elevation, max_elevation = cursor.fetchone()
-            conn.close()
+            try:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves WHERE reach_ID = ?", (downstream_id,)
+                )
+                min_elevation, max_elevation = cursor.fetchone()
+            finally:
+                conn.close()
             return min_elevation, max_elevation
     else:
         ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), "fims", f"{downstream_id}.db")
@@ -78,10 +86,12 @@ def get_min_max_elevation(
             return None, None
 
         conn = sqlite3.connect(ds_submodel_db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves")
-        min_elevation, max_elevation = cursor.fetchone()
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves")
+            min_elevation, max_elevation = cursor.fetchone()
+        finally:
+            conn.close()
         return min_elevation, max_elevation
 
 

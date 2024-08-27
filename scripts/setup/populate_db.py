@@ -13,28 +13,30 @@ def read_parquet_with_duckdb(nwm_flowlines_path):
 
 def insert_table_to_sqlite(table, sqlite_db):
     conn = sqlite3.connect(sqlite_db)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    # Prepare rows for insertion
-    cursor.executemany(
-        """
-        INSERT OR IGNORE INTO network (reach_id, nwm_to_id)
-        VALUES (?, ?)
-    """,
-        table,
-    )
+        # Prepare rows for insertion
+        cursor.executemany(
+            """
+            INSERT OR IGNORE INTO network (reach_id, nwm_to_id)
+            VALUES (?, ?)
+        """,
+            table,
+        )
 
-    # Insert reaches into the processing table
-    cursor.executemany(
-        """
-        INSERT OR IGNORE INTO processing (reach_id)
-        VALUES (?)
-    """,
-        [(row[0],) for row in table],
-    )
+        # Insert reaches into the processing table
+        cursor.executemany(
+            """
+            INSERT OR IGNORE INTO processing (reach_id)
+            VALUES (?)
+        """,
+            [(row[0],) for row in table],
+        )
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def populate_db(nwm_flowlines_path, sqlite_db):

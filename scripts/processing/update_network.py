@@ -7,17 +7,19 @@ def get_valid_reaches(db_path: str) -> List[Tuple[int, int]]:
     Get reaches that are not eclipsed by joining the network and processing tables.
     """
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT n.reach_id, n.nwm_to_id
-        FROM network n
-        JOIN processing p ON n.reach_id = p.reach_id
-        WHERE p.eclipsed IS FALSE
-        """
-    )
-    result = cursor.fetchall()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT n.reach_id, n.nwm_to_id
+            FROM network n
+            JOIN processing p ON n.reach_id = p.reach_id
+            WHERE p.eclipsed IS FALSE
+            """
+        )
+        result = cursor.fetchall()
+    finally:
+        conn.close()
     return result
 
 
@@ -26,17 +28,19 @@ def get_eclipsed_reaches(db_path: str) -> List[Tuple[int, int]]:
     Get reaches that are eclipsed by joining the network and processing tables.
     """
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT n.reach_id, n.nwm_to_id
-        FROM network n
-        JOIN processing p ON n.reach_id = p.reach_id
-        WHERE p.eclipsed IS TRUE
-        """
-    )
-    result = cursor.fetchall()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT n.reach_id, n.nwm_to_id
+            FROM network n
+            JOIN processing p ON n.reach_id = p.reach_id
+            WHERE p.eclipsed IS TRUE
+            """
+        )
+        result = cursor.fetchall()
+    finally:
+        conn.close()
     return result
 
 
@@ -45,17 +49,19 @@ def update_to_id_batch(updates: List[Tuple[int, int]], db_path: str) -> None:
     Batch update the updated_to_id for multiple reaches.
     """
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.executemany(
-        """
-        UPDATE network
-        SET updated_to_id = ?
-        WHERE reach_id = ?
-        """,
-        updates,
-    )
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.executemany(
+            """
+            UPDATE network
+            SET updated_to_id = ?
+            WHERE reach_id = ?
+            """,
+            updates,
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def update_network(db_path: str) -> None:

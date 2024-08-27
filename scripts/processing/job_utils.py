@@ -14,17 +14,19 @@ def update_processing_table(
     Updates the processing table with job_id and job_status for a given process.
     """
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    cursor.executemany(
-        f"""
-        UPDATE processing
-        SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
-        WHERE reach_id = ?;
-        """,
-        [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids],
-    )
-    conn.commit()
-    conn.close()
+    try:
+        cursor = conn.cursor()
+        cursor.executemany(
+            f"""
+            UPDATE processing
+            SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
+            WHERE reach_id = ?;
+            """,
+            [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids],
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def check_job_status(job_id: str, poll_wait: int = DEFAULT_POLL_WAIT) -> bool:

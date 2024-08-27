@@ -20,54 +20,55 @@ def delete_reaches_data(
     """
     # Connect to the database
     conn = sqlite3.connect(db_location)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    # Delete records from the rating_curves table if enabled
-    if delete_db_records:
-        placeholders = ", ".join("?" for _ in reach_ids)
-        cursor.execute(f"DELETE FROM rating_curves WHERE reach_id IN ({placeholders});", reach_ids)
-        conn.commit()
+        # Delete records from the rating_curves table if enabled
+        if delete_db_records:
+            placeholders = ", ".join("?" for _ in reach_ids)
+            cursor.execute(f"DELETE FROM rating_curves WHERE reach_id IN ({placeholders});", reach_ids)
+            conn.commit()
 
-    # Reset network records if enabled
-    if reset_network_records:
-        placeholders = ", ".join("?" for _ in reach_ids)
-        cursor.execute(
-            f"""
-            UPDATE network
-            SET updated_to_id = NULL,
-                eclipsed = NULL,
-                model_key = NULL
-            WHERE reach_id IN ({placeholders});
-            """,
-            reach_ids,
-        )
-        conn.commit()
+        # Reset network records if enabled
+        if reset_network_records:
+            placeholders = ", ".join("?" for _ in reach_ids)
+            cursor.execute(
+                f"""
+                UPDATE network
+                SET updated_to_id = NULL,
+                    eclipsed = NULL,
+                    model_key = NULL
+                WHERE reach_id IN ({placeholders});
+                """,
+                reach_ids,
+            )
+            conn.commit()
 
-    # Reset processing records if enabled
-    if reset_processing_records:
-        placeholders = ", ".join("?" for _ in reach_ids)
-        cursor.execute(
-            f"""
-            UPDATE processing
-            SET extract_submodel_job_id = NULL,
-                extract_submodel_status = NULL,
-                create_ras_terrain_job_id = NULL,
-                create_ras_terrain_status = NULL,
-                create_model_run_normal_depth_job_id = NULL,
-                create_model_run_normal_depth_status = NULL,
-                run_incremental_normal_depth_job_id = NULL,
-                run_incremental_normal_depth_status = NULL,
-                run_known_wse_job_id = NULL,
-                run_known_wse_status = NULL,
-                create_fim_lib_job_id = NULL,
-                create_fim_lib_status = NULL
-            WHERE reach_id IN ({placeholders});
-            """,
-            reach_ids,
-        )
-        conn.commit()
-
-    conn.close()
+        # Reset processing records if enabled
+        if reset_processing_records:
+            placeholders = ", ".join("?" for _ in reach_ids)
+            cursor.execute(
+                f"""
+                UPDATE processing
+                SET extract_submodel_job_id = NULL,
+                    extract_submodel_status = NULL,
+                    create_ras_terrain_job_id = NULL,
+                    create_ras_terrain_status = NULL,
+                    create_model_run_normal_depth_job_id = NULL,
+                    create_model_run_normal_depth_status = NULL,
+                    run_incremental_normal_depth_job_id = NULL,
+                    run_incremental_normal_depth_status = NULL,
+                    run_known_wse_job_id = NULL,
+                    run_known_wse_status = NULL,
+                    create_fim_lib_job_id = NULL,
+                    create_fim_lib_status = NULL
+                WHERE reach_id IN ({placeholders});
+                """,
+                reach_ids,
+            )
+            conn.commit()
+    finally:
+        conn.close()
 
     # Delete submodel directories if enabled
     if delete_submodels:

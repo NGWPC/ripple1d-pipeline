@@ -54,18 +54,20 @@ def get_all_job_ids_for_process(db_path: str, process_name: str) -> List[Tuple[i
     Returns:
         List of tuples containing reach_id and job_id for the specified process.
     """
+
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    query = f"""
-        SELECT reach_id, {process_name}_job_id
-        FROM processing
-        WHERE {process_name}_job_id IS NOT NULL
-    """
-    cursor.execute(query)
-    job_ids = cursor.fetchall()
-
-    conn.close()
+        query = f"""
+            SELECT reach_id, {process_name}_job_id
+            FROM processing
+            WHERE {process_name}_job_id IS NOT NULL
+        """
+        cursor.execute(query)
+        job_ids = cursor.fetchall()
+    finally:
+        conn.close()
     return job_ids
 
 
@@ -86,39 +88,41 @@ def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: i
     headers = {"Content-Type": "application/json"}
 
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    for reach_id, job_id in job_ids:
-        if job_id:  # Ensure job_id exists
-            url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
-            try:
-                response = requests.get(url, headers=headers)
+        for reach_id, job_id in job_ids:
+            if job_id:  # Ensure job_id exists
+                url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
+                try:
+                    response = requests.get(url, headers=headers)
 
-                if response.status_code == 200:
-                    response_data = response.json()
-                    job_status = response_data.get("status", "unknown")
+                    if response.status_code == 200:
+                        response_data = response.json()
+                        job_status = response_data.get("status", "unknown")
 
-                    # Step 3: Update the processing table with the new status
-                    cursor.execute(
-                        f"""
-                        UPDATE processing
-                        SET {process_name}_status = ?
-                        WHERE reach_id = ?;
-                    """,
-                        (job_status, reach_id),
-                    )
+                        # Step 3: Update the processing table with the new status
+                        cursor.execute(
+                            f"""
+                            UPDATE processing
+                            SET {process_name}_status = ?
+                            WHERE reach_id = ?;
+                        """,
+                            (job_status, reach_id),
+                        )
 
-                else:
-                    print(f"Failed to poll job {job_id} for reach {reach_id}. Status code: {response.status_code}")
+                    else:
+                        print(f"Failed to poll job {job_id} for reach {reach_id}. Status code: {response.status_code}")
 
-            except requests.RequestException as e:
-                print(f"Error polling job {job_id} for reach {reach_id}: {e}")
+                except requests.RequestException as e:
+                    print(f"Error polling job {job_id} for reach {reach_id}: {e}")
 
-        # Optionally sleep between requests to avoid overloading the API
-        time.sleep(poll_interval)
+            # Optionally sleep between requests to avoid overloading the API
+            time.sleep(poll_interval)
 
-    conn.commit()
-    conn.close()
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def get_reach_status_by_process(
@@ -134,37 +138,39 @@ def get_reach_status_by_process(
         failed: List of tuples (reach_id, job_id, status) for failed reaches.
     """
     conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
 
-    # Build the dynamic SQL query for retrieving status and job IDs
-    successful_query = f"""
-        SELECT reach_id, {process_name}_job_id, {process_name}_status
-        FROM processing
-        WHERE {process_name}_status = 'successful'
-    """
-    accepted_query = f"""
-        SELECT reach_id, {process_name}_job_id, {process_name}_status
-        FROM processing
-        WHERE {process_name}_status = 'accepted'
-    """
-    failed_query = f"""
-        SELECT reach_id, {process_name}_job_id, {process_name}_status
-        FROM processing
-        WHERE {process_name}_status = 'failed'
-    """
+        # Build the dynamic SQL query for retrieving status and job IDs
+        successful_query = f"""
+            SELECT reach_id, {process_name}_job_id, {process_name}_status
+            FROM processing
+            WHERE {process_name}_status = 'successful'
+        """
+        accepted_query = f"""
+            SELECT reach_id, {process_name}_job_id, {process_name}_status
+            FROM processing
+            WHERE {process_name}_status = 'accepted'
+        """
+        failed_query = f"""
+            SELECT reach_id, {process_name}_job_id, {process_name}_status
+            FROM processing
+            WHERE {process_name}_status = 'failed'
+        """
 
-    # Retrieve successful reaches
-    cursor.execute(successful_query)
-    successful = cursor.fetchall()
+        # Retrieve successful reaches
+        cursor.execute(successful_query)
+        successful = cursor.fetchall()
 
-    # Retrieve accepted reaches
-    cursor.execute(accepted_query)
-    accepted = cursor.fetchall()
+        # Retrieve accepted reaches
+        cursor.execute(accepted_query)
+        accepted = cursor.fetchall()
 
-    # Retrieve failed reaches
-    cursor.execute(failed_query)
-    failed = cursor.fetchall()
+        # Retrieve failed reaches
+        cursor.execute(failed_query)
+        failed = cursor.fetchall()
 
-    conn.close()
+    finally:
+        conn.close()
 
     return successful, failed, accepted
