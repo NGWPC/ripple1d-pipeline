@@ -7,7 +7,7 @@ from typing import Tuple
 
 import requests
 
-from ..config import PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
+from ..config import API_LAUNCH_JOBS_WAIT_RANGE, PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
 from .job_utils import update_processing_table, wait_for_jobs
 
 
@@ -37,7 +37,9 @@ def execute_request(
     """
     Executes an API request for a given process and returns the job ID and status.
     """
-    sleep(random.uniform(1, 10))  # Sleep to avoid database locked error on Ripple API side
+    sleep(
+        random.uniform(API_LAUNCH_JOBS_WAIT_RANGE[0], API_LAUNCH_JOBS_WAIT_RANGE[1])
+    )  # Sleep to avoid database locked error on Ripple API side
     url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
     payload = json.dumps(
         format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_key, source_model_dir, submodels_dir)
