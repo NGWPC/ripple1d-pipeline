@@ -1,14 +1,16 @@
+import os
 import sqlite3
 import time
 from typing import List, Tuple
 
 import pandas as pd
 import requests
+from openpyxl import load_workbook
 
 from ..config import RIPPLE1D_API_URL
 
 
-def get_failed_jobs_table(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFrame:
+def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFrame:
     """
     Sends a GET request to the API for each failed reach's job and returns a formatted table
     with reach_id, error message (err), and traceback (tb).
@@ -174,3 +176,30 @@ def get_reach_status_by_process(
         conn.close()
 
     return successful, failed, accepted
+
+
+def write_failed_jobs_df_to_excel(df: pd.DataFrame, process_name: str, file_path: str) -> None:
+    """
+    Writes the DataFrame to an Excel file at the specified file path with the given process name as the sheet name.
+    If the file or sheet already exists, it will add a new sheet or overwrite the existing one.
+
+    Args:
+        df: A pandas DataFrame containing the reach_id, error (err), and traceback (tb).
+        process_name: The name of the process to be used as the sheet name in the Excel file.
+        file_path: The path to the Excel file where the data will be saved.
+
+    Returns:
+        None
+    """
+
+    if os.path.exists(file_path):
+        # Load the existing workbook
+        with pd.ExcelWriter(file_path, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
+            # Write the DataFrame to the specified sheet
+            df.to_excel(writer, sheet_name=process_name, index=False)
+    else:
+        # Create a new Excel file and write the DataFrame to the specified sheet
+        with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+            df.to_excel(writer, sheet_name=process_name, index=False)
+
+    print(f"Data written to {file_path} in sheet {process_name}.")
