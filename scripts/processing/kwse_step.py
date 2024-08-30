@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from ..config import DB_CONN_TIMEOUT, KWSE_MAX_PARALLEL_PROCESSES, RIPPLE1D_API_URL
+from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT
 from .job_utils import check_job_status, update_processing_table
 
 
@@ -179,7 +179,7 @@ def execute_kwse_for_network(
     for reach_pair in initial_reaches:
         task_queue.put(reach_pair)
 
-    with ThreadPoolExecutor(max_workers=KWSE_MAX_PARALLEL_PROCESSES) as executor:
+    with ThreadPoolExecutor(max_workers=RIPPLE1D_THREAD_COUNT) as executor:
         futures = []
         while not task_queue.empty() or futures:
             while not task_queue.empty():

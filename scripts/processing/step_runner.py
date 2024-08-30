@@ -7,7 +7,12 @@ from typing import Tuple
 
 import requests
 
-from ..config import API_LAUNCH_JOBS_WAIT_RANGE, PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
+from ..config import (
+    API_LAUNCH_JOBS_WAIT_RANGE,
+    PAYLOAD_TEMPLATES,
+    RIPPLE1D_API_URL,
+    RIPPLE1D_THREAD_COUNT,
+)
 from .job_utils import update_processing_table, wait_for_jobs
 
 
@@ -61,7 +66,7 @@ def execute_step(
     """
     Submits multiple reach processing jobs and waits for their completion.
     """
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=RIPPLE1D_THREAD_COUNT) as executor:
         futures = [
             executor.submit(execute_request, reach[0], reach[2], process_name, source_model_dir, submodels_dir)
             for reach in reach_data
