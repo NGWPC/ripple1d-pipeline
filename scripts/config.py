@@ -46,3 +46,5 @@ PAYLOAD_TEMPLATES = {
 
 # Poll wait time for job status checks
 DEFAULT_POLL_WAIT = 3
+
+API_LAUNCH_JOBS_WAIT_RANGE = [15, 30]
