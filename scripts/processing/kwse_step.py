@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from ..config import KWSE_MAX_PARALLEL_PROCESSES, RIPPLE1D_API_URL
+from ..config import DB_CONN_TIMEOUT, KWSE_MAX_PARALLEL_PROCESSES, RIPPLE1D_API_URL
 from .job_utils import check_job_status, update_processing_table
 
 
@@ -19,7 +19,7 @@ def get_upstream_reaches(updated_to_id: int, db_path: str, db_lock: Lock) -> Lis
     Fetch upstream reach IDs from the 'network' table.
     """
     with db_lock:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT reach_id FROM network WHERE updated_to_id = ?", (updated_to_id,))
@@ -34,7 +34,7 @@ def check_fim_lib_created(reach_id: int, db_path: str, db_lock: Lock) -> bool:
     Check if FIM library has been created for a reach.
     """
     with db_lock:
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = conn.cursor()
             cursor.execute("SELECT create_fim_lib_job_id FROM processing WHERE reach_id = ?", (reach_id,))
@@ -59,7 +59,7 @@ def get_min_max_elevation(
             print("central database not found")
             return None, None
         with db_lock:
-            conn = sqlite3.connect(db_path)
+            conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
             try:
                 cursor = conn.cursor()
                 cursor.execute(

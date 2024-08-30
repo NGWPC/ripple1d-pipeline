@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 import requests
 
-from ..config import DEFAULT_POLL_WAIT, RIPPLE1D_API_URL
+from ..config import DB_CONN_TIMEOUT, DEFAULT_POLL_WAIT, RIPPLE1D_API_URL
 
 
 def update_processing_table(
@@ -13,7 +13,7 @@ def update_processing_table(
     """
     Updates the processing table with job_id and job_status for a given process.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
         cursor.executemany(

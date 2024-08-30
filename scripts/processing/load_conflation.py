@@ -2,6 +2,8 @@ import json
 import sqlite3
 from typing import Dict, List
 
+from ..config import DB_CONN_TIMEOUT
+
 
 def load_json(file_path: str) -> Dict:
     """
@@ -17,7 +19,7 @@ def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> N
     Updates the model_key and eclipsed status in the processing table
     based on upstream and downstream reach data.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
 

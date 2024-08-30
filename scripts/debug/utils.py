@@ -7,7 +7,7 @@ import pandas as pd
 import requests
 from openpyxl import load_workbook
 
-from ..config import RIPPLE1D_API_URL
+from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL
 
 
 def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFrame:
@@ -57,7 +57,7 @@ def get_all_job_ids_for_process(db_path: str, process_name: str) -> List[Tuple[i
         List of tuples containing reach_id and job_id for the specified process.
     """
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
 
@@ -89,7 +89,7 @@ def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: i
     # Step 2: Poll the API and update the database
     headers = {"Content-Type": "application/json"}
 
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
 
@@ -139,7 +139,7 @@ def get_reach_status_by_process(
         accepted: List of tuples (reach_id, job_id, status) for accepted reaches.
         failed: List of tuples (reach_id, job_id, status) for failed reaches.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
 

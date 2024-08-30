@@ -1,10 +1,13 @@
 import sqlite3
 
+from ..config import DB_CONN_TIMEOUT
+
 
 def init_db(db_path):
-    connection = sqlite3.connect(db_path)
+    connection = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = connection.cursor()
+        cursor.execute("PRAGMA journal_mode=WAL;")
 
         # # Create models table to store model-level information
         # cursor.execute(

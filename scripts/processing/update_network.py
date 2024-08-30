@@ -1,12 +1,14 @@
 import sqlite3
 from typing import List, Tuple
 
+from ..config import DB_CONN_TIMEOUT
+
 
 def get_valid_reaches(db_path: str) -> List[Tuple[int, int]]:
     """
     Get reaches that are not eclipsed by joining the network and processing tables.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
         cursor.execute(
@@ -27,7 +29,7 @@ def get_eclipsed_reaches(db_path: str) -> List[Tuple[int, int]]:
     """
     Get reaches that are eclipsed by joining the network and processing tables.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
         cursor.execute(
@@ -48,7 +50,7 @@ def update_to_id_batch(updates: List[Tuple[int, int]], db_path: str) -> None:
     """
     Batch update the updated_to_id for multiple reaches.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
         cursor.executemany(

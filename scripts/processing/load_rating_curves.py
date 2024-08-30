@@ -1,6 +1,8 @@
 import os
 import sqlite3
 
+from ..config import DB_CONN_TIMEOUT
+
 
 def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Connection) -> None:
     """
@@ -33,7 +35,7 @@ def load_all_rating_curves(library_dir: str, db_path: str) -> None:
     """
     Loads all rating curves from submodel databases into the central library database.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
 
         for submodel in os.listdir(library_dir):

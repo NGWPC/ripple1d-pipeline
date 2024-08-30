@@ -1,13 +1,15 @@
 import sqlite3
 from typing import List, Tuple
 
+from ..config import DB_CONN_TIMEOUT
+
 
 def get_reaches_by_models(db_path: str, model_keys: List[str]) -> List[Tuple[int, int, str]]:
     """
     Retrieves reach IDs, updated_to_ids, and model keys from the network and processing tables
     where the model keys match and the reach is not eclipsed.
     """
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = conn.cursor()
 
