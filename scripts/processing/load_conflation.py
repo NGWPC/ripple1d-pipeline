@@ -32,9 +32,13 @@ def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> N
             ds_xs_id = value.get("ds_xs", {}).get("xs_id", None)
 
             # Check if upstream and downstream cross-sections match
-            eclipsed = any[
-                (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river), us_xs_id == "-9999"
-            ]
+            eclipsed = any(
+                [
+                    (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river),
+                    us_xs_id == "-9999",
+                    us_xs_id == -9999.0,
+                ]
+            )
 
             cursor.execute(
                 """
