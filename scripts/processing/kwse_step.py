@@ -105,37 +105,33 @@ def process_reach(
             min_elevation, max_elevation = get_min_max_elevation(
                 downstream_id, submodels_directory, db_lock, use_central_db, db_path
             )
-            if min_elevation is None or max_elevation is None:
-                print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
-                return
+            if min_elevation and max_elevation:
 
-            url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
-            payload = json.dumps(
-                {
-                    "submodel_directory": submodel_directory_path,
-                    "plan_suffix": "kwse",
-                    "min_elevation": min_elevation,
-                    "max_elevation": max_elevation,
-                    "depth_increment": 1,
-                    "ras_version": "631",
-                }
-            )
-            print(f"<<<<<< payload for reach {reach_id}\n{payload}")
+                url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
+                payload = json.dumps(
+                    {
+                        "submodel_directory": submodel_directory_path,
+                        "plan_suffix": "kwse",
+                        "min_elevation": min_elevation,
+                        "max_elevation": max_elevation,
+                        "depth_increment": 1,
+                        "ras_version": "631",
+                    }
+                )
+                print(f"<<<<<< payload for reach {reach_id}\n{payload}")
 
-            response = requests.post(url, headers=headers, data=payload)
-            response_json = response.json()
-            job_id = response_json.get("jobID")
-            if not job_id or not check_job_status(job_id):
-                print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
-                with db_lock:
-                    update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", db_path)
-                upstream_reaches = get_upstream_reaches(reach_id, db_path, db_lock)
-                for upstream_reach in upstream_reaches:
-                    task_queue.put((upstream_reach, None))
-                return
+                response = requests.post(url, headers=headers, data=payload)
+                response_json = response.json()
+                job_id = response_json.get("jobID")
+                if not job_id or not check_job_status(job_id):
+                    print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
+                    with db_lock:
+                        update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", db_path)
+                else:
+                    with db_lock:
+                        update_processing_table([(reach_id, job_id)], "run_known_wse", "successful", db_path)
 
-            with db_lock:
-                update_processing_table([(reach_id, job_id)], "run_known_wse", "successful", db_path)
+            print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
 
         fim_url = f"{RIPPLE1D_API_URL}/processes/create_fim_lib/execution"
         fim_payload = json.dumps(

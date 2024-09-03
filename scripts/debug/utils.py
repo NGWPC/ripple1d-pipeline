@@ -136,8 +136,8 @@ def get_reach_status_by_process(
 
     Returns:
         successful: List of tuples (reach_id, job_id, status) for successful reaches.
-        accepted: List of tuples (reach_id, job_id, status) for accepted reaches.
         failed: List of tuples (reach_id, job_id, status) for failed reaches.
+        accepted: List of tuples (reach_id, job_id, status) for accepted reaches.
     """
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
