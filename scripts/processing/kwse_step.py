@@ -130,8 +130,8 @@ def process_reach(
                 else:
                     with db_lock:
                         update_processing_table([(reach_id, job_id)], "run_known_wse", "successful", db_path)
-
-            print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
+            else:
+                print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
 
         fim_url = f"{RIPPLE1D_API_URL}/processes/create_fim_lib/execution"
         fim_payload = json.dumps(
