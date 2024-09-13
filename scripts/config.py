@@ -44,6 +44,15 @@ PAYLOAD_TEMPLATES = {
     },
 }
 
+# Flows2FIM
+FLOW_FILES_DIR = r""
+FLOWS2FIM_BIN_PATH = r"C:\OSGeo4W\bin\flows2fim.exe"
+GDAL_BINS_PATH = r"C:\OSGeo4W\bin"
+GDAL_SCRIPTS_PATH = r"C:\OSGeo4W\apps\Python312\Scripts"
+
+# QC
+QC_TEMPLATE_QGIS_FILE = r""
+
 # Poll wait time for job status checks
 DEFAULT_POLL_WAIT = 3
 

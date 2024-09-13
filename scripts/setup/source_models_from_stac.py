@@ -31,7 +31,7 @@ def get_models_from_stac(stac_endpoint, stac_collection):
             if "ras-geometry-gpkg" in asset.roles:
                 gpkg_key = asset.href
                 # print("gpkg_key")
-        if conflation_key and gpkg_key:
+        if gpkg_key:
             models_data[os.path.basename(gpkg_key).split(".")[0]] = {
                 "gpkg": gpkg_key,
                 "conflation": conflation_key,
@@ -64,8 +64,10 @@ def download_model_files(models_data, source_models_dir):
             s3_client.download_file(bucket_name, key, local_gpkg_path)
 
             # Download Conflation JSON
-            local_conflation_path = os.path.join(model_dir, f"{id}.conflation.json")
-            urllib.request.urlretrieve(files["conflation"], local_conflation_path)
+
+            if files["conflation"]:
+                local_conflation_path = os.path.join(model_dir, f"{id}.conflation.json")
+                urllib.request.urlretrieve(files["conflation"], local_conflation_path)
 
             print(f"Successfully downloaded files for {id}")
         except Exception as e:

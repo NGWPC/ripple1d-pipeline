@@ -1,6 +1,43 @@
 import sqlite3
 
+import geopandas as gpd
+
 from ..config import DB_CONN_TIMEOUT
+
+
+def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpkg_path: str) -> None:
+    """
+    Filters NWM flowlines that intersect with the convex hull of the River table from the GPKG file
+    and saves the result to a new GPKG file.
+
+    Args:
+        nwm_flowlines_path (str): Path to the NWM flowlines parquet file.
+        river_gpkg_path (str): Path to the GPKG file containing the River table.
+        output_gpkg_path (str): Path to save the filtered NWM flowlines in a GPKG file.
+    """
+    # Load NWM Flowlines from Parquet file
+    nwm_flowlines_gdf = gpd.read_parquet(nwm_flowlines_path, columns=["id", "to_id", "geom"])
+
+    # Load the River table from the GPKG file
+    river_gdf = gpd.read_file(river_gpkg_path, layer="River")
+
+    # Ensure both GeoDataFrames have the same CRS (coordinate reference system)
+    if nwm_flowlines_gdf.crs != river_gdf.crs:
+        nwm_flowlines_gdf = nwm_flowlines_gdf.to_crs(river_gdf.crs)
+
+    # Calculate the convex hull of the entire river geometry
+    river_convex_hull = river_gdf.unary_union.convex_hull
+
+    # Filter NWM flowlines by intersecting with the convex hull of the river
+    filtered_nwm_gdf = nwm_flowlines_gdf[nwm_flowlines_gdf.intersects(river_convex_hull)]
+
+    # Rename columns
+    filtered_nwm_gdf = filtered_nwm_gdf.rename(columns={"id": "reach_id", "to_id": "nwm_to_id"})
+
+    # Save the filtered NWM flowlines to a new GeoPackage (GPKG) file
+    filtered_nwm_gdf.to_file(output_gpkg_path, layer="reaches", driver="GPKG")
+
+    print(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
 
 
 def init_db(db_path):
@@ -27,10 +64,17 @@ def init_db(db_path):
                 nwm_to_id INTEGER,
                 updated_to_id INTEGER
             );
-        """
+            """
         )
 
-        # Indexes will speed up where downstream = queries
+        cursor.execute(
+            """
+            INSERT INTO network (reach_id, nwm_to_id)
+            SELECT reach_id, nwm_to_id FROM reaches;
+            """
+        )
+
+        # Indexes will speed up 'where downstream = ?' queries
         cursor.execute(
             """
             CREATE INDEX IF NOT EXISTS network_nwm_to_id_idx ON network (nwm_to_id);
@@ -90,6 +134,13 @@ def init_db(db_path):
         """
         )
 
+        cursor.execute(
+            """
+            INSERT INTO processing (reach_id)
+            SELECT reach_id FROM network;
+            """
+        )
+
         # # Create metrics table to store reach-specific metrics
         # cursor.execute(
         #     """
@@ -103,6 +154,9 @@ def init_db(db_path):
         # )
 
         connection.commit()
+        print(f"Database initialized successfully at {db_path}")
+    except Exception as e:
+        print(e)
+        connection.rollback()
     finally:
         connection.close()
-    print(f"Database initialized successfully at {db_path}")

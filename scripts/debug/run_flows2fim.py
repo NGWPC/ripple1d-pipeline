@@ -1,5 +1,26 @@
 import os
 import subprocess
+from typing import List
+
+from ..config import (
+    FLOW_FILES_DIR,
+    FLOWS2FIM_BIN_PATH,
+    GDAL_BINS_PATH,
+    GDAL_SCRIPTS_PATH,
+)
+
+
+def setup_gdal_environment():
+    """
+    Add GDAL binaries to the system PATH
+    """
+
+    if GDAL_BINS_PATH:
+        # Add GDAL path to the system PATH
+        os.environ["PATH"] = GDAL_BINS_PATH + os.pathsep + os.environ["PATH"]
+
+    if GDAL_SCRIPTS_PATH:
+        os.environ["PATH"] = GDAL_SCRIPTS_PATH + os.pathsep + os.environ["PATH"]
 
 
 def run_flows2fim(
@@ -7,8 +28,8 @@ def run_flows2fim(
     output_subfolder: str,
     library_path: str,
     library_db_path: str,
-    flow_files_dir: str,
-    start_csv: str,
+    start_reaches: List,
+    flow_files_dir: str = FLOW_FILES_DIR,
     fim_format: str = "tif",
 ) -> None:
     """
@@ -20,15 +41,14 @@ def run_flows2fim(
         library_path (str): Path to the library directory.
         library_db_path (str): Path to the SQLite library database.
         flow_files_dir (str): Directory containing flow files (CSV format).
-        start_csv (str): Path to the start reaches CSV file.
         fim_format (str): Output format for FIM files ('tif' or 'vrt').
     """
-    # Ensure the output subfolder exists
+    setup_gdal_environment()
+
     output_subfolder_path = os.path.join(output_dir, output_subfolder)
     if not os.path.exists(output_subfolder_path):
-        os.mkdir(output_subfolder_path)
+        os.makedirs(output_subfolder_path)
 
-    # Process each flow file in the flow_files_dir
     for flow_file in os.listdir(flow_files_dir):
         if flow_file.endswith(".csv"):
             flow_file_path = os.path.join(flow_files_dir, flow_file)
@@ -38,22 +58,22 @@ def run_flows2fim(
 
             # Generate control CSV
             cmd_controls = [
-                "flows2fim.exe",
+                FLOWS2FIM_BIN_PATH,
                 "controls",
                 "-db",
                 library_db_path,
                 "-f",
                 flow_file_path,
-                "-c",
+                "-o",
                 control_csv,
-                "-scsv",
-                start_csv,
+                "-sids",
+                ",".join([str(reach) for reach in start_reaches]),
             ]
             subprocess.run(cmd_controls, shell=True, check=True)
 
             # Generate FIM output
             cmd_fim = [
-                "flows2fim.exe",
+                FLOWS2FIM_BIN_PATH,
                 "fim",
                 "-lib",
                 library_path,
@@ -66,25 +86,14 @@ def run_flows2fim(
             ]
             subprocess.run(cmd_fim, shell=True, check=True)
 
-    print("All flow files have been processed.")
+            print(basename, "have been processed.")
 
 
 if __name__ == "__main__":
-    # Paths specific to the current run
-    output_dir = r"D:\Users\abdul.siddiqui\workbench\projects\production\scenarios"
-    output_subfolder = "wfsj_12040101"
+    output_dir = r"Z:\collections\ebfe-12030106_EastForkTrinity"
+    output_subfolder = "qc"
 
-    library_path = r"D:\Users\abdul.siddiqui\workbench\projects\production\library"
-    library_db_path = r"D:/Users/abdul.siddiqui/workbench/projects/production/library.sqlite"
-    flow_files_dir = r"D:\Users\abdul.siddiqui\workbench\projects\production\scenarios\flow_files"
-    start_csv = r"D:\Users\abdul.siddiqui\workbench\projects\wfsj_huc8\startReaches.csv"
+    library_path = r"Z:\collections\ebfe-12030106_EastForkTrinity\library"
+    library_db_path = r"Z:\collections\ebfe-12030106_EastForkTrinity\ripple.db"
 
-    # Execute the process for flow files
-    run_flows2fim(
-        output_dir,
-        output_subfolder,
-        library_path,
-        library_db_path,
-        flow_files_dir,
-        start_csv,
-    )
+    # run_flows2fim(...)

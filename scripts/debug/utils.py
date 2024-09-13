@@ -1,4 +1,5 @@
 import os
+import shutil
 import sqlite3
 import time
 from typing import List, Tuple
@@ -7,7 +8,7 @@ import pandas as pd
 import requests
 from openpyxl import load_workbook
 
-from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL
+from ..config import DB_CONN_TIMEOUT, QC_TEMPLATE_QGIS_FILE, RIPPLE1D_API_URL
 
 
 def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFrame:
@@ -27,18 +28,16 @@ def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFra
 
     for reach_id, job_id, _ in failed_reaches:
         url = f"{RIPPLE1D_API_URL}/jobs/{job_id}?tb=true"
-        try:
-            response = requests.get(url, headers=headers)
 
-            if response.status_code == 200:
-                response_data = response.json()
-                err = response_data.get("result", {}).get("err", "No error message")
-                tb = response_data.get("result", {}).get("tb", "No traceback")
-                results.append((reach_id, err, tb))
-            else:
-                results.append((reach_id, f"Failed to get job status. Status code: {response.status_code}", ""))
-        except requests.RequestException as e:
-            results.append((reach_id, f"Error: {str(e)}", ""))
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            response_data = response.json()
+            err = response_data.get("result", {}).get("err", "No error message")
+            tb = response_data.get("result", {}).get("tb", "No traceback")
+            results.append((reach_id, err, tb))
+        else:
+            results.append((reach_id, f"Failed to get job status. Status code: {response.status_code}", ""))
 
     # Convert results to a pandas DataFrame for formatted output
     df = pd.DataFrame(results, columns=["reach_id", "err", "tb"])
@@ -203,3 +202,10 @@ def write_failed_jobs_df_to_excel(df: pd.DataFrame, process_name: str, file_path
             df.to_excel(writer, sheet_name=process_name, index=False)
 
     print(f"Data written to {file_path} in sheet {process_name}.")
+
+
+def copy_qc_map(root_dir: str):
+    dest_location = os.path.join(root_dir, "qc", "qc_map.qgs")
+    shutil.copyfile(QC_TEMPLATE_QGIS_FILE, dest_location)
+
+    print("QC map created at ", dest_location)
