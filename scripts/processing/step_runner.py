@@ -16,9 +16,7 @@ from ..config import (
 from .job_utils import update_processing_table, wait_for_jobs
 
 
-def format_payload(
-    template: dict, nwm_reach_id: int, model_key: str, source_model_dir: str, submodels_dir: str
-) -> dict:
+def format_payload(template: dict, nwm_reach_id: int, model_id: str, source_model_dir: str, submodels_dir: str) -> dict:
     """
     Formats a payload based on a given template and parameters.
     """
@@ -27,7 +25,7 @@ def format_payload(
         if isinstance(value, str):
             payload[key] = value.format(
                 nwm_reach_id=nwm_reach_id,
-                model_key=model_key,
+                model_id=model_id,
                 source_model_directory=source_model_dir,
                 submodels_directory=submodels_dir,
             )
@@ -37,7 +35,7 @@ def format_payload(
 
 
 def execute_request(
-    nwm_reach_id: int, model_key: str, process_name: str, source_model_dir: str, submodels_dir: str
+    nwm_reach_id: int, model_id: str, process_name: str, source_model_dir: str, submodels_dir: str
 ) -> Tuple[int, str, str]:
     """
     Executes an API request for a given process and returns the job ID and status.
@@ -47,7 +45,7 @@ def execute_request(
     )  # Sleep to avoid database locked error on Ripple API side
     url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
     payload = json.dumps(
-        format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_key, source_model_dir, submodels_dir)
+        format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_id, source_model_dir, submodels_dir)
     )
     headers = {"Content-Type": "application/json"}
 

@@ -14,9 +14,9 @@ def load_json(file_path: str) -> Dict:
     return data
 
 
-def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> None:
+def update_model_id_and_eclipsed(db_path: str, data: Dict, model_id: str) -> None:
     """
-    Updates the model_key and eclipsed status in the processing table
+    Updates the model_id and eclipsed status in the processing table
     based on upstream and downstream reach data.
     """
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
@@ -43,10 +43,10 @@ def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> N
             cursor.execute(
                 """
                 UPDATE processing
-                SET model_key = ?, eclipsed = ?
+                SET model_id = ?, eclipsed = ?
                 WHERE reach_id = ?;
                 """,
-                (model_key, eclipsed, key),
+                (model_id, eclipsed, key),
             )
 
         conn.commit()
@@ -54,19 +54,19 @@ def update_model_key_and_eclipsed(db_path: str, data: Dict, model_key: str) -> N
         conn.close()
 
 
-def load_conflation(model_keys: List[str], source_models_directory: str, db_path: str) -> None:
+def load_conflation(model_ids: List[str], source_models_directory: str, db_path: str) -> None:
     """
     Loads conflation data into the processing table from the specified model keys and source models directory.
     """
-    for model_key in model_keys:
-        json_data = load_json(f"{source_models_directory}\\{model_key}\\{model_key}.conflation.json")
-        update_model_key_and_eclipsed(db_path, json_data, model_key)
+    for model_id in model_ids:
+        json_data = load_json(f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json")
+        update_model_id_and_eclipsed(db_path, json_data, model_id)
 
     print(f"Conflation loaded to {db_path} from .conflation.json files")
 
 
 if __name__ == "__main__":
     db_path = "data/library.sqlite"
-    model_keys = ["Baxter"]
+    model_ids = ["Baxter"]
     source_models_directory = "data/source_models"
-    load_conflation(model_keys, source_models_directory, db_path)
+    load_conflation(model_ids, source_models_directory, db_path)

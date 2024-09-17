@@ -37,7 +37,7 @@ def delete_reaches_data(
                 UPDATE network
                 SET updated_to_id = NULL,
                     eclipsed = NULL,
-                    model_key = NULL
+                    model_id = NULL
                 WHERE reach_id IN ({placeholders});
                 """,
                 reach_ids,

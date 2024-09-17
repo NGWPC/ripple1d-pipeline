@@ -1,4 +1,5 @@
 import sqlite3
+from typing import Dict
 
 import geopandas as gpd
 
@@ -46,15 +47,17 @@ def init_db(db_path):
         cursor = connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL;")
 
-        # # Create models table to store model-level information
-        # cursor.execute(
-        #     """
-        #     CREATE TABLE IF NOT EXISTS models (
-        #         model_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        #         model_key TEXT UNIQUE NOT NULL
-        #     );
-        # """
-        # )
+        # Create models table to store model-level information
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS models (
+                collection_id TEXT,
+                model_id TEXT,
+                model_name TEXT,
+                PRIMARY KEY (collection_id, model_id)
+            );
+        """
+        )
 
         # Create network table to store network relationships
         cursor.execute(
@@ -62,7 +65,8 @@ def init_db(db_path):
             CREATE TABLE IF NOT EXISTS network (
                 reach_id INTEGER PRIMARY KEY,
                 nwm_to_id INTEGER,
-                updated_to_id INTEGER
+                updated_to_id INTEGER,
+                FOREIGN KEY (reach_id) REFERENCES reaches (reach_id)
             );
             """
         )
@@ -98,6 +102,7 @@ def init_db(db_path):
                 ds_depth REAL,
                 ds_wse REAL,
                 boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
+                FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
                 UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
             );
         """
@@ -114,8 +119,8 @@ def init_db(db_path):
             """
             CREATE TABLE IF NOT EXISTS processing (
                 reach_id INTEGER PRIMARY KEY,
-                -- model_id INTEGER,
-                model_key TEXT,
+                collection_id TEXT,
+                model_id TEXT,
                 eclipsed BOOL CHECK(eclipsed IN (0, 1)),
                 extract_submodel_job_id TEXT,
                 extract_submodel_status TEXT,
@@ -128,8 +133,9 @@ def init_db(db_path):
                 run_known_wse_job_id TEXT,
                 run_known_wse_status TEXT,
                 create_fim_lib_job_id TEXT,
-                create_fim_lib_status TEXT
-                -- FOREIGN KEY (model_id) REFERENCES models (model_id)
+                create_fim_lib_status TEXT,
+                FOREIGN KEY (collection_id, model_id) REFERENCES models (collection_id, model_id),
+                FOREIGN KEY (reach_id) REFERENCES reaches (reach_id)
             );
         """
         )
@@ -160,3 +166,22 @@ def init_db(db_path):
         connection.rollback()
     finally:
         connection.close()
+
+
+def insert_models(models_data: Dict, collection_id, db_path: str) -> None:
+    """ """
+    rows = [(collection_id, id, model_data["model_name"]) for id, model_data in models_data.items()]
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
+    try:
+        cursor = conn.cursor()
+        cursor.executemany(
+            """
+            INSERT OR IGNORE INTO models
+            VALUES (?, ?, ?)
+            """,
+            rows,
+        )
+        conn.commit()
+        print(f"Models record inserted at {db_path}")
+    finally:
+        conn.close()
