@@ -49,7 +49,7 @@ def check_fim_lib_created(reach_id: int, db_path: str, db_lock: Lock) -> bool:
 
 
 def get_min_max_elevation(
-    downstream_id: int, submodels_directory: str, db_lock: Lock, use_central_db: bool, central_db_path: str
+    downstream_id: int, library_directory: str, db_lock: Lock, use_central_db: bool, central_db_path: str
 ) -> Tuple[Optional[float], Optional[float]]:
     """
     Fetch min and max elevation from the submodel database.
@@ -70,7 +70,7 @@ def get_min_max_elevation(
                 conn.close()
             return min_elevation, max_elevation
     else:
-        ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), "fims", f"{downstream_id}.db")
+        ds_submodel_db_path = os.path.join(library_directory, str(downstream_id), f"{downstream_id}.db")
         if not os.path.exists(ds_submodel_db_path):
             print(f"Submodel database not found for reach_id: {downstream_id}")
             return None, None
@@ -93,18 +93,20 @@ def process_reach(
     central_db_path: str,
     central_db_lock: Lock,
     use_central_db: bool,
+    library_directory: str,
+    skip_if_lib_created: bool,
 ) -> None:
     """
     Process a single reach.
     """
     try:
-        if not check_fim_lib_created(reach_id, central_db_path, central_db_lock):
+        if skip_if_lib_created and not check_fim_lib_created(reach_id, central_db_path, central_db_lock):
             submodel_directory_path = os.path.join(submodels_directory, str(reach_id))
             headers = {"Content-Type": "application/json"}
 
             if downstream_id:
                 min_elevation, max_elevation = get_min_max_elevation(
-                    downstream_id, submodels_directory, central_db_lock, use_central_db, central_db_path
+                    downstream_id, library_directory, central_db_lock, use_central_db, central_db_path
                 )
                 if min_elevation and max_elevation:
 
@@ -143,6 +145,8 @@ def process_reach(
                     "plans": ["nd", "kwse"],
                     "resolution": 3,
                     "resolution_units": "Meters",
+                    "library_directory": library_directory,
+                    "cleanup": True,
                 }
             )
             response = requests.post(fim_url, headers=headers, data=fim_payload)
@@ -168,7 +172,12 @@ def process_reach(
 
 
 def execute_kwse_for_network(
-    initial_reaches: List[Tuple[int, Optional[int]]], submodels_directory: str, db_path: str, use_central_db: bool
+    initial_reaches: List[Tuple[int, Optional[int]]],
+    submodels_directory: str,
+    db_path: str,
+    use_central_db: bool,
+    library_directory: str,
+    skip_if_lib_created: bool,
 ) -> None:
     """
     Start processing the network from the given list of initial reaches.
@@ -193,6 +202,8 @@ def execute_kwse_for_network(
                     db_path,
                     db_lock,
                     use_central_db,
+                    library_directory,
+                    skip_if_lib_created,
                 )
                 futures.append(future)
 
@@ -206,5 +217,6 @@ def execute_kwse_for_network(
 if __name__ == "__main__":
     submodels_directory = r"D:\Users\abdul.siddiqui\workbench\projects\production\submodels"
     db_path = r"D:\Users\abdul.siddiqui\workbench\projects\production\library.sqlite"
+    library_directory = ""
     initial_reaches = [(10434118, None), (10434182, None)]
-    execute_kwse_for_network(initial_reaches, submodels_directory, db_path, use_central_db=False)
+    execute_kwse_for_network(initial_reaches, submodels_directory, db_path, False, library_directory, False)
