@@ -154,9 +154,14 @@ def init_db(db_path):
         #     """
         #     CREATE TABLE IF NOT EXISTS metrics (
         #         reach_id INTEGER PRIMARY KEY,
-        #         conflation_metric REAL,
-        #         xs_floods_metric REAL,
-        #         FOREIGN KEY (reach_id) REFERENCES processing (reach_id)
+        #         xs_centerline_offset_mean INTEGER,
+        #         xs_thalweg_offset_mean INTEGER,
+        #         xs_centerline_offset_max INTEGER,
+        #         xs_thalweg_offset_max INTEGER,
+        #         coverage_start REAL,
+        #         coverage_end REAL,
+        #         network_to_ras_ratio REAL,
+        #         FOREIGN KEY (reach_id) REFERENCES reaches (reach_id)
         #     );
         # """
         # )

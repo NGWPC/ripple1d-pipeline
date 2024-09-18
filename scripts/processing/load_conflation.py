@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 from typing import Dict, List
 
@@ -23,23 +24,8 @@ def update_model_id_and_eclipsed(db_path: str, data: Dict, model_id: str) -> Non
     try:
         cursor = conn.cursor()
 
-        for key, value in data.items():
-            us_xs_river = value["us_xs"].get("river", None)
-            us_xs_reach = value["us_xs"].get("reach", None)
-            us_xs_id = value["us_xs"].get("xs_id", None)
-            ds_xs_river = value.get("ds_xs", {}).get("river", None)
-            ds_xs_reach = value.get("ds_xs", {}).get("reach", None)
-            ds_xs_id = value.get("ds_xs", {}).get("xs_id", None)
-
-            # Check if upstream and downstream cross-sections match
-            eclipsed = any(
-                [
-                    (us_xs_id, us_xs_reach, us_xs_river) == (str(ds_xs_id), ds_xs_reach, ds_xs_river),
-                    us_xs_id == "-9999",
-                    us_xs_id == -9999.0,
-                ]
-            )
-
+        for key, value in data["reaches"].items():
+            eclipsed = value["eclipsed"] == True
             cursor.execute(
                 """
                 UPDATE processing
@@ -58,8 +44,20 @@ def load_conflation(model_ids: List[str], source_models_directory: str, db_path:
     """
     Loads conflation data into the processing table from the specified model keys and source models directory.
     """
+    models_data = {}
+
     for model_id in model_ids:
-        json_data = load_json(f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json")
+        file_path = f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json"
+        if os.path.exists(file_path):
+            json_data = load_json(f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json")
+            models_data[model_id] = json_data
+        else:
+            print("Does not exist", file_path)
+
+    # order matters because we want to overwrite model with least coverages when conflict
+    sorted_models_data = sorted(models_data.items(), key=lambda item: len(item[1]["reaches"]))
+
+    for model_id, json_data in sorted_models_data:
         update_model_id_and_eclipsed(db_path, json_data, model_id)
 
     print(f"Conflation loaded to {db_path} from .conflation.json files")
