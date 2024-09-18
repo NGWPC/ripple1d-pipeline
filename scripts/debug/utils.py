@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 from ..config import DB_CONN_TIMEOUT, QC_TEMPLATE_QGIS_FILE, RIPPLE1D_API_URL
 
 
-def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFrame:
+def get_failed_jobs_df(failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
     """
     Sends a GET request to the API for each failed reach's job and returns a formatted table
     with reach_id, error message (err), and traceback (tb).
@@ -26,7 +26,7 @@ def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFra
     headers = {"Content-Type": "application/json"}
     results = []
 
-    for reach_id, job_id, _ in failed_reaches:
+    for id, job_id, _ in failed_ids:
         url = f"{RIPPLE1D_API_URL}/jobs/{job_id}?tb=true"
 
         response = requests.get(url, headers=headers)
@@ -35,16 +35,18 @@ def get_failed_jobs_df(failed_reaches: List[Tuple[int, str, str]]) -> pd.DataFra
             response_data = response.json()
             err = response_data.get("result", {}).get("err", "No error message")
             tb = response_data.get("result", {}).get("tb", "No traceback")
-            results.append((reach_id, err, tb))
+            results.append((id, err, tb))
         else:
-            results.append((reach_id, f"Failed to get job status. Status code: {response.status_code}", ""))
+            results.append((id, f"Failed to get job status. Status code: {response.status_code}", ""))
 
     # Convert results to a pandas DataFrame for formatted output
-    df = pd.DataFrame(results, columns=["reach_id", "err", "tb"])
+    df = pd.DataFrame(results, columns=["id", "err", "tb"])
     return df
 
 
-def get_all_job_ids_for_process(db_path: str, process_name: str) -> List[Tuple[int, str]]:
+def get_all_job_ids_for_process(
+    db_path: str, process_name: str, process_table: str = "processing"
+) -> List[Tuple[int, str]]:
     """
     Retrieves all job IDs for the specified process from the processing table.
 
@@ -61,8 +63,8 @@ def get_all_job_ids_for_process(db_path: str, process_name: str) -> List[Tuple[i
         cursor = conn.cursor()
 
         query = f"""
-            SELECT reach_id, {process_name}_job_id
-            FROM processing
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id
+            FROM {process_table}
             WHERE {process_name}_job_id IS NOT NULL
         """
         cursor.execute(query)
@@ -72,7 +74,11 @@ def get_all_job_ids_for_process(db_path: str, process_name: str) -> List[Tuple[i
     return job_ids
 
 
-def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: int = 0.1):
+def poll_and_update_job_status(
+    db_path: str,
+    process_name: str,
+    process_table: str = "processing",
+):
     """
     Polls the API for the current status of each job for the given process and updates the status in the processing table.
 
@@ -83,7 +89,7 @@ def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: i
         poll_interval: The time interval (in seconds) between API polling calls.
     """
     # Step 1: Get all job IDs for the process
-    job_ids = get_all_job_ids_for_process(db_path, process_name)
+    job_ids = get_all_job_ids_for_process(db_path, process_name, process_table)
 
     # Step 2: Poll the API and update the database
     headers = {"Content-Type": "application/json"}
@@ -92,7 +98,7 @@ def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: i
     try:
         cursor = conn.cursor()
 
-        for reach_id, job_id in job_ids:
+        for entity, job_id in job_ids:
             if job_id:  # Ensure job_id exists
                 url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
                 try:
@@ -105,21 +111,18 @@ def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: i
                         # Step 3: Update the processing table with the new status
                         cursor.execute(
                             f"""
-                            UPDATE processing
+                            UPDATE {process_table}
                             SET {process_name}_status = ?
-                            WHERE reach_id = ?;
+                            WHERE {"reach_id" if process_table == "processing" else "model_id"} = ?;
                         """,
-                            (job_status, reach_id),
+                            (job_status, entity),
                         )
 
                     else:
-                        print(f"Failed to poll job {job_id} for reach {reach_id}. Status code: {response.status_code}")
+                        print(f"Failed to poll job {job_id} for reach {entity}. Status code: {response.status_code}")
 
                 except requests.RequestException as e:
-                    print(f"Error polling job {job_id} for reach {reach_id}: {e}")
-
-            # Optionally sleep between requests to avoid overloading the API
-            time.sleep(poll_interval)
+                    print(f"Error polling job {job_id} for reach {entity}: {e}")
 
         conn.commit()
     finally:
@@ -127,7 +130,7 @@ def poll_and_update_job_status(db_path: str, process_name: str, poll_interval: i
 
 
 def get_reach_status_by_process(
-    db_path: str, process_name: str
+    db_path: str, process_name: str, process_table: str = "processing"
 ) -> Tuple[List[Tuple[int, str, str]], List[Tuple[int, str, str]], List[Tuple[int, str, str]]]:
     """
     Retrieves successful, accepted, and failed reaches for a given process name
@@ -144,18 +147,18 @@ def get_reach_status_by_process(
 
         # Build the dynamic SQL query for retrieving status and job IDs
         successful_query = f"""
-            SELECT reach_id, {process_name}_job_id, {process_name}_status
-            FROM processing
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
+            FROM {process_table}
             WHERE {process_name}_status = 'successful'
         """
         accepted_query = f"""
-            SELECT reach_id, {process_name}_job_id, {process_name}_status
-            FROM processing
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
+            FROM {process_table}
             WHERE {process_name}_status = 'accepted'
         """
         failed_query = f"""
-            SELECT reach_id, {process_name}_job_id, {process_name}_status
-            FROM processing
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
+            FROM {process_table}
             WHERE {process_name}_status = 'failed'
         """
 

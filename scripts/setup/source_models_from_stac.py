@@ -53,7 +53,9 @@ def download_models_data(models_data, source_models_dir):
             os.makedirs(model_dir, exist_ok=True)
 
             # Download GeoPackage
-            local_gpkg_path = os.path.join(model_dir, f"{data["model_name"]}.gpkg")
+            # local_gpkg_path = os.path.join(model_dir, f"{data["model_name"]}.gpkg") # 0.7.0
+            local_gpkg_path = os.path.join(model_dir, f"{id}.gpkg")
+
             gpkg_url = data["gpkg"]
             bucket_name, key = gpkg_url.replace("s3://", "").split("/", 1)
             s3_client.download_file(bucket_name, key, local_gpkg_path)

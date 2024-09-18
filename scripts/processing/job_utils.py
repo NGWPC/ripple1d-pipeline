@@ -7,6 +7,26 @@ import requests
 from ..config import DB_CONN_TIMEOUT, DEFAULT_POLL_WAIT, RIPPLE1D_API_URL
 
 
+def update_models_table(model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str, db_path: str) -> None:
+    """
+    Updates the models table with job_id and job_status for a given process.
+    """
+    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
+    try:
+        cursor = conn.cursor()
+        cursor.executemany(
+            f"""
+            UPDATE models
+            SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
+            WHERE model_id = ?;
+            """,
+            [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def update_processing_table(
     reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str, db_path: str
 ) -> None:

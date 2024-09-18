@@ -54,6 +54,8 @@ def init_db(db_path):
                 collection_id TEXT,
                 model_id TEXT,
                 model_name TEXT,
+                conflate_model_job_id TEXT,
+                conflate_model_status TEXT,
                 PRIMARY KEY (collection_id, model_id)
             );
         """
@@ -176,7 +178,7 @@ def insert_models(models_data: Dict, collection_id, db_path: str) -> None:
         cursor = conn.cursor()
         cursor.executemany(
             """
-            INSERT OR IGNORE INTO models
+            INSERT OR IGNORE INTO models (collection_id, model_id, model_name)
             VALUES (?, ?, ?)
             """,
             rows,

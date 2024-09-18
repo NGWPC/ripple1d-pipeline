@@ -2,6 +2,7 @@ from .get_reaches_by_models import get_reaches_by_models
 from .kwse_step import execute_kwse_for_network
 from .load_conflation import load_conflation
 from .load_rating_curves import load_all_rating_curves
+from .model_step_runner import execute_model_step
 from .move_fims_to_library import move_fims_to_library
 from .step_runner import execute_step
 from .test import print_num
