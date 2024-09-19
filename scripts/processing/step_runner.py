@@ -8,7 +8,7 @@ from typing import Tuple
 import requests
 
 from ..config import (
-    API_LAUNCH_JOBS_WAIT_RANGE,
+    API_LAUNCH_JOBS_RETRY_WAIT,
     PAYLOAD_TEMPLATES,
     RIPPLE1D_API_URL,
     RIPPLE1D_THREAD_COUNT,
@@ -40,22 +40,24 @@ def execute_request(
     """
     Executes an API request for a given process and returns the job ID and status.
     """
-    sleep(
-        random.uniform(API_LAUNCH_JOBS_WAIT_RANGE[0], API_LAUNCH_JOBS_WAIT_RANGE[1])
-    )  # Sleep to avoid database locked error on Ripple API side
-    url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
-    payload = json.dumps(
-        format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_id, source_model_dir, submodels_dir)
-    )
-    headers = {"Content-Type": "application/json"}
+    for i in range(5):
+        url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
+        payload = json.dumps(
+            format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_id, source_model_dir, submodels_dir)
+        )
+        headers = {"Content-Type": "application/json"}
 
-    response = requests.post(url, headers=headers, data=payload)
-    if response.status_code == 201:
-        job_id = response.json().get("jobID")
-        return nwm_reach_id, job_id, "accepted"
-    else:
-        print(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
-        return nwm_reach_id, "", "not_accepted"
+        response = requests.post(url, headers=headers, data=payload)
+        if response.status_code == 201:
+            job_id = response.json().get("jobID")
+            return nwm_reach_id, job_id, "accepted"
+        elif response.status_code == 500:
+            print(f"Retrying. {nwm_reach_id}")
+        else:
+            break
+        sleep(i * API_LAUNCH_JOBS_RETRY_WAIT)
+    print(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
+    return nwm_reach_id, "", "not_accepted"
 
 
 def execute_step(
@@ -64,14 +66,11 @@ def execute_step(
     """
     Submits multiple reach processing jobs and waits for their completion.
     """
-    with concurrent.futures.ThreadPoolExecutor(max_workers=RIPPLE1D_THREAD_COUNT) as executor:
-        futures = [
-            executor.submit(execute_request, reach[0], reach[2], process_name, source_model_dir, submodels_dir)
-            for reach in reach_data
-        ]
-        reach_job_id_statuses = [
-            future.result() for future in concurrent.futures.as_completed(futures) if future.result() is not None
-        ]
+    reach_job_id_statuses = []
+
+    for reach_id, model_id in reach_data:
+        reach_job_id_status = execute_request(reach_id, model_id, process_name, source_model_dir, submodels_dir)
+        reach_job_id_statuses.append(reach_job_id_status)
 
     accepted = [job for job in reach_job_id_statuses if job[2] == "accepted"]
     not_accepted = [job for job in reach_job_id_statuses if job[2] == "not_accepted"]

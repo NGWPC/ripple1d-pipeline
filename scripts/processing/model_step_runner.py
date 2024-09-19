@@ -1,9 +1,10 @@
 import json
+from time import sleep
 from typing import Tuple
 
 import requests
 
-from ..config import PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
+from ..config import API_LAUNCH_JOBS_RETRY_WAIT, PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
 from .job_utils import update_models_table, wait_for_jobs
 
 
@@ -28,17 +29,22 @@ def execute_request(model_id: str, process_name: str, source_model_dir: str) -> 
     Executes an API request for a given process and returns the job ID and status.
     """
 
-    url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
-    payload = json.dumps(format_payload(PAYLOAD_TEMPLATES[process_name], model_id, source_model_dir))
-    headers = {"Content-Type": "application/json"}
+    for i in range(5):
+        url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
+        payload = json.dumps(format_payload(PAYLOAD_TEMPLATES[process_name], model_id, source_model_dir))
+        headers = {"Content-Type": "application/json"}
 
-    response = requests.post(url, headers=headers, data=payload)
-    if response.status_code == 201:
-        job_id = response.json().get("jobID")
-        return model_id, job_id, "accepted"
-    else:
-        print(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
-        return model_id, "", "not_accepted"
+        response = requests.post(url, headers=headers, data=payload)
+        if response.status_code == 201:
+            job_id = response.json().get("jobID")
+            return model_id, job_id, "accepted"
+        elif response.status_code == 500:
+            print(f"Retrying. {model_id}")
+        else:
+            break
+        sleep(i * API_LAUNCH_JOBS_RETRY_WAIT)
+    print(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
+    return model_id, "", "not_accepted"
 
 
 def execute_model_step(
@@ -73,4 +79,4 @@ if __name__ == "__main__":
     db_path = "data/library.sqlite"
     source_model_dir = "data/source_models"
     submodels_dir = "data/submodels"
-    execute_step(reach_data, process_name, db_path, source_model_dir, submodels_dir)
+    execute_model_step(reach_data, process_name, db_path, source_model_dir, submodels_dir)
