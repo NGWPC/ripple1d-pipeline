@@ -1,7 +1,7 @@
 # config.py
 
 # ENV Variable # to do move to .env file
-AWS_PROFILE = "DewFIM"
+AWS_PROFILE = ""
 
 # API Base URL
 RIPPLE1D_API_URL = "http://10.9.0.18:80"
@@ -15,10 +15,18 @@ RAS_VERSION = "631"
 DEPTH_INCREMENT = 1
 RESOLUTION = 3.0
 RESOLUTION_UNITS = "Meters"
-TERRAIN_SOURCE_URL = r"Z:\\collections\\ebfe-12040101_WestForkSanJacinto\\terrain.tif"
+TERRAIN_SOURCE_URL = r"Z:\reference_data\seamless_3dep_dem_3m_5070.vrt"
+SOURCE_NETWORK = r"Z:\reference_data\nwm_flowlines_with_bbox.parquet"
+SOURCE_NETWORK_VERSION = "2.1"
+SOURCE_NETWORK_TYPE = "nwm_hydrofabric"
 
 # Payload templates
 PAYLOAD_TEMPLATES = {
+    "conflate_model": {
+        "source_model_directory": "{source_model_directory}\\{model_id}",
+        # "model_name": "{model_name}",
+        "source_network": {"file_name": SOURCE_NETWORK, "version": SOURCE_NETWORK_VERSION, "type": SOURCE_NETWORK_TYPE},
+    },
     "extract_submodel": {
         "source_model_directory": "{source_model_directory}\\{model_id}",
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
@@ -56,7 +64,7 @@ QC_TEMPLATE_QGIS_FILE = r"Z:\reference_data\qc_map.qgs"
 # Poll wait time for job status checks
 DEFAULT_POLL_WAIT = 3
 
-API_LAUNCH_JOBS_WAIT_RANGE = [0, 50]
+API_LAUNCH_JOBS_RETRY_WAIT = 0.5
 RIPPLE1D_THREAD_COUNT = 50
 
 DB_CONN_TIMEOUT = 85

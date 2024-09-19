@@ -1,5 +1,6 @@
 import pandas as pd
 
+from .purge import delete_reach_data
 from .run_flows2fim import run_flows2fim
 from .utils import *
 
