@@ -5,5 +5,5 @@ from .load_rating_curves import load_all_rating_curves
 from .model_step_runner import execute_model_step
 from .move_fims_to_library import move_fims_to_library
 from .step_runner import execute_step
-from .test import print_num
 from .update_network import update_network
+from .utils import create_f2f_start_file

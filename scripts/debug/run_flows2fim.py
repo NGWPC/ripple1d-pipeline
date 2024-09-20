@@ -28,7 +28,8 @@ def run_flows2fim(
     output_subfolder: str,
     library_path: str,
     library_db_path: str,
-    start_reaches: List,
+    start_file: str = "",
+    start_reaches: List = [],
     flow_files_dir: str = FLOW_FILES_DIR,
     fim_format: str = "tif",
 ) -> None:
@@ -66,9 +67,18 @@ def run_flows2fim(
                 flow_file_path,
                 "-o",
                 control_csv,
-                "-sids",
-                ",".join([str(reach) for reach in start_reaches]),
             ]
+
+            if start_file:
+                cmd_controls += ["-scsv", start_file]
+            elif start_reaches:
+                cmd_controls += [
+                    "-sids",
+                    ",".join([str(reach) for reach in start_reaches]),
+                ]
+            else:
+                raise (ValueError("one of start_file or start_reaches must be provided"))
+
             subprocess.run(cmd_controls, shell=True, check=True)
 
             # Generate FIM output
