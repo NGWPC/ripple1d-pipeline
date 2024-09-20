@@ -33,8 +33,12 @@ def get_failed_jobs_df(failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
 
         if response.status_code == 200:
             response_data = response.json()
-            err = response_data.get("result", {}).get("err", "No error message")
-            tb = response_data.get("result", {}).get("tb", "No traceback")
+            if response_data and response_data["result"]:
+                err = response_data["result"].get("err", "No error message")
+                tb = response_data["result"].get("tb", "No traceback")
+            else:
+                err = "No error message"
+                tb = "No traceback"
             results.append((id, err, tb))
         else:
             results.append((id, f"Failed to get job status. Status code: {response.status_code}", ""))
@@ -209,6 +213,7 @@ def write_failed_jobs_df_to_excel(df: pd.DataFrame, process_name: str, file_path
 
 def copy_qc_map(root_dir: str):
     dest_location = os.path.join(root_dir, "qc", "qc_map.qgs")
+    os.makedirs(os.path.join(root_dir, "qc"))
     shutil.copyfile(QC_TEMPLATE_QGIS_FILE, dest_location)
 
     print("QC map created at ", dest_location)
