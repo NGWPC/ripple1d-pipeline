@@ -61,7 +61,7 @@ def execute_request(
 
 
 def execute_step(
-    reach_data: list, process_name: str, db_path: str, source_model_dir: str, submodels_dir: str
+    reach_data: list, process_name: str, db_path: str, source_model_dir: str, submodels_dir: str, timeout_minutes: int
 ) -> Tuple[list, list, list]:
     """
     Submits multiple reach processing jobs and waits for their completion.
@@ -78,7 +78,7 @@ def execute_step(
     update_processing_table(accepted, process_name, "accepted", db_path)
     print("Jobs submission complete. Waiting for jobs to finish...")
 
-    succeeded, failed = wait_for_jobs(accepted)
+    succeeded, failed = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
     update_processing_table(succeeded, process_name, "successful", db_path)
     update_processing_table(failed, process_name, "failed", db_path)
 

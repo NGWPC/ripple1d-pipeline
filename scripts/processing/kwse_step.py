@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple
 import requests
 
 from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT
-from .job_utils import check_job_status, update_processing_table
+from .job_utils import check_job_successful, update_processing_table
 
 
 def get_upstream_reaches(updated_to_id: int, db_path: str, db_lock: Lock) -> List[int]:
@@ -129,7 +129,7 @@ def process_reach(
                     response = requests.post(url, headers=headers, data=payload)
                     response_json = response.json()
                     job_id = response_json.get("jobID")
-                    if not job_id or not check_job_status(job_id):
+                    if not job_id or not check_job_successful(job_id):
                         print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
                         with central_db_lock:
                             update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", central_db_path)
@@ -156,7 +156,7 @@ def process_reach(
             response = requests.post(fim_url, headers=headers, data=fim_payload)
             fim_response_json = response.json()
             fim_job_id = fim_response_json.get("jobID")
-            if not fim_job_id or not check_job_status(fim_job_id):
+            if not fim_job_id or not check_job_successful(fim_job_id):
                 with central_db_lock:
                     update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "failed", central_db_path)
                 upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
