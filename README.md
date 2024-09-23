@@ -75,4 +75,15 @@ This guide provides instructions for setting up and running the Ripple1D pipelin
 #### 7. **Send for Quality Review**
    - After exporting, send the entire working folder for quality review.
 
+## Outputs
+Following outputs are produced for each batch that is processed:
+
+`source_models`: Folder containing source models data, which were conflated and used as source for creating submodels for NWM reaches
+`submodels`: Folders for extracted submodels for NWM reaches that are used to create FIMs
+`library`: Folder containing FIM rasters per reach and per flow and downstream boundary condition
+`qc`: Folder containing data to evaluate quality of produced FIM library and rating curves
+`error_report.xlsx`: Provide insight into the errors encountered during processing of each step
+`ripple.gpkg`: Geopackage (SQLITE Database) containing records for reaches, models and rating curves
+`start_reaches.csv`: Flows2FIM start file which can be used to create composite FIMs using Flows2FIM software
+
 ---
