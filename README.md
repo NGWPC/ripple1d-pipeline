@@ -85,5 +85,4 @@ Following outputs are produced for each batch that is processed:
 `error_report.xlsx`: Provide insight into the errors encountered during processing of each step
 `ripple.gpkg`: Geopackage (SQLITE Database) containing records for reaches, models and rating curves
 `start_reaches.csv`: Flows2FIM start file which can be used to create composite FIMs using Flows2FIM software
-
 ---
