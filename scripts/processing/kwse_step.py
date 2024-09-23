@@ -49,7 +49,7 @@ def check_fim_lib_created(reach_id: int, db_path: str, db_lock: Lock) -> bool:
 
 
 def get_min_max_elevation(
-    downstream_id: int, submodels_directory: str, db_lock: Lock, use_central_db: bool, central_db_path: str
+    downstream_id: int, library_directory: str, db_lock: Lock, use_central_db: bool, central_db_path: str
 ) -> Tuple[Optional[float], Optional[float]]:
     """
     Fetch min and max elevation from the submodel database.
@@ -70,7 +70,7 @@ def get_min_max_elevation(
                 conn.close()
             return min_elevation, max_elevation
     else:
-        ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), "fims", f"{downstream_id}.db")
+        ds_submodel_db_path = os.path.join(library_directory, str(downstream_id), f"{downstream_id}.db")
         if not os.path.exists(ds_submodel_db_path):
             print(f"Submodel database not found for reach_id: {downstream_id}")
             return None, None
@@ -106,10 +106,9 @@ def process_reach(
             submodel_directory_path = os.path.join(submodels_directory, str(reach_id))
             headers = {"Content-Type": "application/json"}
 
-            kwse = False
             if downstream_id:
                 min_elevation, max_elevation = get_min_max_elevation(
-                    downstream_id, submodels_directory, central_db_lock, use_central_db, central_db_path
+                    downstream_id, library_directory, central_db_lock, use_central_db, central_db_path
                 )
                 if min_elevation and max_elevation:
 
@@ -134,7 +133,6 @@ def process_reach(
                         with central_db_lock:
                             update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", central_db_path)
                     else:
-                        kwse = True
                         with central_db_lock:
                             update_processing_table(
                                 [(reach_id, job_id)], "run_known_wse", "successful", central_db_path
@@ -146,7 +144,7 @@ def process_reach(
             fim_payload = json.dumps(
                 {
                     "submodel_directory": submodel_directory_path,
-                    "plans": ["nd", "kwse"] if kwse else ["nd"],
+                    "plans": ["nd", "kwse"],
                     "resolution": 3,
                     "resolution_units": "Meters",
                     "library_directory": library_directory,
