@@ -3,7 +3,6 @@ import os
 import subprocess
 from pathlib import Path
 
-# Path constants
 LIBRARY_DIR = "library"
 SUBMODELS_DIR = "submodels"
 LIBRARY_EXTENT_DIR = "library_extent"
@@ -37,10 +36,10 @@ def process_tif(tif_path, gpkg_path, tmp_dir, dest_dir):
         "--hideNoData",
     ]
 
-    # Execute gdal_calc
+    # execute gdal_calc
     subprocess.run(gdal_calc_cmd, check=True)
 
-    # Step 2: gdalwarp to crop based on the geopackage
+    # step 2: gdalwarp to crop based on the geopackage
     gdalwarp_cmd = [
         "gdalwarp",
         "-overwrite",
@@ -57,39 +56,31 @@ def process_tif(tif_path, gpkg_path, tmp_dir, dest_dir):
         dest_tif,
     ]
 
-    # Execute gdalwarp
     subprocess.run(gdalwarp_cmd, check=True)
 
-    # Clean up temporary file
-    if os.path.exists(tmp_tif):
+    if os.path.exists(tmp_tif):  # clean up
         os.remove(tmp_tif)
 
 
-# Find the corresponding geopackage
 def find_gpkg(tif_path):
-    # Extract the folder name from the tif_path
     folder_name = Path(tif_path).parts[1]
     gpkg_path = os.path.join(SUBMODELS_DIR, folder_name, f"{folder_name}.gpkg")
     return gpkg_path if os.path.exists(gpkg_path) else None
 
 
-# Worker function for multiprocessing
 def worker(tif_path):
     try:
-        # Find the corresponding geopackage
-        gpkg_path = find_gpkg(tif_path)
+        gpkg_path = find_gpkg(tif_path)  # Find the corresponding geopackage
+
         if gpkg_path:
-            # Create the corresponding mirrored destination path
             dest_dir = Path(tif_path.replace(LIBRARY_DIR, LIBRARY_EXTENT_DIR)).parent
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
 
-            # Create temporary directory for intermediate tif files
             tmp_dir = Path(dest_dir).parent / "tmp"
             if not os.path.exists(tmp_dir):
                 os.makedirs(tmp_dir)
 
-            # Process the tif file
             process_tif(tif_path, gpkg_path, tmp_dir, dest_dir)
         else:
             print(f"No corresponding geopackage found for {tif_path}")
@@ -97,7 +88,6 @@ def worker(tif_path):
         print(f"Error processing {tif_path}: {str(e)}")
 
 
-# Traverse library directory to get all tif paths
 def get_all_tif_paths(src_dir):
     tif_paths = []
     for root, _, files in os.walk(src_dir):
@@ -107,15 +97,11 @@ def get_all_tif_paths(src_dir):
     return tif_paths
 
 
-# Main function
 def main():
-    # Step 1: Create the mirror structure in library_extent
     create_mirrored_structure(LIBRARY_DIR, LIBRARY_EXTENT_DIR)
 
-    # Step 2: Get all tif paths in the library
     tif_paths = get_all_tif_paths(LIBRARY_DIR)
 
-    # Step 3: Use multiprocessing to process each tif file
     with multiprocessing.Pool() as pool:
         pool.map(worker, tif_paths)
 
