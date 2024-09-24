@@ -69,7 +69,7 @@ def execute_model_step(
     print(f"Successful: {len(succeeded)}")
     print(f"Failed: {len(failed)}")
     print(f"Not Accepted: {len(not_accepted)}")
-    print(f"Not Accepted: {len(unknown)}")
+    print(f"Status Unknown: {len(unknown)}")
 
     return succeeded, failed, not_accepted, unknown
 
