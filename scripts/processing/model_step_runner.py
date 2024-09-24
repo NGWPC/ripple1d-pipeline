@@ -49,7 +49,7 @@ def execute_request(model_id: str, process_name: str, source_model_dir: str) -> 
 
 def execute_model_step(
     model_ids: list, process_name: str, db_path: str, source_model_dir: str, timeout_minutes: int
-) -> Tuple[list, list, list]:
+) -> Tuple[list, list, list, list]:
     """ """
     model_job_id_statuses = []
     for model_id in model_ids:
@@ -62,15 +62,16 @@ def execute_model_step(
     update_models_table(accepted, process_name, "accepted", db_path)
     print("Jobs submission complete. Waiting for jobs to finish...")
 
-    succeeded, failed = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
+    succeeded, failed, unknown = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
     update_models_table(succeeded, process_name, "successful", db_path)
     update_models_table(failed, process_name, "failed", db_path)
 
     print(f"Successful: {len(succeeded)}")
     print(f"Failed: {len(failed)}")
     print(f"Not Accepted: {len(not_accepted)}")
+    print(f"Not Accepted: {len(unknown)}")
 
-    return succeeded, failed, not_accepted
+    return succeeded, failed, not_accepted, unknown
 
 
 if __name__ == "__main__":

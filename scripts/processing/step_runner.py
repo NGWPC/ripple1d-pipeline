@@ -78,15 +78,17 @@ def execute_step(
     update_processing_table(accepted, process_name, "accepted", db_path)
     print("Jobs submission complete. Waiting for jobs to finish...")
 
-    succeeded, failed = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
+    succeeded, failed, unknown = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
     update_processing_table(succeeded, process_name, "successful", db_path)
     update_processing_table(failed, process_name, "failed", db_path)
+    update_processing_table(unknown, process_name, "unknown", db_path)
 
     print(f"Successful: {len(succeeded)}")
     print(f"Failed: {len(failed)}")
     print(f"Not Accepted: {len(not_accepted)}")
+    print(f"Unknown status: {len(unknown)}")
 
-    return succeeded, failed, not_accepted
+    return succeeded, failed, not_accepted, unknown
 
 
 if __name__ == "__main__":

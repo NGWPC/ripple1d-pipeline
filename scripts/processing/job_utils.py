@@ -49,6 +49,33 @@ def update_processing_table(
         conn.close()
 
 
+def datetime_to_epoch_utc(datetime_str):
+    from datetime import datetime, timezone
+
+    # Parse the string into a naive datetime object
+    dt_naive = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
+
+    # Make the datetime object timezone-aware (UTC)
+    dt_utc = dt_naive.replace(tzinfo=timezone.utc)
+
+    # Convert to epoch time
+    epoch_time = int(dt_utc.timestamp())
+
+    return epoch_time
+
+
+def get_job_update_time(job_id: str) -> str:
+    """
+    Polls job status.
+    """
+    url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
+
+    response = requests.get(url)
+    response.raise_for_status()
+    job_update_time = response.json().get("updated")
+    return job_update_time
+
+
 def get_job_status(job_id: str) -> str:
     """
     Polls job status.
@@ -61,48 +88,51 @@ def get_job_status(job_id: str) -> str:
     return job_status
 
 
-def check_job_successful(job_id: str, poll_wait: int = DEFAULT_POLL_WAIT) -> bool:
-    """
-    Polls job status until it completes or fails.
-    """
-    url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
-
+def check_job_successful(job_id: str, poll_wait: int = DEFAULT_POLL_WAIT, timeout_minutes=90):
     while True:
-        response = requests.get(url)
-        response.raise_for_status()
-        job_status = response.json().get("status")
-        if job_status == "successful":
+        status = get_job_status(job_id)
+        if status == "successful":
             return True
-        elif job_status == "failed":
-            print(f"Job {url}?tb=true failed.")
+        elif status == "failed":
+            print(f"{RIPPLE1D_API_URL}/jobs/{job_id}?tb=true", "job failed")
             return False
+        elif status == "running":
+            elapsed_time = time.time() - datetime_to_epoch_utc(get_job_update_time())
+            print(elapsed_time / 60)
+            if elapsed_time / 60 > timeout_minutes:
+                print(f"{RIPPLE1D_API_URL}/jobs/{job_id}", "client timeout")
+                return False
         time.sleep(poll_wait)
 
 
 def wait_for_jobs(
-    reach_job_ids: List[Tuple[int, str]], poll_wait: int = DEFAULT_POLL_WAIT, timeout_minutes=1500
+    reach_job_ids: List[Tuple[int, str]], poll_wait: int = DEFAULT_POLL_WAIT, timeout_minutes=90
 ) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
     """
     Waits for jobs to finish and returns lists of successful and failed jobs.
     """
-    start_time = time.time()
     succeeded = []
     failed = []
-    timedout = []
+    unknown = []
 
     i = 0
-    while i < len(reach_job_ids):
-        status = get_job_status(reach_job_ids[i][1])
-        if status == "successful":
-            succeeded.append((reach_job_ids[i][0], reach_job_ids[i][1], "successful"))
-            i += 1
-        elif status == "failed":
-            failed.append((reach_job_ids[i][0], reach_job_ids[i][1], "failed"))
-            print(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true", "job failed")
-            i += 1
-        elif time.time() - start_time > timeout_minutes * 60:
-            print(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")
-            timedout.append((reach_job_ids[i][0], reach_job_ids[i][1], "unknown"))
-            i += 1
+    for i in range(len(reach_job_ids)):
+        while True:
+            status = get_job_status(reach_job_ids[i][1])
+            if status == "successful":
+                succeeded.append((reach_job_ids[i][0], reach_job_ids[i][1], "successful"))
+                break
+            elif status == "failed":
+                failed.append((reach_job_ids[i][0], reach_job_ids[i][1], "failed"))
+                print(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true", "job failed")
+                break
+            elif status == "running":
+                elapsed_time = time.time() - datetime_to_epoch_utc(get_job_update_time())
+                print(elapsed_time / 60)
+                if elapsed_time / 60 > timeout_minutes:
+                    print(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")
+                    unknown.append((reach_job_ids[i][0], reach_job_ids[i][1], "unknown"))
+                    break
+            time.sleep(poll_wait)
 
-    return succeeded, failed
+    return succeeded, failed, unknown
