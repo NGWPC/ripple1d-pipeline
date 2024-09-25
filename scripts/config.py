@@ -1,14 +1,16 @@
 # config.py
+import os
 
 # ENV Variable # to do move to .env file
 AWS_PROFILE = ""
 
-# API Base URL
-RIPPLE1D_API_URL = "http://10.9.0.18:80"
+# URLs
+RIPPLE1D_API_URL = ""
+STAC_URL = ""
 
-# STAC API settings
-STAC_ENDPOINT = "https://stac2.dewberryanalytics.com"
-STAC_COLLECTION = "ripple_test_data"
+# Specs
+COLLECTIONS_ROOT_DIR = r"Z:\collections"
+NWM_FLOWLINES_PATH = r"Z:\reference_data\nwm_flowlines.parquet"
 
 # Ripple settings
 RAS_VERSION = "631"
@@ -62,9 +64,9 @@ GDAL_SCRIPTS_PATH = r"C:\OSGeo4W\apps\Python312\Scripts"
 QC_TEMPLATE_QGIS_FILE = r"Z:\reference_data\qc_map.qgs"
 
 # Poll wait time for job status checks
-DEFAULT_POLL_WAIT = 3
+DEFAULT_POLL_WAIT = 5
 
 API_LAUNCH_JOBS_RETRY_WAIT = 0.5
-RIPPLE1D_THREAD_COUNT = 50
+RIPPLE1D_THREAD_COUNT = 20
 
-DB_CONN_TIMEOUT = 85
+DB_CONN_TIMEOUT = 30

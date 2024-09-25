@@ -44,16 +44,13 @@ This guide provides instructions for setting up and running the Ripple1D pipelin
 
 ### **Running the Pipeline for Each Batch**
 
-#### 1. **Set Up a Workspace for Each Collection**
-   - Create a working folder for the specific collection (for example `Z:\collections\EastFork_Trinity\)`. This folder will act as your workspace for the collection.
+#### 1. **Duplicate and Rename Notebooks**
+   - Duplicate all three notebooks provided in the repo, and rename them to represent the current collection you are working on.
 
-#### 2. **Duplicate and Rename Notebooks**
-   - Duplicate both notebooks provided in the repo, and rename them to represent the current collection you are working on.
+#### 1. **Update the Configuration File**
+   - Modify the `config.py` file if needed to suit your collection-specific requirements (e.g., TERRAIN_SOURCE_URL, RIPPLE1D_API_URL, etc).
 
-#### 3. **Update the Configuration File**
-   - Modify the `config.py` file if needed to suit your collection-specific requirements (e.g., STAC_COLLECTION, TERRAIN_SOURCE_URL, RIPPLE1D_API_URL, etc).
-
-#### 4. **Access Notebooks**
+#### 1. **Access Notebooks**
    - **Option 1: Using VSCode**
      1. Open the notebook in VSCode.
      2. Point the kernel to the IPython kernel in your virtual environment.
@@ -65,14 +62,14 @@ This guide provides instructions for setting up and running the Ripple1D pipelin
         ```
      2. Open `localhost:8888` in your browser to access Jupyter Lab and open the notebooks.
 
-#### 5. **Update Notebooks Parameters**
+#### 1. **Update Notebooks Parameters**
    - In the parameters cell of the notebooks, update the relevant paths and parameters to point to the working folder you created for the collection.
 
-#### 6. **Execute and Export Notebooks as HTML**
-   - Execute `setup_<collection_name>.ipynb` first and then `process_<collection_name>.ipynb`
+#### 1. **Execute and Export Notebooks as HTML**
+   - Execute `setup_<collection_name>.ipynb` first and then `process_<collection_name>.ipynb` and finally `qc_<collection_name>.ipynb`
    - Once the notebooks are executed, export them as HTML files and move them into the working folder created for the collection.
 
-#### 7. **Send for Quality Review**
+#### 1. **Send for Quality Review**
    - After exporting, send the entire working folder for quality review.
 
 ## Outputs
