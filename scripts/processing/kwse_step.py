@@ -125,6 +125,7 @@ def process_reach(
                     )
                     print(f"<<<<<< payload for reach {reach_id}\n{payload}")
 
+                    # to do: launch job with retry
                     response = requests.post(url, headers=headers, data=payload)
                     response_json = response.json()
                     job_id = response_json.get("jobID")
