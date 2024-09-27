@@ -9,16 +9,16 @@ RIPPLE1D_API_URL = ""
 STAC_URL = ""
 
 # Specs
-COLLECTIONS_ROOT_DIR = r"Z:\collections"
-NWM_FLOWLINES_PATH = r"Z:\reference_data\nwm_flowlines.parquet"
+COLLECTIONS_ROOT_DIR = r"C:\collections"
+NWM_FLOWLINES_PATH = r"C:\reference_data\nwm_flowlines.parquet"
 
 # Ripple settings
 RAS_VERSION = "631"
 DEPTH_INCREMENT = 1
 RESOLUTION = 3.0
 RESOLUTION_UNITS = "Meters"
-TERRAIN_SOURCE_URL = r"Z:\reference_data\seamless_3dep_dem_3m_5070.vrt"
-SOURCE_NETWORK = r"Z:\reference_data\nwm_flowlines_with_bbox.parquet"
+TERRAIN_SOURCE_URL = r"C:\reference_data\seamless_3dep_dem_3m_5070.vrt"
+SOURCE_NETWORK = r"C:\reference_data\nwm_flowlines_with_bbox.parquet"
 SOURCE_NETWORK_VERSION = "2.1"
 SOURCE_NETWORK_TYPE = "nwm_hydrofabric"
 
@@ -52,16 +52,24 @@ PAYLOAD_TEMPLATES = {
         "depth_increment": DEPTH_INCREMENT,
         "ras_version": RAS_VERSION,
     },
+    "create_fim_lib": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plans": ["nd", "kwse"],
+        "resolution": RESOLUTION,
+        "resolution_units": RESOLUTION_UNITS,
+        "library_directory": "{library_directory}",
+        "cleanup": True,
+    },
 }
 
 # Flows2FIM
-FLOW_FILES_DIR = r"Z:\reference_data\flow_files"
+FLOW_FILES_DIR = r"C:\reference_data\flow_files"
 FLOWS2FIM_BIN_PATH = r"C:\OSGeo4W\bin\flows2fim.exe"
 GDAL_BINS_PATH = r"C:\OSGeo4W\bin"
 GDAL_SCRIPTS_PATH = r"C:\OSGeo4W\apps\Python312\Scripts"
 
 # QC
-QC_TEMPLATE_QGIS_FILE = r"Z:\reference_data\qc_map.qgs"
+QC_TEMPLATE_QGIS_FILE = r"C:\reference_data\qc_map.qgs"
 
 # Poll wait time for job status checks
 DEFAULT_POLL_WAIT = 5

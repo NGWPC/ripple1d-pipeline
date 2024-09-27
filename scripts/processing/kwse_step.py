@@ -10,6 +10,8 @@ from typing import List, Optional, Tuple
 
 import requests
 
+from .load_rating_curves import load_rating_curve
+
 from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT
 from .job_utils import check_job_successful, update_processing_table
 
@@ -155,15 +157,20 @@ def process_reach(
             response = requests.post(fim_url, headers=headers, data=fim_payload)
             fim_response_json = response.json()
             fim_job_id = fim_response_json.get("jobID")
+
+            sub_db_path = os.path.join(library_directory, str(reach_id), f"{reach_id}.db")
             if not fim_job_id or not check_job_successful(fim_job_id, 30):
                 with central_db_lock:
                     update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "failed", central_db_path)
+                    load_rating_curve(central_db_path, reach_id, sub_db_path)
                 upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
                 for upstream_reach in upstream_reaches:
                     task_queue.put((upstream_reach, None))
                 return
+
             with central_db_lock:
                 update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "successful", central_db_path)
+                load_rating_curve(central_db_path, reach_id, sub_db_path)
 
         upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
         for upstream_reach in upstream_reaches:

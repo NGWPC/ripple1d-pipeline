@@ -3,7 +3,7 @@ import sqlite3
 
 from ..config import DB_CONN_TIMEOUT
 
-
+# to do: remove submodel
 def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Connection) -> None:
     """
     Processes a reach database and inserts rating curves into the central library database.
@@ -30,6 +30,15 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
     finally:
         reach_conn.close()
 
+
+def load_rating_curve(db_path, reach_id, sub_db_path, timeout=DB_CONN_TIMEOUT):
+    conn = sqlite3.connect(db_path, timeout=timeout)
+    try:
+        if os.path.exists(sub_db_path):
+            process_reach_db(reach_id, sub_db_path, conn)
+            os.remove(sub_db_path)
+    finally:
+        conn.close()
 
 def load_all_rating_curves(library_dir: str, db_path: str) -> None:
     """

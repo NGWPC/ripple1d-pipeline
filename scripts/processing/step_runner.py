@@ -16,7 +16,9 @@ from ..config import (
 from .job_utils import update_processing_table, wait_for_jobs
 
 
-def format_payload(template: dict, nwm_reach_id: int, model_id: str, source_model_dir: str, submodels_dir: str) -> dict:
+def format_payload(
+    template: dict, nwm_reach_id: int, model_id: str, source_model_dir: str, submodels_dir: str, library_dir: str
+) -> dict:
     """
     Formats a payload based on a given template and parameters.
     """
@@ -28,6 +30,7 @@ def format_payload(template: dict, nwm_reach_id: int, model_id: str, source_mode
                 model_id=model_id,
                 source_model_directory=source_model_dir,
                 submodels_directory=submodels_dir,
+                library_directory=library_dir,
             )
         else:
             payload[key] = value
@@ -35,15 +38,18 @@ def format_payload(template: dict, nwm_reach_id: int, model_id: str, source_mode
 
 
 def execute_request(
-    nwm_reach_id: int, model_id: str, process_name: str, source_model_dir: str, submodels_dir: str
+    nwm_reach_id: int, model_id: str, process_name: str, source_model_dir: str, submodels_dir: str, library_dir: str
 ) -> Tuple[int, str, str]:
     """
     Executes an API request for a given process and returns the job ID and status.
     """
+
     for i in range(5):
         url = f"{RIPPLE1D_API_URL}/processes/{process_name}/execution"
         payload = json.dumps(
-            format_payload(PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_id, source_model_dir, submodels_dir)
+            format_payload(
+                PAYLOAD_TEMPLATES[process_name], nwm_reach_id, model_id, source_model_dir, submodels_dir, library_dir
+            )
         )
         headers = {"Content-Type": "application/json"}
 
@@ -61,7 +67,13 @@ def execute_request(
 
 
 def execute_step(
-    reach_data: list, process_name: str, db_path: str, source_model_dir: str, submodels_dir: str, timeout_minutes: int
+    reach_data: list,
+    process_name: str,
+    db_path: str,
+    source_model_dir: str,
+    submodels_dir: str,
+    library_dir: str = "",
+    timeout_minutes: int = 60,
 ) -> Tuple[list, list, list]:
     """
     Submits multiple reach processing jobs and waits for their completion.
@@ -69,7 +81,9 @@ def execute_step(
     reach_job_id_statuses = []
 
     for reach_id, model_id in reach_data:
-        reach_job_id_status = execute_request(reach_id, model_id, process_name, source_model_dir, submodels_dir)
+        reach_job_id_status = execute_request(
+            reach_id, model_id, process_name, source_model_dir, submodels_dir, library_dir
+        )
         reach_job_id_statuses.append(reach_job_id_status)
 
     accepted = [job for job in reach_job_id_statuses if job[2] == "accepted"]
