@@ -47,7 +47,7 @@ def combine_river_tables(source_models_dir: str, models_data: Dict, output_gpkg_
 
         river_gdf = load_river_table_from_gpkg(gpkg_path)
 
-        if river_gdf is not None:
+        if river_gdf:
             if river_gdf.crs is None or river_gdf.crs.to_string() != target_crs:
                 river_gdf = river_gdf.to_crs(target_crs)
 
