@@ -16,6 +16,7 @@ def delete_reach_data(
     # delete_kwse_files=False,
     # delete_nd_files=False,
 ):
+    """Delete data associated with a reach."""
     # Connect to the database
     conn = sqlite3.connect(db_location)
     cursor = conn.cursor()

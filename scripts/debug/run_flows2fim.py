@@ -34,7 +34,7 @@ def run_flows2fim(
     fim_format: str = "tif",
 ) -> None:
     """
-    Processes flow files by generating control CSVs and FIM outputs.
+    Create control CSVs and FIM outputs for each flow file in the flow_files_dir.
 
     Args:
         output_dir (str): Directory where the output subfolder is located.

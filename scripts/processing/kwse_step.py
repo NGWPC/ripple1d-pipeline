@@ -10,10 +10,9 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from .load_rating_curves import load_rating_curve
-
 from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT
 from .job_utils import check_job_successful, update_processing_table
+from .load_rating_curves import load_rating_curve
 
 
 def get_upstream_reaches(updated_to_id: int, db_path: str, db_lock: Lock) -> List[int]:
@@ -54,7 +53,8 @@ def get_min_max_elevation(
     downstream_id: int, library_directory: str, db_lock: Lock, use_central_db: bool, central_db_path: str
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    Fetch min and max elevation from the submodel database.
+    Fetch min and max upstream elevation for a reach
+    If use_central_db is true central database is used
     """
     if use_central_db:
         if not os.path.exists(central_db_path):
@@ -99,7 +99,12 @@ def process_reach(
     skip_if_lib_created: bool,
 ) -> None:
     """
-    Process a single reach.
+    Process a single reach for KWSE.
+    1. Find us min max elevation to use as boundary conditions
+    2. Submit KWSE execution job to API and wait for it to finish
+    3. Create FIM Library
+    4. Load rating curves to central database
+    5. Put upstream reaches in queue for later processing
     """
     try:
         if skip_if_lib_created and not check_fim_lib_created(reach_id, central_db_path, central_db_lock):

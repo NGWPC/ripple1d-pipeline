@@ -66,7 +66,7 @@ def datetime_to_epoch_utc(datetime_str):
 
 def get_job_update_time(job_id: str) -> str:
     """
-    Polls job status.
+    Get updated time of a job as string
     """
     url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
 
@@ -78,7 +78,7 @@ def get_job_update_time(job_id: str) -> str:
 
 def get_job_status(job_id: str) -> str:
     """
-    Polls job status.
+    Get status of a job from API
     """
     url = f"{RIPPLE1D_API_URL}/jobs/{job_id}"
 
@@ -89,6 +89,10 @@ def get_job_status(job_id: str) -> str:
 
 
 def check_job_successful(job_id: str, poll_wait: int = DEFAULT_POLL_WAIT, timeout_minutes=90):
+    """
+    Wait for a job to finish and return ture or false based on success or failure
+    timeout_minutes count start from the job last updated status
+    """
     while True:
         status = get_job_status(job_id)
         if status == "successful":
@@ -108,7 +112,7 @@ def wait_for_jobs(
     reach_job_ids: List[Tuple[int, str]], poll_wait: int = DEFAULT_POLL_WAIT, timeout_minutes=90
 ) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
     """
-    Waits for jobs to finish and returns lists of successful and failed jobs.
+    Waits for jobs to finish and returns lists of successful, failed, and unknown status jobsjobs.
     """
     succeeded = []
     failed = []
