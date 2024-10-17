@@ -10,7 +10,7 @@ from ..config import AWS_PROFILE
 def get_models_from_stac(stac_endpoint, stac_collection):
     # to do add filter
     """
-    Retrieves GeoPackage file for models in an STAC collection.
+    Retrieves GeoPackage file and conflation file paths for models in an STAC collection.
     Parameters:
     - stac_endpoint (str): The STAC API endpoint.
     - stac_collection (str): The name of the STAC collection.

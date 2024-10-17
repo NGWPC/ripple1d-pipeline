@@ -42,6 +42,7 @@ def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpk
 
 
 def init_db(db_path):
+    """Initialize database and created tables"""
     connection = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = connection.cursor()

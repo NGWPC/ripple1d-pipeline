@@ -18,7 +18,7 @@ def load_json(file_path: str) -> Dict:
 def update_model_id_and_eclipsed(db_path: str, data: Dict, model_id: str) -> None:
     """
     Updates the model_id and eclipsed status in the processing table
-    based on upstream and downstream reach data.
+    based on upstream and downstream reach conflation data.
     """
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:

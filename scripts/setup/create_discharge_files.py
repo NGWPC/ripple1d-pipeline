@@ -1,3 +1,5 @@
+"""Not used in notebooks"""
+
 import duckdb
 
 

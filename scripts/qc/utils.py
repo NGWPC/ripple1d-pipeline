@@ -88,7 +88,6 @@ def poll_and_update_job_status(
 
     Args:
         db_path: Path to the SQLite database.
-        api_url: The base URL of the API (e.g., 'http://localhost:5000').
         process_name: The name of the process (e.g., "create_fim_lib").
         poll_interval: The time interval (in seconds) between API polling calls.
     """
@@ -212,6 +211,7 @@ def write_failed_jobs_df_to_excel(df: pd.DataFrame, process_name: str, file_path
 
 
 def copy_qc_map(root_dir: str):
+    """Copy QGIS Template file inside a 'qc' folder in root_dir"""
     dest_location = os.path.join(root_dir, "qc", "qc_map.qgs")
     os.makedirs(os.path.join(root_dir, "qc"))
     shutil.copyfile(QC_TEMPLATE_QGIS_FILE, dest_location)
