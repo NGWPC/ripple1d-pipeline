@@ -80,7 +80,7 @@ def execute_step(
     Executes a processing step concerning submodels/reach
     1. Request job for each id through API
     2. Wait for jobs to finish
-    3. Update models table with final job status
+    3. Update processing table with final job status
     4. Return succeeded, failed, not_accepted, unknown status jobs
     """
     reach_job_id_statuses = []

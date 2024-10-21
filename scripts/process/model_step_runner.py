@@ -51,11 +51,13 @@ def execute_request(model_id: str, process_name: str, source_model_dir: str) -> 
 def execute_model_step(
     model_ids: list, process_name: str, db_path: str, source_model_dir: str, timeout_minutes: int
 ) -> Tuple[list, list, list, list]:
-    """Executes a processing step concerning models
+    """
+    Executes a processing step concerning models
     1. Request job for each id through API
     2. Wait for jobs to finish
     3. Update models table with final job status
-    4. Return succeeded, failed, not_accepted, unknown status jobs"""
+    4. Return succeeded, failed, not_accepted, unknown status jobs
+    """
     model_job_id_statuses = []
     for model_id in model_ids:
         model_job_id_status = execute_request(model_id, process_name, source_model_dir)

@@ -1,9 +1,11 @@
 import os
 import sqlite3
-from typing import Dict
+from typing import Type, Dict
 
 import geopandas as gpd
 import pandas as pd
+
+from collection_data import CollectionData
 
 
 def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:
@@ -24,16 +26,20 @@ def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:
         return None
 
 
-def combine_river_tables(source_models_dir: str, models_data: Dict, output_gpkg_path: str) -> None:
+def combine_river_tables(models_data: Dict, Collection: Type[CollectionData]) -> None:
     """
     Combine River tables from multiple GPKG files, add model_id field, and save to a new GPKG file.
     Ensures the final output is in CRS EPSG:5070.
 
     Args:
-        source_models_dir (str): Directory containing the model folders with GPKG files.
         models_data (Dict):
-        output_gpkg_path (str): Path to the output combined GPKG file.
+        CollectionData (Object) : Instance of the CollectionData class.
     """
+
+    source_models_dir = Collection.source_models_dir 
+    output_gpkg_path = Collection.merged_gpkg_path
+
+
     river_gdfs = []
     target_crs = "EPSG:5070"  # Desired CRS for the combined output
 
@@ -69,10 +75,3 @@ def combine_river_tables(source_models_dir: str, models_data: Dict, output_gpkg_
     else:
         print("No River tables were combined.")
 
-
-if __name__ == "__main__":
-    source_models_dir = "data/source_models"  # path to the directory containing model folders
-    model_ids = ["Model_A", "Model_B", "Model_C"]  # list of model keys to combine
-    output_gpkg_path = "output/combined_river.gpkg"  # output GPKG file path
-
-    combine_river_tables(source_models_dir, model_ids, output_gpkg_path)

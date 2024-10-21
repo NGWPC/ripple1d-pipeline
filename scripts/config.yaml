@@ -6,54 +6,54 @@ urls:
   RIPPLE1D_API_URL: ""
   STAC_URL: ""
 
-specifications:
+paths:
   COLLECTIONS_ROOT_DIR: C:\collections
   NWM_FLOWLINES_PATH: C:\reference_data\nwm_flowlines.parquet
 
 ripple_settings:
-  RAS_VERSION: "631"
-  DEPTH_INCREMENT: 1
-  RESOLUTION: 3.0
-  RESOLUTION_UNITS: "Meters"
-  TERRAIN_SOURCE_URL: C:\reference_data\seamless_3dep_dem_3m_5070.vrt
-  SOURCE_NETWORK: C:\reference_data\nwm_flowlines_with_bbox.parquet
-  SOURCE_NETWORK_VERSION: "2.1"
-  SOURCE_NETWORK_TYPE: "nwm_hydrofabric"
+  RAS_VERSION: &RAS_VERSION "631"
+  DEPTH_INCREMENT: &DEPTH_INCREMENT 1
+  RESOLUTION: &RESOLUTION 3.0
+  RESOLUTION_UNITS: &RESOLUTION_UNITS "Meters"
+  TERRAIN_SOURCE_URL: &TERRAIN_SOURCE_URL C:\reference_data\seamless_3dep_dem_3m_5070.vrt
+  SOURCE_NETWORK: &SOURCE_NETWORK C:\reference_data\nwm_flowlines_with_bbox.parquet
+  SOURCE_NETWORK_VERSION:  &SOURCE_NETWORK_VERSION "2.1"
+  SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
 
 payload_templates:
   conflate_model:
     source_model_directory: "{source_model_directory}\\{model_id}"
     # model_name: "{model_name}"
     source_network:
-      file_name: SOURCE_NETWORK
-      version: SOURCE_NETWORK_VERSION
-      type: SOURCE_NETWORK_TYPE
+      file_name: *SOURCE_NETWORK
+      version: *SOURCE_NETWORK_VERSION
+      type: *SOURCE_NETWORK_TYPE
   extract_submodel:
     source_model_directory: "{source_model_directory}\\{model_id}"
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
     nwm_id: "{nwm_reach_id}"
   create_ras_terrain:
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    # resolution: RESOLUTION
+    # resolution: *RESOLUTION}
     # resolution_units: RESOLUTION_UNITS
-    terrain_source_url: TERRAIN_SOURCE_URL
+    terrain_source_url: *TERRAIN_SOURCE_URL
   create_model_run_normal_depth:
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
     plan_suffix: "ind"
     num_of_discharges_for_initial_normal_depth_runs: 10
-    ras_version: RAS_VERSION
+    ras_version: *RAS_VERSION
   run_incremental_normal_depth:
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
     plan_suffix: "nd"
-    depth_increment: DEPTH_INCREMENT
-    ras_version: RAS_VERSION
+    depth_increment: *DEPTH_INCREMENT
+    ras_version: *RAS_VERSION
   create_fim_lib:
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
     plans:
       - nd
       - kwse
-    resolution: RESOLUTION
-    resolution_units: RESOLUTION_UNITS
+    resolution: *RESOLUTION
+    resolution_units: *RESOLUTION_UNITS
     library_directory: "{library_directory}"
     cleanup: true
 

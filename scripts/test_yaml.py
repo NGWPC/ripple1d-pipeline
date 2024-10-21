@@ -26,7 +26,8 @@ def print_payload_values(settings):
         #Examples of accessing nested data in yaml file
         print(f"payload_settings['conflate_model']['source_model_directory']: \n {payload_settings['conflate_model']['source_model_directory']}")
         print(f"payload_settings['create_fim_lib']['plans']: \n {payload_settings['create_fim_lib']['plans']}") 
-              
+        print(f"payload_settings['conflate_model']['source_network']['version']: \n {payload_settings['conflate_model']['source_network']['version']}")
+
 def main():
     file_path = os.path.join(os.path.dirname(__file__), 'config.yaml')
     ripple_settings = load_ripple_settings(file_path)

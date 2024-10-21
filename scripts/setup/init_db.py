@@ -1,21 +1,27 @@
 import sqlite3
-from typing import Dict
 
 import geopandas as gpd
 
-from ..config import DB_CONN_TIMEOUT
+from typing import Type, Dict
+from collection_data import CollectionData
 
 
-def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpkg_path: str) -> None:
+def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
     """
     Filters NWM flowlines that intersect with the convex hull of the River table from the GPKG file
     and saves the result to a new GPKG file.
 
     Args:
-        nwm_flowlines_path (str): Path to the NWM flowlines parquet file.
-        river_gpkg_path (str): Path to the GPKG file containing the River table.
-        output_gpkg_path (str): Path to save the filtered NWM flowlines in a GPKG file.
+        CollectionData (Object) : Instance of the CollectionData class containing:
+            nwm_flowlines_path (str): Path to the NWM flowlines parquet file.
+            river_gpkg_path (str): Path to the GPKG file containing the River table.
+            output_gpkg_path (str): Path to save the filtered NWM flowlines in a GPKG file.
     """
+
+    nwm_flowlines_path = collection.config['paths']['NWM_FLOWLINES_PATH']
+    river_gpkg_path = collection.merged_gpkg_path
+    output_gpkg_path = collection.db_path
+
     # Load NWM Flowlines from Parquet file
     nwm_flowlines_gdf = gpd.read_parquet(nwm_flowlines_path, columns=["id", "to_id", "geom"])
 
@@ -41,8 +47,13 @@ def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpk
     print(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
 
 
-def init_db(db_path):
-    """Initialize database and created tables"""
+def init_db(collection : Type[CollectionData]):
+    """
+    Initialize database and create tables
+    """
+    DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
+    db_path = collection.db_path
+
     connection = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
         cursor = connection.cursor()
@@ -176,8 +187,13 @@ def init_db(db_path):
         connection.close()
 
 
-def insert_models(models_data: Dict, collection_id, db_path: str) -> None:
-    """ """
+def insert_models(models_data: Dict, collection: Type[CollectionData]) -> None:
+    """ 
+    """
+    collection_id = collection.stac_collection_id
+    db_path = collection.db_path
+    DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
+
     rows = [(collection_id, id, model_data["model_name"]) for id, model_data in models_data.items()]
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:

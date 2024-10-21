@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT
+from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT, RAS_VERSION
 from .job_utils import check_job_successful, update_processing_table
 from .load_rating_curves import load_rating_curve
 
@@ -127,7 +127,7 @@ def process_reach(
                             "min_elevation": min_elevation,
                             "max_elevation": max_elevation,
                             "depth_increment": 1,
-                            "ras_version": "631",
+                            "ras_version": RAS_VERSION,
                         }
                     )
                     print(f"<<<<<< payload for reach {reach_id}\n{payload}")
