@@ -14,13 +14,15 @@ class CollectionData:
 
     def load_config(self, config_file):
         try:
-            with open(str(Path.cwd().parent / config_file), 'r') as file:
+            with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
                 self.config = yaml.safe_load(file)
         except FileNotFoundError:
-            raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in parent dir (../scripts).")
+            raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the scripts directory.")
         except yaml.YAMLError:
             raise ValueError("Invalid YAML configuration")
 
+    #TODO - Assign all parameters from config file to "self" to remove the need to use dot or bracket notation for
+    # accessing values later?
 
     def assign_paths(self):
         """ Assign filepaths to CollectionData object."""
@@ -41,6 +43,3 @@ class CollectionData:
 
         print(f"Folders created successfully inside {self.root_dir}")
 
-if __name__ == "__main__":
-    RV = CollectionData("test")
-    reveal_type(RV)

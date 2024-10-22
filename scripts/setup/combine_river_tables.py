@@ -5,7 +5,7 @@ from typing import Type, Dict
 import geopandas as gpd
 import pandas as pd
 
-from collection_data import CollectionData
+from .collection_data import CollectionData
 
 
 def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:

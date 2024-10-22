@@ -1,6 +1,7 @@
 import boto3
 import os
 import pystac_client
+from typing import Dict
 import urllib.request
 
 from ..config import AWS_PROFILE
@@ -22,9 +23,8 @@ class STACImporter:
         self.models_data = None
         self.model_ids = None
 
-
-    def get_models_from_stac(self):
-        # to do add filter
+    def get_models_from_stac(self) -> Dict:
+        #TODO add filter
         """
         Retrieves GeoPackage file and conflation file paths for models in an STAC collection.
         Parameters:
@@ -52,9 +52,9 @@ class STACImporter:
         
         self.models_data = models_data
         #  below is an artifact 
-        return models_data
+        # return models_data
     
-    def download_models_data(self):
+    def download_models_data(self) -> None:
         """
         Downloads GeoPackage for models to a local folder.
 
@@ -82,6 +82,6 @@ class STACImporter:
             except Exception as e:
                 print(f"Failed to download files for {id}: {e}")
 
-    def get_model_ids(self):
+    def get_model_ids(self) -> None:
         self.model_ids = list(self.models_data.keys())
         print(self.model_ids)
