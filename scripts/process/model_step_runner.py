@@ -5,7 +5,8 @@ from typing import Tuple
 import requests
 
 from ..config import API_LAUNCH_JOBS_RETRY_WAIT, PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
-from .job_utils import update_models_table, wait_for_jobs
+from ..setup.database import Database
+from .job_client import wait_for_jobs
 
 
 def format_payload(template: dict, model_id: str, source_model_dir: str) -> dict:

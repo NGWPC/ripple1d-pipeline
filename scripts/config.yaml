@@ -74,4 +74,7 @@ polling:
 database:
   DB_CONN_TIMEOUT: 30
 
+execution:
+  stop_on_error: False
+
 ...

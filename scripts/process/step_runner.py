@@ -13,8 +13,8 @@ from ..config import (
     RIPPLE1D_API_URL,
     RIPPLE1D_THREAD_COUNT,
 )
-from .job_utils import update_processing_table, wait_for_jobs
-
+from .job_client import wait_for_jobs
+from ..setup.database import Database
 
 def format_payload(
     template: dict, nwm_reach_id: int, model_id: str, source_model_dir: str, submodels_dir: str, library_dir: str

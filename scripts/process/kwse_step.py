@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple
 import requests
 
 from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT, RAS_VERSION
-from .job_utils import check_job_successful, update_processing_table
+from .job_client import check_job_successful, update_processing_table
 from .load_rating_curves import load_rating_curve
 
 

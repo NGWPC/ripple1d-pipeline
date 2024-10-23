@@ -1,9 +1,10 @@
 import boto3
 import os
 import pystac_client
-from typing import Dict
+from typing import Type, Dict, List
 import urllib.request
 
+from .collection_data import CollectionData
 from ..config import AWS_PROFILE
 
 # from dotenv import load_dotenv
@@ -15,7 +16,7 @@ class STACImporter:
     """
     Methods to identify models from a STAC Collection, and download each model's gpkg files from AWS S3.
     """
-    def __init__(self, collectiondata):
+    def __init__(self, collectiondata : Type[CollectionData]):
         self.db_path = collectiondata.db_path
         self.stac_collection = collectiondata.stac_collection_id
         self.stac_endpoint = collectiondata.config['urls']['STAC_URL']
@@ -82,6 +83,7 @@ class STACImporter:
             except Exception as e:
                 print(f"Failed to download files for {id}: {e}")
 
-    def get_model_ids(self) -> None:
+    def get_model_ids(self) -> List[str]:
         self.model_ids = list(self.models_data.keys())
-        print(self.model_ids)
+        return self.model_ids
+    
