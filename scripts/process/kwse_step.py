@@ -11,7 +11,11 @@ from typing import List, Optional, Tuple
 import requests
 
 from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT, RAS_VERSION
-from .job_client import check_job_successful, update_processing_table
+
+from .job_client import JobClient
+
+from ..setup.database import Database
+
 from .load_rating_curves import load_rating_curve
 
 
@@ -136,13 +140,13 @@ def process_reach(
                     response = requests.post(url, headers=headers, data=payload)
                     response_json = response.json()
                     job_id = response_json.get("jobID")
-                    if not job_id or not check_job_successful(job_id, 90):
+                    if not job_id or not JobClient.check_job_successful(job_id, 90):
                         print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
                         with central_db_lock:
-                            update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", central_db_path)
+                            Database.update_processing_table([(reach_id, job_id)], "run_known_wse", "failed", central_db_path)
                     else:
                         with central_db_lock:
-                            update_processing_table(
+                            Database.update_processing_table(
                                 [(reach_id, job_id)], "run_known_wse", "successful", central_db_path
                             )
                 else:
@@ -164,9 +168,9 @@ def process_reach(
             fim_job_id = fim_response_json.get("jobID")
 
             sub_db_path = os.path.join(library_directory, str(reach_id), f"{reach_id}.db")
-            if not fim_job_id or not check_job_successful(fim_job_id, 30):
+            if not fim_job_id or not JobClient.check_job_successful(fim_job_id, 30):
                 with central_db_lock:
-                    update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "failed", central_db_path)
+                    Database.update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "failed", central_db_path)
                     load_rating_curve(central_db_path, reach_id, sub_db_path)
                 upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
                 for upstream_reach in upstream_reaches:
@@ -174,7 +178,7 @@ def process_reach(
                 return
 
             with central_db_lock:
-                update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "successful", central_db_path)
+                Database.update_processing_table([(reach_id, fim_job_id)], "create_fim_lib", "successful", central_db_path)
                 load_rating_curve(central_db_path, reach_id, sub_db_path)
 
         upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)

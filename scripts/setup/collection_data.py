@@ -1,6 +1,7 @@
 import yaml
 import os
 from pathlib import Path
+from typing import List
 
 class CollectionData:
     """
@@ -43,3 +44,21 @@ class CollectionData:
 
         print(f"Folders created successfully inside {self.root_dir}")
 
+    def get_models(self) -> List:
+        models = []
+        path = Path(self.source_models_dir)
+        try:
+            # Walk through the directory tree
+            for root, dirs, files in os.walk(path):
+                model = root.split("/")[-1]
+                # The root directory is expressed as "source_models" from line above, 
+                #  which is not an actual model, and must be ommitted
+                if model != "source_models":
+                    # Add all models pulled from the STAC Catalog
+                    models.append(model)
+            return models
+
+        except Exception as e:
+            print(f"An error occurred: {e}.")
+            print(f"No models are available.")
+            return []

@@ -13,7 +13,7 @@ from ..config import (
     RIPPLE1D_API_URL,
     RIPPLE1D_THREAD_COUNT,
 )
-from .job_client import wait_for_jobs
+from .job_client import JobClient
 from ..setup.database import Database
 
 def format_payload(
@@ -94,13 +94,13 @@ def execute_step(
     accepted = [job for job in reach_job_id_statuses if job[2] == "accepted"]
     not_accepted = [job for job in reach_job_id_statuses if job[2] == "not_accepted"]
 
-    update_processing_table(accepted, process_name, "accepted", db_path)
+    Database.update_processing_table(accepted, process_name, "accepted", db_path)
     print("Jobs submission complete. Waiting for jobs to finish...")
 
-    succeeded, failed, unknown = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
-    update_processing_table(succeeded, process_name, "successful", db_path)
-    update_processing_table(failed, process_name, "failed", db_path)
-    update_processing_table(unknown, process_name, "unknown", db_path)
+    succeeded, failed, unknown = JobClient.wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
+    Database.update_processing_table(succeeded, process_name, "successful", db_path)
+    Database.update_processing_table(failed, process_name, "failed", db_path)
+    Database.update_processing_table(unknown, process_name, "unknown", db_path)
 
     print(f"Successful: {len(succeeded)}")
     print(f"Failed: {len(failed)}")

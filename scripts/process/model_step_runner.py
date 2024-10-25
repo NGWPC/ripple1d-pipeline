@@ -6,7 +6,7 @@ import requests
 
 from ..config import API_LAUNCH_JOBS_RETRY_WAIT, PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
 from ..setup.database import Database
-from .job_client import wait_for_jobs
+from .job_client import JobClient
 
 
 def format_payload(template: dict, model_id: str, source_model_dir: str) -> dict:
@@ -67,12 +67,12 @@ def execute_model_step(
     accepted = [job for job in model_job_id_statuses if job[2] == "accepted"]
     not_accepted = [job for job in model_job_id_statuses if job[2] == "not_accepted"]
 
-    update_models_table(accepted, process_name, "accepted", db_path)
+    Database.update_models_table(accepted, process_name, "accepted", db_path)
     print("Jobs submission complete. Waiting for jobs to finish...")
 
-    succeeded, failed, unknown = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
-    update_models_table(succeeded, process_name, "successful", db_path)
-    update_models_table(failed, process_name, "failed", db_path)
+    succeeded, failed, unknown = JobClient.wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
+    Database.update_models_table(succeeded, process_name, "successful", db_path)
+    Database.update_models_table(failed, process_name, "failed", db_path)
 
     print(f"Successful: {len(succeeded)}")
     print(f"Failed: {len(failed)}")

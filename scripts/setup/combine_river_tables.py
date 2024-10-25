@@ -11,10 +11,8 @@ from .collection_data import CollectionData
 def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:
     """
     Load the River table from a given GPKG file.
-
     Args:
         gpkg_path (str): Path to the GeoPackage file.
-
     Returns:
         GeoDataFrame: The loaded River table.
     """
@@ -26,19 +24,17 @@ def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:
         return None
 
 
-def combine_river_tables(models_data: Dict, Collection: Type[CollectionData]) -> None:
+def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) -> None:
     """
     Combine River tables from multiple GPKG files, add model_id field, and save to a new GPKG file.
     Ensures the final output is in CRS EPSG:5070.
-
     Args:
         models_data (Dict):
         CollectionData (Object) : Instance of the CollectionData class.
     """
 
-    source_models_dir = Collection.source_models_dir 
-    output_gpkg_path = Collection.merged_gpkg_path
-
+    source_models_dir = collection.source_models_dir 
+    output_gpkg_path = collection.merged_gpkg_path
 
     river_gdfs = []
     target_crs = "EPSG:5070"  # Desired CRS for the combined output
@@ -53,7 +49,7 @@ def combine_river_tables(models_data: Dict, Collection: Type[CollectionData]) ->
 
         river_gdf = load_river_table_from_gpkg(gpkg_path)
 
-        if river_gdf:
+        if river_gdf is not None:
             if river_gdf.crs is None or river_gdf.crs.to_string() != target_crs:
                 river_gdf = river_gdf.to_crs(target_crs)
 
@@ -68,10 +64,10 @@ def combine_river_tables(models_data: Dict, Collection: Type[CollectionData]) ->
         combined_gdf = gpd.GeoDataFrame(pd.concat(river_gdfs, ignore_index=True))
 
         try:
-            combined_gdf.to_file(output_gpkg_path, driver="GPKG", layer="River")
+            # combined_gdf.to_file(output_gpkg_path, layer='River')
+            combined_gdf.to_file(output_gpkg_path, layer='River', driver='GPKG', encoding='utf-8')
             print(f"Combined River tables saved to {output_gpkg_path}")
         except Exception as e:
             print(f"Error saving combined River table: {e}")
     else:
         print("No River tables were combined.")
-
