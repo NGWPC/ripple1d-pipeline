@@ -1,6 +1,6 @@
 import json
 import requests
-from typing import Type, Tuple
+from typing import Type, Tuple, List
 from time import sleep
 
 from ..setup.database import Database
@@ -12,7 +12,7 @@ from .job_client import JobClient
 class ModelProcessor(BatchProcessor):
 
     def __init__(self, collection: Type[CollectionData]):
-        self.stop_on_error = False
+        self.stop_on_error = collection.config['execution']['stop_on_error']
         self.SOURCE_NETWORK = collection.config['ripple_settings']['SOURCE_NETWORK']
         self.SOURCE_NETWORK_VERSION = collection.config['ripple_settings']['SOURCE_NETWORK_VERSION']
         self.SOURCE_NETWORK_TYPE = collection.config['ripple_settings']['SOURCE_NETWORK_TYPE']
@@ -25,13 +25,13 @@ class ModelProcessor(BatchProcessor):
             "extract_submodel": {
                 "source_model_directory": "{source_model_directory}\\{model_id}",
                 "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "nwm_id": "{nwm_reach_id}",}
+                "nwm_id": "{nwm_reach_id}",
+            }
         }
         self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         self.model_ids = collection.get_models()
         self.conflate_model_job_statuses = {}
-        self.extract_model_job_statuses = {}
 
     def format_payload(self, template: dict, model_id: str) -> dict:
         """
@@ -48,7 +48,7 @@ class ModelProcessor(BatchProcessor):
                 payload[key] = value
         return payload
 
-    def execute_single_model(self, model_id: str, process_name: str)  -> Tuple[int, str, str]:
+    def execute_single_request(self, model_id: str, process_name: str)  -> Tuple[int, str, str]:
         """
         Executes an API request for a given process and returns the job ID and status.
         Retries upto 5 times
@@ -71,47 +71,31 @@ class ModelProcessor(BatchProcessor):
             print(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
             return model_id, "", "not_accepted"
 
-    #TODO Make this a class, which contains four attributes:
-    #    succeded_models, failed_models, not_accepted_models, unknown_status_models
-    # This is the refactor of the execute_model_step function
-    def conflate_model_batch_processor(self):
-        for model in self.model_ids:
-            self.execute_single_model(model, "conflate_model")
-    
+    def _update_reach_ids(self, reach_data: List[Tuple[int, int, str]]) -> None:
+        self.reach_data = reach_data
 
-    def load_conflation_model_batch_processor(self, collection: CollectionData):
-        formatted_payload = self.format_payload(collection)
-        self.execute_request()
-
-    def update_network_model_batch_processor(self, collection: CollectionData):
-        formatted_payload = self.format_payload(collection)
-        self.execute_request()
-
-    def extract_submodel_batch_processor(self, collection: CollectionData):
-        formatted_payload = self.format_payload(collection)
-        self.execute_request()
 
 class ConflateModelBatchProcessor(ModelProcessor):
     """
     Inherits from the ModelProcessor class. This subclass sends API requests and 
     manages the conflate_model step. 
     Args:
-        ModelProcessor object
+        Collection object
         JobClient object
         Database object
     Processing:
         1. Request job for each id through API
         2. Wait for jobs to finish
         3. Update models table with final job status
-        4. Return succeeded, failed, not_accepted, unknown status jobs
+        4. Assign succeeded, failed, not_accepted, unknown status jobs
     Returns:
         None
     """
-    def __init__(self, modelprocessor : Type[ModelProcessor], job_client : Type[JobClient], database : Type[Database]):
-        super().__init__()
-        self.modelprocessor = modelprocessor
+    def __init__(self, collection : Type[CollectionData], job_client : Type[JobClient], database : Type[Database]):
+        super().__init__(collection)
         self.job_client = job_client
         self.database = database
+        self.timeout_minutes = 10
         self.model_job_id_statuses = []
         self.accepted = None
         self.succeded = None
@@ -119,33 +103,46 @@ class ConflateModelBatchProcessor(ModelProcessor):
         self.not_accepted = None
         self.unknown = None
 
-
     def conflate_model_batch_process(self):
-        for model_id in range(len(self.modelprocessor.model_ids)):
-            single_model_job_id_status = self.execute_single_model(model_id, "conflate_model")
+        for model_id in self.model_ids:
+            single_model_job_id_status = self.execute_single_request(model_id, "conflate_model")
+
             self.model_job_id_statuses.append(single_model_job_id_status)
-            self.accepted = [job for job in self.model_job_id_statuses if job[2] == "accepted"]
-            self.not_accepted = [job for job in self.model_job_id_statuses if job[2] == "not_accepted"]
+
+        self.accepted = [job for job in self.model_job_id_statuses if job[2] == "accepted"]
+        self.not_accepted = [job for job in self.model_job_id_statuses if job[2] == "not_accepted"]
+
+        self._update_db("accepted")
+        print("Jobs submission complete. Waiting for jobs to finish...")
+
+        self._wait_for_jobs()
+
+        self._update_db("succeeded")
+        self._update_db("failed")
+
+        print(
+            f"Successful: {len(self.succeeded)}\n"
+            f"Failed: {len(self.failed)}\n"
+            f"Not Accepted: {len(self.not_accepted)}\n"
+            f"Status Unknown: {len(self.unknown)}\n"
+        )           
+        
+        return self.succeeded, self.failed, self.not_accepted, self.unknown
             
+    def _update_db(self, status: str):
+
+        if status == "accepted": 
+            self.database.update_models_table(self.accepted, "conflate_model", "accepted")
+        elif status == "succeeded":
+            self.database.update_models_table(self.succeeded, "conflate_model", "successful")
+        elif status == "failed":
+            self.database.update_models_table(self.failed, "conflate_model", "failed")
     
-    def wait_for_jobs(self):
-        self.job_client.wait_for_jobs(self.accepted)
-    
-
-## NEED TO IMPLEMENT THE REST OF THIS FUNCTIONALITY
-#     Database.update_models_table(accepted, process_name, "accepted", db_path)
-#     print("Jobs submission complete. Waiting for jobs to finish...")
-
-#     succeeded, failed, unknown = JobClient.wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
-#     Database.update_models_table(succeeded, process_name, "successful", db_path)
-#     Database.update_models_table(failed, process_name, "failed", db_path)
-
-#     print(f"Successful: {len(succeeded)}")
-#     print(f"Failed: {len(failed)}")
-#     print(f"Not Accepted: {len(not_accepted)}")
-#     print(f"Status Unknown: {len(unknown)}")
-
-#     return succeeded, failed, not_accepted, unknown
+    def _wait_for_jobs(self):
+        self.succeeded, self.failed, self.unknown = self.job_client.wait_for_jobs(self.accepted, timeout_minutes=self.timeout_minutes)
+        self.conflate_model_job_statuses['succeeded'] = self.succeeded
+        self.conflate_model_job_statuses['failed'] = self.failed
+        self.conflate_model_job_statuses['unknown'] = self.unknown
 
 
 ## Example Workflow:
@@ -156,4 +153,3 @@ database = Database(collection)
 
 conflatemodelbatch = ConflateModelBatchProcessor(modelprocessor, jobclient, database)
 conflatemodelbatch.conflate_model_batch_process()
-conflatemodelbatch.wait_for_jobs()

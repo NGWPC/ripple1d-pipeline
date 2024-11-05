@@ -1,6 +1,6 @@
 from .batch_processor import BatchProcessor
-from .model_processor import ModelProcessor, ConflateModelBatchProcessor
-from .reach_processor import ReachProcessor
+from .model_processor import ConflateModelBatchProcessor
+from .reach_processor import ExecuteReachStepBatchProcessor, ReachData
 from .job_client import JobClient
 from .kwse_step import execute_kwse_for_network
 from .load_conflation import load_conflation

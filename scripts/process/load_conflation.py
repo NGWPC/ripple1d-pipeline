@@ -1,9 +1,6 @@
 import json
 import os
-import sqlite3
 from typing import Dict, List, Type
-
-from ..config import DB_CONN_TIMEOUT
 
 from ..setup.database import Database #, CollectionData
 
@@ -41,8 +38,8 @@ def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
     print(f"Conflation loaded to {database.db_path} from .conflation.json files")
 
 
-if __name__ == "__main__":
-    # collection = CollectionData()
-    database = Database(collection)
-    model_ids = ["Baxter"]
-    load_conflation(model_ids, database)
+# if __name__ == "__main__":
+    # collection = CollectionData("example_collection")
+    # database = Database(collection)
+    # model_ids = ["Baxter"]
+    # load_conflation(model_ids, database)

@@ -49,7 +49,7 @@ class JobClient:
         return job_status
 
 
-    def check_job_successful(self, job_id: str, timeout_minutes=90):
+    def check_job_successful(self, job_id: str, timeout_minutes : int = 90):
         """
         Wait for a job to finish and return true or false based on success or failure
         timeout_minutes count start from the job last updated status

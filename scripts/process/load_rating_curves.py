@@ -63,7 +63,7 @@ def load_all_rating_curves(library_dir: str, db_path: str) -> None:
         conn.close()
 
 
-if __name__ == "__main__":
-    db_path = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library.sqlite"
-    library_dir = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library"
-    load_all_rating_curves(library_dir, db_path)
+# if __name__ == "__main__":
+#     db_path = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library.sqlite"
+#     library_dir = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library"
+#     load_all_rating_curves(library_dir, db_path)

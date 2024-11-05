@@ -1,12 +1,12 @@
-import geopandas as gpd
 import requests
 import sqlite3
 import time
 import threading
+import os
 
 
 from contextlib import contextmanager
-from typing import Type, Dict, List, Tuple, Any, Union
+from typing import Type, Dict, List, Tuple, Any, Union, Optional
 from .collection_data import CollectionData
 
 class Database:
@@ -32,24 +32,38 @@ class Database:
             conn.close()
     
     @contextmanager
-    def _get_lock_connection(self):
-        self.lock = threading.Lock()
-        with self.lock:
-            conn = sqlite3.connect(self.db_path, timeout=self.timeout)
-            try:
+    def _get_locked_connection(self, lock):
+        self.lock = lock
+        conn = sqlite3.connect(self.db_path, timeout=self.timeout)
+        try:
+            with self.lock:
                 yield conn
-            finally:
-                conn.close()
+        finally:
+            conn.close()
 
     # Execute SQL operation: SELECT
-    def execute_query(self, query: str, params: tuple = None, print_reaches: bool = False):
-        with self._get_connection() as conn:
+    def execute_query(self, query: str, params: tuple = None, print_reaches: bool = False, lock = None):
+        if lock == None:
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                result = cursor.fetchall()
+                if print_reaches:
+                    print(len(result), "reaches returned")
+                return result
+        else: 
+            with self._get_locked_connection(lock) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                result = cursor.fetchall()
+                return result
+
+    # Execute SQL operation: SELECT one
+    def execute_query_fetchone(self, query: str, params: tuple = None, lock: threading.Lock = None):
+        with self._get_locked_connection(lock) as conn:
             cursor = conn.cursor()
             cursor.execute(query, params)
-            conn.commit()
-            result = cursor.fetchall()
-            if print_reaches:
-                print(len(result), "reaches returned")
+            result = cursor.fetchone()
             return result
 
     # Execute SQL operations: INSERT, UPDATE, DELETE
@@ -275,7 +289,7 @@ class Database:
                 JOIN processing p ON n.reach_id = p.reach_id
                 WHERE p.eclipsed IS FALSE
                 """
-        self.execute_query(select_query)
+        return self.execute_query(select_query)
 
     def get_eclipsed_reaches(self) -> List[Tuple[int, int]]:
         """
@@ -287,7 +301,7 @@ class Database:
                 JOIN processing p ON n.reach_id = p.reach_id
                 WHERE p.eclipsed IS TRUE
                 """
-        self.execute_query(select_query)
+        return self.execute_query(select_query)
 
     def update_to_id_batch(self, updates: List[Tuple[int, int]]) -> None:
         """
@@ -311,5 +325,67 @@ class Database:
                 JOIN processing p ON n.reach_id = p.reach_id
                 WHERE p.eclipsed IS FALSE AND p.model_id IN ({','.join(['?'] * len(model_ids))})
             """
-        self.execute_query(select_query, model_ids, True)
+        return self.execute_query(select_query, model_ids, True)
 
+    def get_upstream_reaches(self, updated_to_id: int, db_lock: threading.Lock) -> List[int]:
+        """
+        Fetch upstream reach IDs from the 'network' table.
+        """
+        select_query = f"""
+                SELECT reach_id
+                FROM network
+                WHERE updated_to_id = ?
+                """
+        temp_result = self.execute_query(select_query, (updated_to_id,), lock = db_lock)
+        result = [row[0] for row in temp_result]
+        return result
+
+    def check_fim_lib_created(self, reach_id: int, db_lock: threading.Lock) -> bool:
+        """
+        Check if FIM library has been created for a reach.
+        """
+        select_query = f"""
+                SELECT create_fim_lib_job_id
+                FROM processing
+                WHERE reach_id = ?
+                """
+        result = self.execute_query_fetchone(select_query, (reach_id,), lock = db_lock)
+
+        if result is None:
+             raise ValueError(f"No record found for reach_id {reach_id}")
+        
+        return result[0] is not None
+
+
+    def get_min_max_elevation(
+        self, downstream_id: int, library_directory: str, db_lock: threading.Lock, use_central_db: bool
+    ) -> Tuple[Optional[float], Optional[float]]:
+        """
+        Fetch min and max upstream elevation for a reach
+        If use_central_db is true central database is used
+        """
+        if use_central_db:
+            if not os.path.exists(self.db_path):
+                print(f"central database not found : {self.db_path}")
+                return None, None
+            select_query = f"""
+                SELECT MIN(us_wse), MAX(us_wse)
+                FROM rating_curves
+                WHERE reach_ID = ?
+            """
+            min_elevation, max_elevation = self.execute_query_fetchone(select_query, (downstream_id,), lock = db_lock)
+            
+            return min_elevation, max_elevation
+        else:
+            ds_submodel_db_path = os.path.join(library_directory, str(downstream_id), f"{downstream_id}.db")
+            if not os.path.exists(ds_submodel_db_path):
+                print(f"Submodel database not found for reach_id: {downstream_id} \n")
+                print(f"At this location: {ds_submodel_db_path}")
+                return None, None
+            select_query = f"""
+                SELECT MIN(us_wse), MAX(us_wse) 
+                FROM rating_curves
+            """
+            min_elevation, max_elevation = self.execute_query_fetchone(select_query, (downstream_id,), lock = db_lock)
+            
+            return min_elevation, max_elevation
