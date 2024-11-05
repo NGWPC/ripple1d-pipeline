@@ -25,7 +25,6 @@ class JobClient:
         epoch_time = int(dt_utc.timestamp())
         return epoch_time
 
-
     def get_job_update_time(self, job_id: str) -> str:
         """
         Get updated time of a job as string
@@ -48,7 +47,6 @@ class JobClient:
         job_status = response.json().get("status")
         return job_status
 
-
     def check_job_successful(self, job_id: str, timeout_minutes : int = 90):
         """
         Wait for a job to finish and return true or false based on success or failure
@@ -67,7 +65,6 @@ class JobClient:
                     print(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}", "client timeout")
                     return False
             time.sleep(self.DEFAULT_POLL_WAIT)
-
 
     def wait_for_jobs(self, 
                       reach_job_ids: List[Tuple[int, str]], 

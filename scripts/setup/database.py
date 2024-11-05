@@ -356,7 +356,6 @@ class Database:
         
         return result[0] is not None
 
-
     def get_min_max_elevation(
         self, downstream_id: int, library_directory: str, db_lock: threading.Lock, use_central_db: bool
     ) -> Tuple[Optional[float], Optional[float]]:

@@ -25,7 +25,6 @@ class ReachProcessor(BatchProcessor):
         self.TERRAIN_SOURCE_URL = collection.config['ripple_settings']['TERRAIN_SOURCE_URL']
         self.RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
         self.DEPTH_INCREMENT = collection.config['ripple_settings']['DEPTH_INCREMENT']
-        self.RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
         self.source_models_dir = collection.source_models_dir
         self.payloads = {
             "extract_submodel": {
