@@ -52,6 +52,19 @@ PAYLOAD_TEMPLATES = {
         "depth_increment": DEPTH_INCREMENT,
         "ras_version": RAS_VERSION,
     },
+    "run_known_wse": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plan_suffix": "kwse",
+        "min_elevation": -9999,
+        "max_elevation": -9999,
+        "depth_increment": 1,
+        "ras_version": "631",
+        "write_depth_grids": True,
+    },
+    "create_rating_curves_db": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plans": ["kwse"],
+    },
     "create_fim_lib": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
         "plans": ["nd", "kwse"],
