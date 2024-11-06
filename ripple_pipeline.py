@@ -232,7 +232,10 @@ def process(collection, poll_and_update=False, kwse=True):
     create_f2f_start_file(outlet_reaches, f2f_start_file)
 
 
-def run_qc(collection):
+def run_qc(
+    collection,
+    poll_and_update=False,
+):
     # PARAMETERS
     stac_collection_id = collection
     root_dir = os.path.join(COLLECTIONS_ROOT_DIR, stac_collection_id)
@@ -244,7 +247,10 @@ def run_qc(collection):
     # CREATE EXCEL ERROR REPORTS
     dfs = []
     for process_name in ["conflate_model"]:
-        # poll_and_update_job_status(db_path, process_name, "models")
+
+        if poll_and_update:
+            poll_and_update_job_status(db_path, process_name, "models")
+
         _, failed_reaches, _ = get_reach_status_by_process(
             db_path, process_name, "models"
         )
@@ -261,7 +267,8 @@ def run_qc(collection):
         "run_known_wse",
         "create_fim_lib",
     ]:
-        # poll_and_update_job_status(db_path, process_name)
+        if poll_and_update:
+            poll_and_update_job_status(db_path, process_name)
         _, failed_reaches, _ = get_reach_status_by_process(db_path, process_name)
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
@@ -286,7 +293,7 @@ def run_pipeline(
     process(collection, poll_and_update, kwse)
 
     if qc:
-        run_qc(collection)
+        run_qc(collection, poll_and_update)
 
 
 if __name__ == "__main__":

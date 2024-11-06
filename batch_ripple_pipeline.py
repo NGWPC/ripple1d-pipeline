@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+
+import os
+import argparse
+import logging
+from datetime import datetime
+import pathlib
+
+from ripple_pipeline import *
+
+
+def batch_pipeline(
+    collection_list, poll_and_update: bool = False, kwse: bool = True, qc: bool = True
+):
+    """
+    Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, and qc steps for each collection.
+
+    Inputs:
+        collection_list: A filepath to line seperated list of collections.
+            OR a string in quotes with space delimeted collections.
+        poll_and_update: Poll ripple1D API and update database after conflate model and extract submodel steps
+        kwse: Run kwse or not.
+        qc: Run qc steps or not.
+    """
+
+    collections = read_input(collection_list)
+
+    for collection in collections:
+        print(f"Executing run_pipeline on collection:  {collection}")
+
+        run_pipeline(collection, poll_and_update, kwse, qc)
+
+
+def read_input(collection_list):
+    collections = []
+    if os.path.isfile(collection_list):
+        source_file_extension = pathlib.Path(collection_list).suffix
+        acceptable_file_formats = [".lst", ".txt", ".csv"]
+        if source_file_extension.lower() not in acceptable_file_formats:
+            raise Exception(
+                "Incoming file must be in .lst, .txt, or .csv format if submitting a file name and path."
+            )
+
+        with open(collection_list, "r") as collections_file:
+            file_lines = collections_file.readlines()
+            f_list = [strip_newline(fl) for fl in file_lines]
+            collections.append(f_list)
+
+    elif isinstance(collection_list, str):
+        collection_list = collection_list.split()
+        for collection in collection_list:
+            collections.append(collection)
+
+    else:
+        raise Exception(
+            "collection_list not a valid filepath, or a space seperated list of collections passed within quotes"
+        )
+
+    return collections
+
+
+def strip_newline(collection):
+    # Strips the newline character
+    collection = collection.strip().replace('"', "")
+    collection = collection.replace("'", "")
+    return collection
+
+
+if __name__ == "__main__":
+    """
+    Sample Usage:
+        batch_ripple_pipeline.py -l ~/mycollections.lst -p -nokwse -skipqc
+    """
+
+    parser = argparse.ArgumentParser(
+        description="Run ripple pipeline on each collection in the collection list"
+    )
+
+    parser.add_argument(
+        "-l",
+        "--collection_list",
+        help=f"A filepath (.txt or .lst) containaing a list of valid collections of HEC-RAS models given in a. ",
+        required=True,
+    )
+    parser.add_argument(
+        "-p",
+        "--poll_and_update",
+        help=f"OPTIONAL: provide the -p flag to Utilize the poll_and_update_job_status and get_reach_status_by_process functions to update the database. ",
+        required=False,
+        action="store_true",
+    )
+    parser.add_argument(
+        "-nokwse",
+        "--kwse",
+        help=f"OPTIONAL: provide the -nokwse argument to skip the KWSE step, and use create_fim_lib API to Ripple1D instead. ",
+        required=False,
+        action="store_false",
+    )
+    parser.add_argument(
+        "-skipqc",
+        "--qc",
+        help=f"OPTIONAL: provide the -skipqc flag to skip the automated quality control steps. ",
+        required=False,
+        action="store_false",
+    )
+
+    args = vars(parser.parse_args())
+
+    batch_pipeline(**args)
