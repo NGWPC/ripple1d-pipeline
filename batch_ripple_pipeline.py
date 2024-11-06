@@ -69,7 +69,8 @@ def strip_newline(collection):
 if __name__ == "__main__":
     """
     Sample Usage:
-        batch_ripple_pipeline.py -l ~/mycollections.lst -p -nokwse -skipqc
+        batch_ripple_pipeline.py -l "collection1 collection2 collection3"
+        batch_ripple_pipeline.py -l ~/collections.lst -p -nokwse -skipqc
     """
 
     parser = argparse.ArgumentParser(
