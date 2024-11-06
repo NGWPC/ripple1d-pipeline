@@ -13,7 +13,11 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
     try:
         reach_cursor = reach_conn.cursor()
         reach_cursor.execute(
-            "SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition FROM rating_curves"
+            """
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, map_exist
+            FROM rating_curves
+            WHERE plan_suffix IN ('nd', 'kwse')
+            """
         )
         rows = reach_cursor.fetchall()
 
@@ -21,9 +25,9 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         cursor.executemany(
             """
             INSERT OR IGNORE INTO rating_curves (
-                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, map_exist
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
