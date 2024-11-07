@@ -245,25 +245,22 @@ def process(collection, poll_and_update=False, kwse=True):
 
     # RUN RUN_INCREMENTAL_NORMAL_DEPTH STEP
     logging.info(f"Started Run Incremental Normal Depth Step...")
-    (
-        succeded_reaches_ikwse,
-        failed_reaches_ikwse,
-        not_accepted_reaches_ikwse,
-        unknown_status_reaches_ikwse,
-    ) = execute_step(
-        [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
-        "run_incremental_normal_depth",
-        db_path,
-        source_models_dir,
-        submodels_dir,
-        timeout_minutes=25,
+    succeded_reaches, failed_reaches, not_accepted_reaches, unknown_status_reaches = (
+        execute_step(
+            [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
+            "run_incremental_normal_depth",
+            db_path,
+            source_models_dir,
+            submodels_dir,
+            timeout_minutes=25,
+        )
     )
     if (
         stop_on_error
         and (
-            len(failed_reaches_ikwse)
-            + len(not_accepted_reaches_ikwse)
-            + len(unknown_status_reaches_ikwse)
+            len(failed_reaches)
+            + len(not_accepted_reaches)
+            + len(unknown_status_reaches)
         )
         > 0
     ):
@@ -394,7 +391,7 @@ def process(collection, poll_and_update=False, kwse=True):
 
     # MERGE RATING CURVES
     logging.info(f"Starting Merge Rating Curves Step...")
-    load_all_rating_curves(library_dir, db_path)
+    load_all_rating_curves(submodels_dir, db_path)
     logging.info(f"Finished Merge Rating Curves Step...")
 
     # CREATE FIM LIBRARY STEP
@@ -483,7 +480,10 @@ def run_qc(collection, poll_and_update=False):
         "create_ras_terrain",
         "create_model_run_normal_depth",
         "run_incremental_normal_depth",
+        "run_iknown_wse",
+        "create_irating_curves_db",
         "run_known_wse",
+        "create_rating_curves_db",
         "create_fim_lib",
     ]:
         if poll_and_update:
