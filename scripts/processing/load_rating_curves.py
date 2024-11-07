@@ -47,15 +47,15 @@ def load_rating_curve(db_path, reach_id, sub_db_path, timeout=DB_CONN_TIMEOUT):
         conn.close()
 
 
-def load_all_rating_curves(library_dir: str, db_path: str) -> None:
+def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
     """
     Loads all rating curves from submodel databases into the central library database.
     """
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
 
-        for submodel in os.listdir(library_dir):
-            sub_db_path = os.path.join(library_dir, submodel, f"{submodel}.db")
+        for submodel in os.listdir(submodels_dir):
+            sub_db_path = os.path.join(submodels_dir, submodel, f"{submodel}.db")
             if os.path.exists(sub_db_path):
                 process_reach_db(submodel, sub_db_path, conn)
                 os.remove(sub_db_path)
