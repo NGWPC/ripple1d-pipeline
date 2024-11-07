@@ -137,7 +137,7 @@ def init_db(db_path):
                 run_iknown_wse_job_id TEXT,
                 run_iknown_wse_status TEXT,
                 create_irating_curves_db_job_id TEXT,
-                create_irating_curves__db_status TEXT,
+                create_irating_curves_db_status TEXT,
                 run_known_wse_job_id TEXT,
                 run_known_wse_status TEXT,
                 create_rating_curves_db_job_id TEXT,

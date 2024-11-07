@@ -7,12 +7,7 @@ from typing import Tuple
 
 import requests
 
-from ..config import (
-    API_LAUNCH_JOBS_RETRY_WAIT,
-    PAYLOAD_TEMPLATES,
-    RIPPLE1D_API_URL,
-    RIPPLE1D_THREAD_COUNT,
-)
+from ..config import API_LAUNCH_JOBS_RETRY_WAIT, PAYLOAD_TEMPLATES, RIPPLE1D_API_URL
 from .job_utils import update_processing_table, wait_for_jobs
 
 
