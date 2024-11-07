@@ -105,6 +105,7 @@ def init_db(db_path):
                 ds_depth REAL,
                 ds_wse REAL,
                 boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
+                map_exist BOOL CHECK(map_exist IN (0,1)) NOT NULL,
                 FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
                 UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
             );
@@ -133,8 +134,14 @@ def init_db(db_path):
                 create_model_run_normal_depth_status TEXT,
                 run_incremental_normal_depth_job_id TEXT,
                 run_incremental_normal_depth_status TEXT,
+                run_iknown_wse_job_id TEXT,
+                run_iknown_wse_status TEXT,
+                create_irating_curves_db_job_id TEXT,
+                create_irating_curves_db_status TEXT,
                 run_known_wse_job_id TEXT,
                 run_known_wse_status TEXT,
+                create_rating_curves_db_job_id TEXT,
+                create_rating_curves_db_status TEXT,
                 create_fim_lib_job_id TEXT,
                 create_fim_lib_status TEXT,
                 FOREIGN KEY (collection_id, model_id) REFERENCES models (collection_id, model_id),

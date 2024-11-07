@@ -12,6 +12,7 @@ STAC_URL = ""
 COLLECTIONS_ROOT_DIR = r"Z:\collections"
 NWM_FLOWLINES_PATH = r"Z:\reference_data\nwm_flowlines.parquet"
 
+OPTIMUM_PARALLEL_PROCESS_COUNT = 5
 # Ripple settings
 RAS_VERSION = "631"
 DEPTH_INCREMENT = 1
@@ -52,6 +53,19 @@ PAYLOAD_TEMPLATES = {
         "depth_increment": DEPTH_INCREMENT,
         "ras_version": RAS_VERSION,
     },
+    "run_known_wse": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plan_suffix": "kwse",
+        "min_elevation": -9999,
+        "max_elevation": -9999,
+        "depth_increment": 1,
+        "ras_version": "631",
+        "write_depth_grids": True,
+    },
+    "create_rating_curves_db": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plans": ["kwse"],
+    },
     "create_fim_lib": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
         "plans": ["nd", "kwse"],
@@ -75,6 +89,4 @@ QC_TEMPLATE_QGIS_FILE = r"Z:\reference_data\qc_map.qgs"
 DEFAULT_POLL_WAIT = 5
 
 API_LAUNCH_JOBS_RETRY_WAIT = 0.5
-RIPPLE1D_THREAD_COUNT = 20
-
 DB_CONN_TIMEOUT = 30

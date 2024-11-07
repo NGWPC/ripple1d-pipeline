@@ -5,7 +5,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from ..config import GDAL_BINS_PATH, GDAL_SCRIPTS_PATH
+from ..config import GDAL_BINS_PATH, GDAL_SCRIPTS_PATH, OPTIMUM_PARALLEL_PROCESS_COUNT
 
 
 def setup_gdal_environment():
@@ -121,7 +121,7 @@ def create_extent_lib(library_dir, library_extent_dir, submodels_dir):
         sys.stdout.write(f"\rProgress: [{ '#' * progress + '-' * (100 - progress)}] {progress}%")
         sys.stdout.flush()
 
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
         for _ in pool.imap_unordered(
             worker, [(path, library_dir, library_extent_dir, submodels_dir) for path in tif_paths]
         ):
