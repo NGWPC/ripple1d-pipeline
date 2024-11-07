@@ -11,7 +11,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT
+from ..config import DB_CONN_TIMEOUT, OPTIMUM_PARALLEL_PROCESS_COUNT, RIPPLE1D_API_URL
 from .job_utils import check_job_successful, update_processing_table
 from .load_rating_curves import load_rating_curve
 
@@ -102,7 +102,7 @@ def process_reach(
                 payload = json.dumps(
                     {
                         "submodel_directory": submodel_directory_path,
-                        "plan_suffix": "ikwse4",
+                        "plan_suffix": "ikwse",
                         "min_elevation": min_elevation,
                         "max_elevation": max_elevation,
                         "depth_increment": 1,
@@ -121,36 +121,36 @@ def process_reach(
                     with central_db_lock:
                         update_processing_table([(reach_id, job_id)], "run_iknown_wse", "failed", central_db_path)
                 else:
-                    valid_plans = valid_plans + ["ikwse4"]
+                    valid_plans = valid_plans + ["ikwse"]
                     with central_db_lock:
                         update_processing_table([(reach_id, job_id)], "run_iknown_wse", "successful", central_db_path)
             else:
                 print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
 
-            rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
-            rc_db_payload = json.dumps(
-                {
-                    "submodel_directory": submodel_directory_path,
-                    "plans": valid_plans,
-                }
-            )
-            response = requests.post(rc_db, headers=headers, data=rc_db_payload)
-            rc_db_response_json = response.json()
-            rc_db_job_id = rc_db_response_json.get("jobID")
+        rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
+        rc_db_payload = json.dumps(
+            {
+                "submodel_directory": submodel_directory_path,
+                "plans": valid_plans,
+            }
+        )
+        response = requests.post(rc_db, headers=headers, data=rc_db_payload)
+        rc_db_response_json = response.json()
+        rc_db_job_id = rc_db_response_json.get("jobID")
 
-            if not rc_db_job_id or not check_job_successful(rc_db_job_id, timeout_minutes=timeout_minutes):
-                with central_db_lock:
-                    update_processing_table(
-                        [(reach_id, rc_db_job_id)], "create_irating_curves_db", "failed", central_db_path
-                    )
-                upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
-                for upstream_reach in upstream_reaches:
-                    task_queue.put((upstream_reach, None))
-                return
+        if not rc_db_job_id or not check_job_successful(rc_db_job_id, timeout_minutes=timeout_minutes):
             with central_db_lock:
                 update_processing_table(
-                    [(reach_id, rc_db_job_id)], "create_irating_curves_db", "successful", central_db_path
+                    [(reach_id, rc_db_job_id)], "create_irating_curves_db", "failed", central_db_path
                 )
+            upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
+            for upstream_reach in upstream_reaches:
+                task_queue.put((upstream_reach, None))
+            return
+        with central_db_lock:
+            update_processing_table(
+                [(reach_id, rc_db_job_id)], "create_irating_curves_db", "successful", central_db_path
+            )
 
         upstream_reaches = get_upstream_reaches(reach_id, central_db_path, central_db_lock)
         for upstream_reach in upstream_reaches:
@@ -176,7 +176,7 @@ def execute_ikwse_for_network(
     for reach_pair in initial_reaches:
         task_queue.put(reach_pair)
 
-    with ThreadPoolExecutor(max_workers=RIPPLE1D_THREAD_COUNT) as executor:
+    with ThreadPoolExecutor(max_workers=OPTIMUM_PARALLEL_PROCESS_COUNT) as executor:
         futures = []
         while not task_queue.empty() or futures:
             while not task_queue.empty():
