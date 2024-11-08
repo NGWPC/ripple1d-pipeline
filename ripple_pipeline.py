@@ -4,6 +4,7 @@ import os
 import argparse
 import logging
 import datetime as dt
+import sys
 
 from scripts import *
 from scripts.setup import *
@@ -11,33 +12,32 @@ from scripts.processing import *
 from scripts.debug import *
 
 
-def setup_logger(output_dir: str, process_name: str) -> None:
-    # Set logging to file and stderr
-    curr_date = dt.datetime.now().strftime("%m_%d_%Y")
+def setup_logger(output_dir: str, process_name: str, collection: str) -> None:
+    # # Set logging to file and stderr
+    # log_file_name = f"{collection}.log"
+    # log_file_path = os.path.join(output_dir, log_file_name)
+    # file_handler = logging.FileHandler(log_file_path)
+    # file_handler.setFormatter(
+    #     logging.Formatter(
+    #         "%(asctime)s - %(levelname)s - %(module)s - %(message)s",
+    #         "%Y-%m-%d %H:%M:%S",
+    #     )
+    # )
+    # # * Set Log file Logging Level *
+    # file_handler.setLevel(logging.INFO)
 
-    log_file_name = f"ripple_pipeline_{curr_date}.log"
-
-    log_file_path = os.path.join(output_dir, log_file_name)
-
-    file_handler = logging.FileHandler(log_file_path)
-    file_handler.setFormatter(
-        logging.Formatter(
-            "%(asctime)s - %(levelname)s - %(module)s - %(message)s",
-            "%Y-%m-%d %H:%M:%S",
-        )
-    )
-    # * Set Log file Logging Level *
-    file_handler.setLevel(logging.INFO)
-
-    console_handler = logging.StreamHandler()
-    # * Set Console Logging Level *
+    # console_handler = logging.StreamHandler()
+    console_handler = logging.StreamHandler(sys.stdout)
+    # # * Set Console Logging Level *
     console_handler.setLevel(logging.INFO)
 
     logger = logging.getLogger()
-    logger.addHandler(file_handler)
+    # # Uncomment below, and comment 2 below for file level logs (single execution)
+    # logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
     logger.setLevel(logging.INFO)
 
-    # Print start time
+    # # Print start time
     dt_string = dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
     logging.info("========================================================")
     logging.info(f"\n Starting: ' {process_name} ' process from ripple_pipeline.py")
@@ -51,13 +51,14 @@ def setup(collection):
     db_path = os.path.join(root_dir, "ripple.gpkg")
     merged_gpkg_path = os.path.join(root_dir, "source_models", "all_rivers.gpkg")
 
+    # CREATE FOLDER STRUCTURE
+    source_models_dir, submodels_dir, library_dir = create_folders(root_dir)
+    
     # SETUP LOGGER
     start_time = dt.datetime.now()
-    setup_logger(root_dir, "setup")
+    setup_logger(root_dir, "setup", collection)
+    logging.info(f"Created folders and setup logger.")
 
-    # CREATE FOLDER STRUCTURE
-    logging.info(f"Creating folders")
-    source_models_dir, submodels_dir, library_dir = create_folders(root_dir)
 
     # DOWNLOAD MODELS
     logging.info(f"Getting Models from STAC Catalog")
@@ -99,9 +100,12 @@ def process(collection, poll_and_update=False, kwse=True):
     extent_library_dir = os.path.join(root_dir, "library_extent")
     f2f_start_file = os.path.join(root_dir, "start_reaches.csv")
 
-    # SETUP LOGGER
+    # LOG STARTING
     start_time = dt.datetime.now()
-    setup_logger(root_dir, "process")
+    dt_string = dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    logging.info("========================================================")
+    logging.info(f"\n Starting: ' process ' routine from ripple_pipeline.py")
+    logging.info(f"\n \t Started: {dt_string} \n")
 
     # GET WORKING MODELS
     logging.info(f"Get Models From STAC..")
@@ -456,11 +460,15 @@ def run_qc(collection, poll_and_update=False):
     error_report_path = os.path.join(root_dir, "error_report.xlsx")
     f2f_start_file = os.path.join(root_dir, "start_reaches.csv")
 
-    # SETUP LOGGER
+    # LOG STARTING
     start_time = dt.datetime.now()
-    setup_logger(root_dir, "qc")
+    dt_string = dt.datetime.now().strftime("%m/%d/%Y %H:%M:%S")
+    logging.info("========================================================")
+    logging.info(f"\n Starting: ' qc ' routine from ripple_pipeline.py")
+    logging.info(f"\n \t Started: {dt_string} \n")
 
     # CREATE EXCEL ERROR REPORT
+    logging.info(f"Creating Excel Error Report..")
     dfs = []
     for process_name in ["conflate_model"]:
 
@@ -493,11 +501,17 @@ def run_qc(collection, poll_and_update=False):
         dfs.append(df)
         write_failed_jobs_df_to_excel(df, process_name, error_report_path)
 
+    logging.info(f"Finished creating Excel error report..")
+
     # CREATE QC MAP
+    logging.info(f"Running copy_qc_map step..")
     copy_qc_map(root_dir)
+    logging.info(f"Finished copy_qc_map step..")
 
     # CREATE COMPOSITE RASTERS
+    logging.info(f"Starting run_flows2fim step..")
     run_flows2fim(root_dir, "qc", library_dir, db_path, start_file=f2f_start_file)
+    logging.info(f"Finished run_flows2fim step..")
 
     end_time = dt.datetime.now()
     time_duration = end_time - start_time

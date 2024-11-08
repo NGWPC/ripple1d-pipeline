@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import os
 import argparse
-import logging
-from datetime import datetime
+import os
 import pathlib
-
+import subprocess
+import time
+from datetime import datetime
 from ripple_pipeline import *
+from scripts.setup import *
 
 
 def batch_pipeline(
@@ -26,9 +27,41 @@ def batch_pipeline(
     collections = read_input(collection_list)
 
     for collection in collections:
-        print(f"Executing run_pipeline on collection:  {collection}")
+        # Construct the command to execute ripple_pipeline.py
+        cmd = [
+            "python",
+            "ripple_pipeline.py",
+            "--collection", collection,
+            "--poll_and_update" if poll_and_update == True else "",
+            "--kwse" if kwse == False  else "",
+            "--qc" if qc == False else "",
+        ]
 
-        run_pipeline(collection, poll_and_update, kwse, qc)
+        # Set up log files
+        log_dir = os.path.join(COLLECTIONS_ROOT_DIR, collection)
+        os.makedirs(log_dir, exist_ok=True)
+        log_file = os.path.join(log_dir, f"{collection}_log")
+
+        # Execute the command and redirect output
+        try:
+            result = subprocess.run(
+                cmd,
+                stdout=open(log_file + ".out", "w"),
+                stderr=open(log_file + ".err", "w")
+            )
+
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(result.returncode, cmd)
+
+            print(f"Collection {collection} processed successfully.")
+        
+        except subprocess.CalledProcessError as e:
+            print(f"Error processing collection {collection}: {e}")
+        except Exception as e:
+            print(f"Unexpected error occurred: {e}")
+            print(f"Executing run_pipeline on collection:  {collection}")
+
+        time.sleep(5)
 
 
 def read_input(collection_list):
@@ -60,7 +93,7 @@ def read_input(collection_list):
 
 
 def strip_newline(collection):
-    # Strips the newline character
+    # Strips single or double quotes
     collection = collection.strip().replace('"', "")
     collection = collection.replace("'", "")
     return collection
