@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 from typing import Dict
@@ -20,7 +21,7 @@ def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:
         gdf = gpd.read_file(gpkg_path, columns=[], layer="River")
         return gdf
     except Exception as e:
-        print(f"Error loading River table from {gpkg_path}: {e}")
+        logging.info(f"Error loading River table from {gpkg_path}: {e}")
         return None
 
 
@@ -42,7 +43,7 @@ def combine_river_tables(source_models_dir: str, models_data: Dict, output_gpkg_
         gpkg_path = os.path.join(source_models_dir, model_id, f"{model_id}.gpkg")
 
         if not os.path.exists(gpkg_path):
-            print(f"GPKG file not found: {gpkg_path}")
+            logging.info(f"GPKG file not found: {gpkg_path}")
             continue
 
         river_gdf = load_river_table_from_gpkg(gpkg_path)
@@ -63,11 +64,11 @@ def combine_river_tables(source_models_dir: str, models_data: Dict, output_gpkg_
 
         try:
             combined_gdf.to_file(output_gpkg_path, driver="GPKG", layer="River")
-            print(f"Combined River tables saved to {output_gpkg_path}")
+            logging.info(f"Combined River tables saved to {output_gpkg_path}")
         except Exception as e:
-            print(f"Error saving combined River table: {e}")
+            logging.info(f"Error saving combined River table: {e}")
     else:
-        print("No River tables were combined.")
+        logging.info("No River tables were combined.")
 
 
 if __name__ == "__main__":

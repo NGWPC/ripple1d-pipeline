@@ -1,3 +1,4 @@
+import logging
 import os
 import urllib.request
 
@@ -31,8 +32,8 @@ def get_models_from_stac(stac_endpoint, stac_collection):
         if gpkg_key:
             models_data[item.id] = {"gpkg": gpkg_key, "model_name": item.properties["model_name"]}
 
-    print(f"Total {i} models in this collection")
-    print(f"Total {len(models_data)} filtered models.")
+    logging.info(f"Total {i} models in this collection")
+    logging.info(f"Total {len(models_data)} filtered models.")
     return models_data
 
 
@@ -60,9 +61,9 @@ def download_models_data(models_data, source_models_dir):
             bucket_name, key = gpkg_url.replace("s3://", "").split("/", 1)
             s3_client.download_file(bucket_name, key, local_gpkg_path)
 
-            print(f"Successfully downloaded files for {id}")
+            logging.info(f"Successfully downloaded files for {id}")
         except Exception as e:
-            print(f"Failed to download files for {id}: {e}")
+            logging.info(f"Failed to download files for {id}: {e}")
 
 
 if __name__ == "__main__":

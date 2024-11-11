@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import sqlite3
@@ -122,10 +123,12 @@ def poll_and_update_job_status(
                         )
 
                     else:
-                        print(f"Failed to poll job {job_id} for reach {entity}. Status code: {response.status_code}")
+                        logging.info(
+                            f"Failed to poll job {job_id} for reach {entity}. Status code: {response.status_code}"
+                        )
 
                 except requests.RequestException as e:
-                    print(f"Error polling job {job_id} for reach {entity}: {e}")
+                    logging.info(f"Error polling job {job_id} for reach {entity}: {e}")
 
         conn.commit()
     finally:
@@ -207,7 +210,7 @@ def write_failed_jobs_df_to_excel(df: pd.DataFrame, process_name: str, file_path
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name=process_name, index=False)
 
-    print(f"Data written to {file_path} in sheet {process_name}.")
+    logging.info(f"Data written to {file_path} in sheet {process_name}.")
 
 
 def copy_qc_map(root_dir: str):
@@ -216,4 +219,4 @@ def copy_qc_map(root_dir: str):
     os.makedirs(os.path.join(root_dir, "qc"))
     shutil.copyfile(QC_TEMPLATE_QGIS_FILE, dest_location)
 
-    print("QC map created at ", dest_location)
+    logging.info("QC map created at ", dest_location)

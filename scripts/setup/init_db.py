@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from typing import Dict
 
@@ -38,7 +39,7 @@ def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpk
     # Save the filtered NWM flowlines to a new GeoPackage (GPKG) file
     filtered_nwm_gdf.to_file(output_gpkg_path, layer="reaches", driver="GPKG")
 
-    print(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
+    logging.info(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
 
 
 def init_db(db_path):
@@ -175,9 +176,9 @@ def init_db(db_path):
         # )
 
         connection.commit()
-        print(f"Database initialized successfully at {db_path}")
+        logging.info(f"Database initialized successfully at {db_path}")
     except Exception as e:
-        print(e)
+        logging.info(e)
         connection.rollback()
     finally:
         connection.close()
@@ -197,6 +198,6 @@ def insert_models(models_data: Dict, collection_id, db_path: str) -> None:
             rows,
         )
         conn.commit()
-        print(f"Models record inserted at {db_path}")
+        logging.info(f"Models record inserted at {db_path}")
     finally:
         conn.close()

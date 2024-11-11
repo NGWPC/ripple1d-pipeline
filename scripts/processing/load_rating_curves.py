@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -60,7 +61,7 @@ def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
                 process_reach_db(submodel, sub_db_path, conn)
                 os.remove(sub_db_path)
 
-        print("All rating curves loaded into central database")
+        logging.info("All rating curves loaded into central database")
     finally:
         conn.close()
 

@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 import time
 from typing import List, Tuple
@@ -98,12 +99,12 @@ def check_job_successful(job_id: str, poll_wait: int = DEFAULT_POLL_WAIT, timeou
         if status == "successful":
             return True
         elif status == "failed":
-            print(f"{RIPPLE1D_API_URL}/jobs/{job_id}?tb=true", "job failed")
+            logging.error(f"{RIPPLE1D_API_URL}/jobs/{job_id}?tb=true job failed")
             return False
         elif status == "running":
             elapsed_time = time.time() - datetime_to_epoch_utc(get_job_update_time(job_id))
             if elapsed_time / 60 > timeout_minutes:
-                print(f"{RIPPLE1D_API_URL}/jobs/{job_id}", "client timeout")
+                logging.warning(f"{RIPPLE1D_API_URL}/jobs/{job_id} client timeout")
                 return False
         time.sleep(poll_wait)
 
@@ -127,12 +128,12 @@ def wait_for_jobs(
                 break
             elif status == "failed":
                 failed.append((reach_job_ids[i][0], reach_job_ids[i][1], "failed"))
-                print(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true", "job failed")
+                logging.error(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true job failed")
                 break
             elif status == "running":
                 elapsed_time = time.time() - datetime_to_epoch_utc(get_job_update_time(reach_job_ids[i][1]))
                 if elapsed_time / 60 > timeout_minutes:
-                    print(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")
+                    logging.warning(f"{RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]} client timeout")
                     unknown.append((reach_job_ids[i][0], reach_job_ids[i][1], "unknown"))
                     break
             time.sleep(poll_wait)

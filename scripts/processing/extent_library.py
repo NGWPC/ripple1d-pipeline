@@ -1,3 +1,4 @@
+import logging
 import multiprocessing
 import os
 import subprocess
@@ -93,9 +94,9 @@ def worker(args):
             with tempfile.TemporaryDirectory() as tmp_dir:
                 process_tif(tif_path, gpkg_path, tmp_dir, dest_dir)
         else:
-            print(f"No corresponding geopackage found for {tif_path}", file=sys.stderr)
+            logging.info(f"No corresponding geopackage found for {tif_path}", file=sys.stderr)
     except Exception as e:
-        print(f"Error processing {tif_path}: {str(e)}", file=sys.stderr)
+        logging.info(f"Error processing {tif_path}: {str(e)}", file=sys.stderr)
 
 
 def get_all_tif_paths(src_dir):

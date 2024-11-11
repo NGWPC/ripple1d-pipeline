@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from typing import List, Tuple
 
@@ -23,7 +24,7 @@ def get_reaches_by_models(db_path: str, model_ids: List[str]) -> List[Tuple[int,
         data = cursor.fetchall()
     finally:
         conn.close()
-    print(len(data), "reaches returned")
+    logging.info(f"{len(data)} reaches returned")
     return data
 
 
