@@ -6,62 +6,56 @@ import pathlib
 import subprocess
 import time
 from datetime import datetime
+
 from ripple_pipeline import *
 from scripts.setup import *
 
 
-def batch_pipeline(
-    collection_list, poll_and_update: bool = False, kwse: bool = True, qc: bool = True
-):
+def batch_pipeline(collection_list, poll_and_update: bool = False, kwse: bool = True, qc: bool = True):
     """
     Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, and qc steps for each collection.
 
     Inputs:
-        collection_list: A filepath to line seperated list of collections.
+        collection_list: A filepath to line separated list of collections.
             OR a string in quotes with space delimeted collections.
-        poll_and_update: Poll ripple1D API and update database after conflate model and extract submodel steps
-        kwse: Run kwse or not.
-        qc: Run qc steps or not.
     """
 
     collections = read_input(collection_list)
 
     for collection in collections:
+        logging.info(f"Starting processing for collection: {collection} ...")
         # Construct the command to execute ripple_pipeline.py
         cmd = [
             "python",
             "ripple_pipeline.py",
-            "--collection", collection,
-            "--poll_and_update" if poll_and_update == True else "",
-            "--kwse" if kwse == False  else "",
-            "--qc" if qc == False else "",
+            "--collection",
+            collection,
         ]
 
         # Set up log files
         log_dir = os.path.join(COLLECTIONS_ROOT_DIR, collection)
         os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f"{collection}_log")
+        log_file = os.path.join(log_dir, f"{collection}.log")
 
-        # Execute the command and redirect output
-        try:
-            result = subprocess.run(
-                cmd,
-                stdout=open(log_file + ".out", "w"),
-                stderr=open(log_file + ".err", "w")
-            )
+        with open(log_file, "a") as f:
+            f.write("************************************************************************")
+            f.write(f"\n--- Starting processing for collection: {collection} ---\n")
 
-            if result.returncode != 0:
-                raise subprocess.CalledProcessError(result.returncode, cmd)
+            try:
+                # Using shell=True to call this subprocess within the venv context
+                # stdout is only being flushed at the end, not sure why
+                result = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
 
-            print(f"Collection {collection} processed successfully.")
-        
-        except subprocess.CalledProcessError as e:
-            print(f"Error processing collection {collection}: {e}")
-        except Exception as e:
-            print(f"Unexpected error occurred: {e}")
-            print(f"Executing run_pipeline on collection:  {collection}")
+                if result.returncode != 0:
+                    raise subprocess.CalledProcessError(result.returncode, cmd)
 
-        time.sleep(5)
+                logging.info(f"Collection {collection} processed successfully.")
+
+            except subprocess.CalledProcessError as e:
+                logging.info(f"Error processing collection {collection}: {e}")
+            except Exception as e:
+                logging.info(f"Unexpected error occurred: {e}")
+                logging.info(f"Executing run_pipeline on collection: {collection}")
 
 
 def read_input(collection_list):
@@ -70,14 +64,11 @@ def read_input(collection_list):
         source_file_extension = pathlib.Path(collection_list).suffix
         acceptable_file_formats = [".lst", ".txt", ".csv"]
         if source_file_extension.lower() not in acceptable_file_formats:
-            raise Exception(
-                "Incoming file must be in .lst, .txt, or .csv format if submitting a file name and path."
-            )
+            raise Exception("Incoming file must be in .lst, .txt, or .csv format if submitting a file name and path.")
 
         with open(collection_list, "r") as collections_file:
             file_lines = collections_file.readlines()
-            f_list = [strip_newline(fl) for fl in file_lines]
-            collections.append(f_list)
+            collections = [strip_newline(fl) for fl in file_lines]
 
     elif isinstance(collection_list, str):
         collection_list = collection_list.split()
@@ -106,36 +97,13 @@ if __name__ == "__main__":
         batch_ripple_pipeline.py -l ~/collections.lst -p -nokwse -skipqc
     """
 
-    parser = argparse.ArgumentParser(
-        description="Run ripple pipeline on each collection in the collection list"
-    )
+    parser = argparse.ArgumentParser(description="Run ripple pipeline on each collection in the collection list")
 
     parser.add_argument(
         "-l",
         "--collection_list",
-        help=f"A filepath (.txt or .lst) containaing a list of valid collections of HEC-RAS models given in a. ",
+        help=f"A filepath (.txt or .lst) containaing a new line separated list of valid collections or a space separated string of collections",
         required=True,
-    )
-    parser.add_argument(
-        "-p",
-        "--poll_and_update",
-        help=f"OPTIONAL: provide the -p flag to Utilize the poll_and_update_job_status and get_reach_status_by_process functions to update the database. ",
-        required=False,
-        action="store_true",
-    )
-    parser.add_argument(
-        "-nokwse",
-        "--kwse",
-        help=f"OPTIONAL: provide the -nokwse argument to skip the KWSE step, and use create_fim_lib API to Ripple1D instead. ",
-        required=False,
-        action="store_false",
-    )
-    parser.add_argument(
-        "-skipqc",
-        "--qc",
-        help=f"OPTIONAL: provide the -skipqc flag to skip the automated quality control steps. ",
-        required=False,
-        action="store_false",
     )
 
     args = vars(parser.parse_args())
