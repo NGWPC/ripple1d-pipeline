@@ -108,7 +108,7 @@ def get_all_tif_paths(src_dir):
     return tif_paths
 
 
-def create_extent_lib(library_dir, library_extent_dir, submodels_dir):
+def create_extent_lib(library_dir, library_extent_dir, submodels_dir, print_progress=False):
     setup_gdal_environment()
     create_mirrored_structure(library_dir, library_extent_dir)
 
@@ -127,9 +127,10 @@ def create_extent_lib(library_dir, library_extent_dir, submodels_dir):
             worker, [(path, library_dir, library_extent_dir, submodels_dir) for path in tif_paths]
         ):
             processed_files += 1
-            update_progress()
-
-    sys.stdout.write("\n")
+            if print_progress:
+                update_progress()
+    if print_progress:
+        sys.stdout.write("\n")
 
 
 if __name__ == "__main__":
