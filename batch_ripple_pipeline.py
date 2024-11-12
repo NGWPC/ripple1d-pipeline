@@ -11,7 +11,7 @@ from ripple_pipeline import *
 from scripts.setup import *
 
 
-def batch_pipeline(collection_list, poll_and_update: bool = False, kwse: bool = True, qc: bool = True):
+def batch_pipeline(collection_list):
     """
     Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, and qc steps for each collection.
 

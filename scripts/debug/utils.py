@@ -219,4 +219,4 @@ def copy_qc_map(root_dir: str):
     os.makedirs(os.path.join(root_dir, "qc"))
     shutil.copyfile(QC_TEMPLATE_QGIS_FILE, dest_location)
 
-    logging.info("QC map created at ", dest_location)
+    logging.info(f"QC map created at {dest_location}")
