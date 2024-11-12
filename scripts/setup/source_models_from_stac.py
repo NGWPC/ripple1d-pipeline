@@ -5,7 +5,7 @@ import urllib.request
 import boto3
 import pystac_client
 
-# from ..config import AWS_PROFILE
+from ..config import AWS_PROFILE
 
 
 def get_models_from_stac(stac_endpoint, stac_collection):
@@ -73,11 +73,10 @@ def download_models_data(models_data, source_models_dir):
 if __name__ == "__main__":
     # Parameters
     stac_endpoint = "https://stac2.dewberryanalytics.com"  # STAC API endpoint
-    stac_collection = "mip_2D_only"  # Collection name
+    stac_collection = "ripple_test_data"  # Collection name
     source_models_dir = "data/source_models"  # Local folder to store downloaded models
     # Step 1: Retrieve model data
     models_data = get_models_from_stac(stac_endpoint, stac_collection)
-    print(len(models_data))
 
     # Step 2: Download model files
-    # download_models_data(models_data, source_models_dir)
+    download_models_data(models_data, source_models_dir)
