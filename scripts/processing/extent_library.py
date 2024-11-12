@@ -94,9 +94,9 @@ def worker(args):
             with tempfile.TemporaryDirectory() as tmp_dir:
                 process_tif(tif_path, gpkg_path, tmp_dir, dest_dir)
         else:
-            logging.info(f"No corresponding geopackage found for {tif_path}", file=sys.stderr)
+            logging.error(f"No corresponding geopackage found for {tif_path}")
     except Exception as e:
-        logging.info(f"Error processing {tif_path}: {str(e)}", file=sys.stderr)
+        logging.error(f"Error processing {tif_path}: {str(e)}")
 
 
 def get_all_tif_paths(src_dir):
