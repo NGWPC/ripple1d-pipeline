@@ -17,7 +17,7 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
             """
             SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
             FROM rating_curves
-            WHERE plan_suffix IN ('nd', 'kwse') AND WHERE map_exist IS TRUE
+            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS TRUE
             """
         )
         rows = reach_cursor.fetchall()
@@ -25,7 +25,7 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         cursor = library_conn.cursor()
         cursor.executemany(
             """
-            INSERT OR IGNORE INTO rating_curves_ (
+            INSERT OR IGNORE INTO rating_curves (
                 reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -37,7 +37,7 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
             """
             SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
             FROM rating_curves
-            WHERE plan_suffix IN ('nd', 'kwse') AND WHERE map_exist IS FALSE
+            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS FALSE
             """
         )
         rows = reach_cursor.fetchall()

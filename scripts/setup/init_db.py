@@ -68,8 +68,9 @@ def init_db(db_path):
         cursor.execute(
             f"""
             INSERT INTO metadata
-            VALUES ({RIPPLE1D_VERSION}, {US_DEPTH_INCREMENT}, {DS_DEPTH_INCREMENT})
-            """
+            VALUES (?, ?, ?);
+            """,
+            (RIPPLE1D_VERSION, US_DEPTH_INCREMENT, DS_DEPTH_INCREMENT),
         )
 
         # Create models table to store model-level information
