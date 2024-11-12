@@ -106,7 +106,23 @@ def init_db(db_path):
                 ds_depth REAL,
                 ds_wse REAL,
                 boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
-                map_exist BOOL CHECK(map_exist IN (0,1)) NOT NULL,
+                FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
+                UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
+            );
+        """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS no_map_rating_curves (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                reach_id INTEGER,
+                us_flow INTEGER,
+                us_depth REAL,
+                us_wse REAL,
+                ds_depth REAL,
+                ds_wse REAL,
+                boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
                 FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
                 UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
             );
