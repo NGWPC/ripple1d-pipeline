@@ -40,6 +40,7 @@ def batch_pipeline(collection_list):
         with open(log_file, "a") as f:
             f.write("************************************************************************")
             f.write(f"\n--- Starting processing for collection: {collection} ---\n")
+            f.flush()
 
             try:
                 # Using shell=True to call this subprocess within the venv context
