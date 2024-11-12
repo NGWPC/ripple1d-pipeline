@@ -4,7 +4,12 @@ from typing import Dict
 
 import geopandas as gpd
 
-from ..config import DB_CONN_TIMEOUT
+from ..config import (
+    DB_CONN_TIMEOUT,
+    DS_DEPTH_INCREMENT,
+    RIPPLE1D_VERSION,
+    US_DEPTH_INCREMENT,
+)
 
 
 def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpkg_path: str) -> None:
@@ -48,6 +53,24 @@ def init_db(db_path):
     try:
         cursor = connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL;")
+
+        # Create models table to store model-level information
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS metadata (
+                ripple1d_version TEXT,
+                us_depth_increment REAL,
+                ds_depth_increment REAL
+            );
+        """
+        )
+
+        cursor.execute(
+            f"""
+            INSERT INTO metadata
+            VALUES ({RIPPLE1D_VERSION}, {US_DEPTH_INCREMENT}, {DS_DEPTH_INCREMENT})
+            """
+        )
 
         # Create models table to store model-level information
         cursor.execute(

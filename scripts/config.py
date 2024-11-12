@@ -7,6 +7,7 @@ AWS_PROFILE = ""
 # URLs
 RIPPLE1D_API_URL = ""
 STAC_URL = ""
+RIPPLE1D_VERSION = "0.7.0"
 
 # Specs
 COLLECTIONS_ROOT_DIR = r"Z:\collections"

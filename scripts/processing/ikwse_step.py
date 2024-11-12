@@ -11,7 +11,12 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from ..config import DB_CONN_TIMEOUT, OPTIMUM_PARALLEL_PROCESS_COUNT, RIPPLE1D_API_URL
+from ..config import (
+    DB_CONN_TIMEOUT,
+    DS_DEPTH_INCREMENT,
+    OPTIMUM_PARALLEL_PROCESS_COUNT,
+    RIPPLE1D_API_URL,
+)
 from .job_utils import check_job_successful, update_processing_table
 from .load_rating_curves import load_rating_curve
 
@@ -105,7 +110,7 @@ def process_reach(
                         "plan_suffix": "ikwse",
                         "min_elevation": min_elevation,
                         "max_elevation": max_elevation,
-                        "depth_increment": 1,
+                        "depth_increment": DS_DEPTH_INCREMENT,
                         "ras_version": "631",
                         "write_depth_grids": False,
                     }
