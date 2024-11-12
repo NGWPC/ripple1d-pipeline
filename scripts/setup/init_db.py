@@ -137,7 +137,7 @@ def init_db(db_path):
 
         cursor.execute(
             """
-            CREATE TABLE IF NOT EXISTS no_map_rating_curves (
+            CREATE TABLE IF NOT EXISTS rating_curves_no_map (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 reach_id INTEGER,
                 us_flow INTEGER,
