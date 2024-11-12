@@ -16,7 +16,8 @@ NWM_FLOWLINES_PATH = r"Z:\reference_data\nwm_flowlines.parquet"
 OPTIMUM_PARALLEL_PROCESS_COUNT = 5
 # Ripple settings
 RAS_VERSION = "631"
-DEPTH_INCREMENT = 1
+US_DEPTH_INCREMENT = 0.5
+DS_DEPTH_INCREMENT = 1
 RESOLUTION = 3.0
 RESOLUTION_UNITS = "Meters"
 TERRAIN_SOURCE_URL = r"Z:\reference_data\seamless_3dep_dem_3m_5070.vrt"
@@ -59,7 +60,7 @@ PAYLOAD_TEMPLATES = {
         "plan_suffix": "kwse",
         "min_elevation": -9999,
         "max_elevation": -9999,
-        "depth_increment": 1,
+        "depth_increment": DS_DEPTH_INCREMENT,
         "ras_version": "631",
         "write_depth_grids": True,
     },
