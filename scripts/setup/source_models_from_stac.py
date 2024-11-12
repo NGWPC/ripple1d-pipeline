@@ -5,13 +5,14 @@ import urllib.request
 import boto3
 import pystac_client
 
-from ..config import AWS_PROFILE
+# from ..config import AWS_PROFILE
 
 
 def get_models_from_stac(stac_endpoint, stac_collection):
     # to do add filter
     """
     Retrieves GeoPackage file and conflation file paths for models in an STAC collection.
+    Ignores 2d models.
     Parameters:
     - stac_endpoint (str): The STAC API endpoint.
     - stac_collection (str): The name of the STAC collection.
@@ -24,6 +25,9 @@ def get_models_from_stac(stac_endpoint, stac_collection):
     models_data = {}
     for item in collection.get_items():
         i += 1
+        if item.properties["has_2d"]:
+            logging.info(f"{item.id} skipping because it has 2d elements")
+            continue
         gpkg_key = ""
         for _, asset in item.assets.items():
             if "ras-geometry-gpkg" in asset.roles:
@@ -69,10 +73,11 @@ def download_models_data(models_data, source_models_dir):
 if __name__ == "__main__":
     # Parameters
     stac_endpoint = "https://stac2.dewberryanalytics.com"  # STAC API endpoint
-    stac_collection = "ripple_test_data"  # Collection name
+    stac_collection = "mip_2D_only"  # Collection name
     source_models_dir = "data/source_models"  # Local folder to store downloaded models
     # Step 1: Retrieve model data
     models_data = get_models_from_stac(stac_endpoint, stac_collection)
+    print(len(models_data))
 
     # Step 2: Download model files
-    download_models_data(models_data, source_models_dir)
+    # download_models_data(models_data, source_models_dir)
