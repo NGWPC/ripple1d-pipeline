@@ -97,7 +97,7 @@ def run_flows2fim(
             ]
             subprocess.run(cmd_fim, shell=True, check=True)
 
-            logging.info(basename, "have been processed.")
+            logging.info(f"{basename} have been processed.")
 
 
 if __name__ == "__main__":
