@@ -161,7 +161,7 @@ def process(collection):
             source_models_dir,
             submodels_dir,
             library_dir,
-            timeout_minutes=15,
+            timeout_minutes=30,
         )
     )
     logging.info("<<<<< Finished create_fim_lib Step")
