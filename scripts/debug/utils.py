@@ -216,7 +216,7 @@ def write_failed_jobs_df_to_excel(df: pd.DataFrame, process_name: str, file_path
 def copy_qc_map(root_dir: str):
     """Copy QGIS Template file inside a 'qc' folder in root_dir"""
     dest_location = os.path.join(root_dir, "qc", "qc_map.qgs")
-    os.makedirs(os.path.join(root_dir, "qc"))
+    os.makedirs(os.path.join(root_dir, "qc"), exist_ok=True)
     shutil.copyfile(QC_TEMPLATE_QGIS_FILE, dest_location)
 
     logging.info(f"QC map created at {dest_location}")
