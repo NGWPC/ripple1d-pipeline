@@ -166,14 +166,20 @@ def process(collection):
     )
     logging.info("<<<<< Finished create_fim_lib Step")
 
-    logging.info("Starting create extent library Step >>>>>>")
-    create_extent_lib(library_dir, extent_library_dir, submodels_dir)
-    logging.info("<<<<< Finished create extent library Step")
+    try:
+        logging.info("Starting create extent library Step >>>>>>")
+        create_extent_lib(library_dir, extent_library_dir, submodels_dir)
+        logging.info("<<<<< Finished create extent library Step")
+    except:
+        logging.error("Error - create extent library step failed")
 
-    logging.info("Starting create f2f start file Step >>>>>>")
-    outlet_reaches = [data[0] for data in reach_data if data[1] is None]
-    create_f2f_start_file(outlet_reaches, f2f_start_file)
-    logging.info("<<<<< Finished create f2f start file Step")
+    try:
+        logging.info("Starting create f2f start file Step >>>>>>")
+        outlet_reaches = [data[0] for data in reach_data if data[1] is None]
+        create_f2f_start_file(outlet_reaches, f2f_start_file)
+        logging.info("<<<<< Finished create f2f start file Step")
+    except:
+        logging.error("Error - create f2f start file step failed")
 
 
 def run_qc(collection):
@@ -231,7 +237,11 @@ def run_pipeline(collection: str):
     process(
         collection,
     )
-    run_qc(collection)
+    try:
+        run_qc(collection)
+    except:
+        logging.error("Error - qc workflow failed")
+    # to do: Move to S3
 
 
 if __name__ == "__main__":
