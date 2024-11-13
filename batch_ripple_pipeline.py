@@ -45,19 +45,20 @@ def batch_pipeline(collection_list):
             try:
                 # Using shell=True to call this subprocess within the venv context
                 # stdout is only being flushed at the end, not sure why
-                result = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
+                process = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
 
-                if result.returncode != 0:
-                    raise subprocess.CalledProcessError(result.returncode, cmd)
+                if process.returncode != 0:
+                    raise subprocess.CalledProcessError(process.returncode, cmd)
 
                 logging.info(f"Collection {collection} processed successfully.")
 
             except subprocess.CalledProcessError as e:
-                logging.info(f"Error processing collection {collection}: {e}")
+                logging.error(f"Error processing collection {collection}: {e} ")
+                logging.info(f"See {log_file} for more details.")
             except Exception as e:
-                logging.info(f"Unexpected error occurred: {e}")
-                logging.info(f"Executing run_pipeline on collection: {collection}")
-
+                logging.error(f"Unexpected error occurred: {e}")
+                logging.error(f"Executing run_pipeline on collection: {collection}")
+                logging.info(f"See {log_file} for more details.")
 
 def read_input(collection_list):
     collections = []
@@ -94,8 +95,8 @@ def strip_newline(collection):
 if __name__ == "__main__":
     """
     Sample Usage:
-        batch_ripple_pipeline.py -l "collection1 collection2 collection3"
-        batch_ripple_pipeline.py -l ~/collections.lst -p -nokwse -skipqc
+        python batch_ripple_pipeline.py -l "collection1 collection2 collection3"
+        python batch_ripple_pipeline.py -l ~/collections.lst
     """
 
     parser = argparse.ArgumentParser(description="Run ripple pipeline on each collection in the collection list")

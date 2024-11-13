@@ -237,7 +237,7 @@ def run_pipeline(collection: str):
 if __name__ == "__main__":
     """
     Sample Usage:
-        ripple_pipeline.py -c ble_12100302_Medina
+        python ripple_pipeline.py -c ble_12100302_Medina
     """
 
     parser = argparse.ArgumentParser(description="Run ripple pipeline steps on one collection")
