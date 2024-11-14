@@ -11,7 +11,12 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from ..config import DB_CONN_TIMEOUT, OPTIMUM_PARALLEL_PROCESS_COUNT, RIPPLE1D_API_URL
+from ..config import (
+    DB_CONN_TIMEOUT,
+    DS_DEPTH_INCREMENT,
+    OPTIMUM_PARALLEL_PROCESS_COUNT,
+    RIPPLE1D_API_URL,
+)
 from .job_utils import check_job_successful, update_processing_table
 from .load_rating_curves import load_rating_curve
 
@@ -40,7 +45,7 @@ def get_min_max_elevation(
     """
     if use_central_db:
         if not os.path.exists(central_db_path):
-            print("central database not found")
+            logging.info("central database not found")
             return None, None
         with db_lock:
             conn = sqlite3.connect(central_db_path, timeout=DB_CONN_TIMEOUT)
@@ -56,7 +61,7 @@ def get_min_max_elevation(
     else:
         ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
         if not os.path.exists(ds_submodel_db_path):
-            print(f"Submodel database not found for reach_id: {downstream_id}")
+            logging.info(f"Submodel database not found for reach_id: {downstream_id}")
             return None, None
 
         conn = sqlite3.connect(ds_submodel_db_path)
@@ -105,19 +110,19 @@ def process_reach(
                         "plan_suffix": "ikwse",
                         "min_elevation": min_elevation,
                         "max_elevation": max_elevation,
-                        "depth_increment": 1,
+                        "depth_increment": DS_DEPTH_INCREMENT,
                         "ras_version": "631",
                         "write_depth_grids": False,
                     }
                 )
-                print(f"<<<<<< payload for reach {reach_id}\n{payload}")
+                logging.info(f"<<<<<< payload for reach {reach_id}\n{payload}")
 
                 # to do: launch job with retry
                 response = requests.post(url, headers=headers, data=payload)
                 response_json = response.json()
                 job_id = response_json.get("jobID")
                 if not job_id or not check_job_successful(job_id, timeout_minutes=timeout_minutes):
-                    print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
+                    logging.info(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
                     with central_db_lock:
                         update_processing_table([(reach_id, job_id)], "run_iknown_wse", "failed", central_db_path)
                 else:
@@ -125,7 +130,7 @@ def process_reach(
                     with central_db_lock:
                         update_processing_table([(reach_id, job_id)], "run_iknown_wse", "successful", central_db_path)
             else:
-                print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
+                logging.info(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
 
         rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
         rc_db_payload = json.dumps(
@@ -157,7 +162,7 @@ def process_reach(
             task_queue.put((upstream_reach, reach_id))
 
     except Exception as e:
-        print(f"Error processing reach {reach_id}: {str(e)}")
+        logging.info(f"Error processing reach {reach_id}: {str(e)}")
         traceback.print_exc()
 
 
@@ -181,7 +186,7 @@ def execute_ikwse_for_network(
         while not task_queue.empty() or futures:
             while not task_queue.empty():
                 reach_id, downstream_id = task_queue.get()
-                print(f"Submitting task for reach {reach_id} with downstream {downstream_id}")
+                logging.info(f"Submitting task for reach {reach_id} with downstream {downstream_id}")
                 future = executor.submit(
                     process_reach,
                     reach_id,

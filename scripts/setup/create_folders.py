@@ -1,3 +1,4 @@
+import logging
 import os
 
 
@@ -13,7 +14,7 @@ def create_folders(root_dir) -> tuple:
     os.makedirs(submodels_dir, exist_ok=True)
     os.makedirs(library_dir, exist_ok=True)
 
-    print(f"Folders created successfully inside {root_dir}")
+    logging.info(f"Folders created successfully inside {root_dir}")
     return source_models_dir, submodels_dir, library_dir
 
 

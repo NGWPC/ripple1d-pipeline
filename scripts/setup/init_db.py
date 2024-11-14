@@ -1,9 +1,15 @@
+import logging
 import sqlite3
 from typing import Dict
 
 import geopandas as gpd
 
-from ..config import DB_CONN_TIMEOUT
+from ..config import (
+    DB_CONN_TIMEOUT,
+    DS_DEPTH_INCREMENT,
+    RIPPLE1D_VERSION,
+    US_DEPTH_INCREMENT,
+)
 
 
 def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpkg_path: str) -> None:
@@ -38,7 +44,7 @@ def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpk
     # Save the filtered NWM flowlines to a new GeoPackage (GPKG) file
     filtered_nwm_gdf.to_file(output_gpkg_path, layer="reaches", driver="GPKG")
 
-    print(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
+    logging.info(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
 
 
 def init_db(db_path):
@@ -47,6 +53,25 @@ def init_db(db_path):
     try:
         cursor = connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL;")
+
+        # Create models table to store model-level information
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS metadata (
+                ripple1d_version TEXT,
+                us_depth_increment REAL,
+                ds_depth_increment REAL
+            );
+        """
+        )
+
+        cursor.execute(
+            f"""
+            INSERT INTO metadata
+            VALUES (?, ?, ?);
+            """,
+            (RIPPLE1D_VERSION, US_DEPTH_INCREMENT, DS_DEPTH_INCREMENT),
+        )
 
         # Create models table to store model-level information
         cursor.execute(
@@ -105,7 +130,23 @@ def init_db(db_path):
                 ds_depth REAL,
                 ds_wse REAL,
                 boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
-                map_exist BOOL CHECK(map_exist IN (0,1)) NOT NULL,
+                FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
+                UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
+            );
+        """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rating_curves_no_map (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                reach_id INTEGER,
+                us_flow INTEGER,
+                us_depth REAL,
+                us_wse REAL,
+                ds_depth REAL,
+                ds_wse REAL,
+                boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
                 FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
                 UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
             );
@@ -175,9 +216,9 @@ def init_db(db_path):
         # )
 
         connection.commit()
-        print(f"Database initialized successfully at {db_path}")
+        logging.info(f"Database initialized successfully at {db_path}")
     except Exception as e:
-        print(e)
+        logging.info(e)
         connection.rollback()
     finally:
         connection.close()
@@ -197,6 +238,6 @@ def insert_models(models_data: Dict, collection_id, db_path: str) -> None:
             rows,
         )
         conn.commit()
-        print(f"Models record inserted at {db_path}")
+        logging.info(f"Models record inserted at {db_path}")
     finally:
         conn.close()

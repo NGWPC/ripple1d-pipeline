@@ -1,3 +1,4 @@
+import logging
 import sqlite3
 from typing import List, Tuple
 
@@ -94,9 +95,9 @@ def update_network(db_path: str) -> None:
     if updates:
         # Execute batch updates
         update_to_id_batch(updates, db_path)
-        print(f"Updated {len(updates)} reaches successfully.")
+        logging.info(f"Updated {len(updates)} reaches successfully.")
     else:
-        print("No updates to process.")
+        logging.info("No updates to process.")
 
 
 if __name__ == "__main__":

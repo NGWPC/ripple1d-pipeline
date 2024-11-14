@@ -1,5 +1,6 @@
 import concurrent.futures
 import json
+import logging
 import random
 import sqlite3
 from time import sleep
@@ -55,11 +56,11 @@ def execute_request(nwm_reach_id: int, submodels_dir: str, downstream_id: int) -
                     job_id = response.json().get("jobID")
                     return nwm_reach_id, job_id, "accepted"
                 elif response.status_code == 500:
-                    print(f"Retrying. {nwm_reach_id}")
+                    logging.info(f"Retrying. {nwm_reach_id}")
                 else:
                     break
                 sleep(i * API_LAUNCH_JOBS_RETRY_WAIT)
-            print(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
+            logging.info(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
 
     return nwm_reach_id, "", "not_accepted"
 
@@ -87,17 +88,17 @@ def execute_kwse_step(
     not_accepted = [job for job in reach_job_id_statuses if job[2] == "not_accepted"]
 
     update_processing_table(accepted, "run_known_wse", "accepted", db_path)
-    print("Jobs submission complete. Waiting for jobs to finish...")
+    logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
     succeeded, failed, unknown = wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
     update_processing_table(succeeded, "run_known_wse", "successful", db_path)
     update_processing_table(failed, "run_known_wse", "failed", db_path)
     update_processing_table(unknown, "run_known_wse", "unknown", db_path)
 
-    print(f"Successful: {len(succeeded)}")
-    print(f"Failed: {len(failed)}")
-    print(f"Not Accepted: {len(not_accepted)}")
-    print(f"Unknown status: {len(unknown)}")
+    logging.info(f"Successful: {len(succeeded)}")
+    logging.info(f"Failed: {len(failed)}")
+    logging.info(f"Not Accepted: {len(not_accepted)}")
+    logging.info(f"Unknown status: {len(unknown)}")
 
     return succeeded, failed, not_accepted, unknown
 

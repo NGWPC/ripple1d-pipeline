@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -14,9 +15,9 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         reach_cursor = reach_conn.cursor()
         reach_cursor.execute(
             """
-            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, map_exist
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
             FROM rating_curves
-            WHERE plan_suffix IN ('nd', 'kwse')
+            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS TRUE
             """
         )
         rows = reach_cursor.fetchall()
@@ -25,9 +26,28 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         cursor.executemany(
             """
             INSERT OR IGNORE INTO rating_curves (
-                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, map_exist
+                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            rows,
+        )
+
+        reach_cursor.execute(
+            """
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            FROM rating_curves
+            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS FALSE
+            """
+        )
+        rows = reach_cursor.fetchall()
+
+        cursor.executemany(
+            """
+            INSERT OR IGNORE INTO rating_curves_no_map (
+                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )
@@ -60,7 +80,7 @@ def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
                 process_reach_db(submodel, sub_db_path, conn)
                 os.remove(sub_db_path)
 
-        print("All rating curves loaded into central database")
+        logging.info("All rating curves loaded into central database")
     finally:
         conn.close()
 
