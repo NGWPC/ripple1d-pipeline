@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 
 from ripple_pipeline import *
+from scripts.config import COLLECTIONS_ROOT_DIR, S3_UPLOAD_PREFIX
 from scripts.setup import *
 
 
@@ -52,6 +53,18 @@ def batch_pipeline(collection_list):
 
                 logging.info(f"Collection {collection} processed successfully.")
 
+                s3_mv_command = [
+                    "aws",
+                    "s3",
+                    "mv",
+                    f"{COLLECTIONS_ROOT_DIR}/{collection}",
+                    f"{S3_UPLOAD_PREFIX}/{collection}",
+                    "--recursive",
+                ]
+
+                subprocess.Popen(s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                logging.info(f"Submitted S3 mv command on collection: {collection} ...")
+
             except subprocess.CalledProcessError as e:
                 logging.error(f"Error processing collection {collection}: {e} ")
                 logging.info(f"See {log_file} for more details.")
@@ -59,6 +72,7 @@ def batch_pipeline(collection_list):
                 logging.error(f"Unexpected error occurred: {e}")
                 logging.error(f"Executing run_pipeline on collection: {collection}")
                 logging.info(f"See {log_file} for more details.")
+
 
 def read_input(collection_list):
     collections = []

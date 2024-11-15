@@ -12,6 +12,7 @@ RIPPLE1D_VERSION = "0.7.0"
 # Specs
 COLLECTIONS_ROOT_DIR = r"Z:\collections"
 NWM_FLOWLINES_PATH = r"Z:\reference_data\nwm_flowlines.parquet"
+S3_UPLOAD_PREFIX = ""
 
 OPTIMUM_PARALLEL_PROCESS_COUNT = 5
 # Ripple settings

@@ -62,7 +62,10 @@ def load_rating_curve(db_path, reach_id, sub_db_path, timeout=DB_CONN_TIMEOUT):
     try:
         if os.path.exists(sub_db_path):
             process_reach_db(reach_id, sub_db_path, conn)
-            os.remove(sub_db_path)
+            try:
+                os.remove(sub_db_path)
+            except Exception as e:
+                logging.error(f"Could not remove {sub_db_path} Error: {e}")
     finally:
         conn.close()
 
@@ -78,7 +81,10 @@ def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
             sub_db_path = os.path.join(submodels_dir, submodel, f"{submodel}.db")
             if os.path.exists(sub_db_path):
                 process_reach_db(submodel, sub_db_path, conn)
-                os.remove(sub_db_path)
+                try:
+                    os.remove(sub_db_path)
+                except Exception as e:
+                    logging.error(f"Could not remove {sub_db_path} Error: {e}")
 
         logging.info("All rating curves loaded into central database")
     finally:
