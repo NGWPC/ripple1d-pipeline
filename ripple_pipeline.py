@@ -195,6 +195,7 @@ def run_qc(collection):
     logging.info("Creating Excel Error Report >>>>>>>>")
     dfs = []
     for process_name in ["conflate_model"]:
+        poll_and_update_job_status(db_path, process_name, "models")  # this captures final status of unknown status jobs
         _, failed_reaches, _ = get_reach_status_by_process(db_path, process_name, "models")
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
@@ -212,6 +213,7 @@ def run_qc(collection):
         "create_rating_curves_db",
         "create_fim_lib",
     ]:
+        poll_and_update_job_status(db_path, process_name)  # this captures final status of unknown status jobs
         _, failed_reaches, _ = get_reach_status_by_process(db_path, process_name)
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
@@ -241,7 +243,6 @@ def run_pipeline(collection: str):
         run_qc(collection)
     except:
         logging.error("Error - qc workflow failed")
-    # to do: Move to S3
 
 
 if __name__ == "__main__":
