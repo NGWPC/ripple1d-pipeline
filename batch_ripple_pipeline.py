@@ -4,12 +4,45 @@ import argparse
 import os
 import pathlib
 import subprocess
-import time
 from datetime import datetime
 
 from ripple_pipeline import *
-from scripts.config import COLLECTIONS_ROOT_DIR, S3_UPLOAD_PREFIX
 from scripts.setup import *
+from scripts.config import (
+    COLLECTIONS_ROOT_DIR,
+    S3_UPLOAD_PREFIX,
+    S3_UPLOAD_FAILED_PREFIX,
+    RIPPLE1D_VERSION,
+)
+
+
+def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
+
+    if failed:
+        dateime_obj = datetime.now()
+        timestamp = dateime_obj.strftime("%m-%d-%Y_%H_%M")
+        s3_mv_command = [
+            "aws",
+            "s3",
+            "mv",
+            f"{COLLECTIONS_ROOT_DIR}/{collection}",
+            f"{s3_upload_prefix}/{collection}_{RIPPLE1D_VERSION}_{timestamp}",
+            "--recursive",
+        ]
+    else:
+        s3_mv_command = [
+            "aws",
+            "s3",
+            "mv",
+            f"{COLLECTIONS_ROOT_DIR}/{collection}",
+            f"{s3_upload_prefix}/{collection}",
+            "--recursive",
+        ]
+
+    subprocess.Popen(
+        s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
+    )
+    logging.info(f"Submitted S3 mv command on collection: {collection} ...")
 
 
 def batch_pipeline(collection_list):
@@ -53,22 +86,19 @@ def batch_pipeline(collection_list):
 
                 logging.info(f"Collection {collection} processed successfully.")
 
-                s3_mv_command = [
-                    "aws",
-                    "s3",
-                    "mv",
-                    f"{COLLECTIONS_ROOT_DIR}/{collection}",
-                    f"{S3_UPLOAD_PREFIX}/{collection}",
-                    "--recursive",
-                ]
-
-                subprocess.Popen(s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-                logging.info(f"Submitted S3 mv command on collection: {collection} ...")
+                s3_move(S3_UPLOAD_PREFIX, collection)
 
             except subprocess.CalledProcessError as e:
+
+                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
+
                 logging.error(f"Error processing collection {collection}: {e} ")
                 logging.info(f"See {log_file} for more details.")
+
             except Exception as e:
+
+                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
+
                 logging.error(f"Unexpected error occurred: {e}")
                 logging.error(f"Executing run_pipeline on collection: {collection}")
                 logging.info(f"See {log_file} for more details.")
