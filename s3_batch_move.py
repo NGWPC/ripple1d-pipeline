@@ -39,13 +39,13 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
             "--recursive",
         ]
 
-    subprocess.Popen(
+    subprocess.run(
         s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
     )
-    logging.info(f"Submitted S3 mv command on collection: {collection} ...")
+    print(f"Submitted S3 mv command on collection: {collection} ...")
 
 
-def batch_pipeline(collection_list):
+def batch_move(collection_list):
     """
     Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, and qc steps for each collection.
 
@@ -56,53 +56,12 @@ def batch_pipeline(collection_list):
 
     collections = read_input(collection_list)
 
-    for collection in collections:
-        logging.info(f"Starting processing for collection: {collection} ...")
-        # Construct the command to execute ripple_pipeline.py
-        cmd = [
-            "python",
-            "ripple_pipeline.py",
-            "--collection",
-            collection,
-        ]
-
-        # Set up log files
-        log_dir = os.path.join(COLLECTIONS_ROOT_DIR, collection)
-        os.makedirs(log_dir, exist_ok=True)
-        log_file = os.path.join(log_dir, f"{collection}.log")
-
-        with open(log_file, "a") as f:
-            f.write("************************************************************************")
-            f.write(f"\n--- Starting processing for collection: {collection} ---\n")
-            f.flush()
-
-            try:
-                # Using shell=True to call this subprocess within the venv context
-                # stdout is only being flushed at the end, not sure why
-                process = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
-
-                if process.returncode != 0:
-                    raise subprocess.CalledProcessError(process.returncode, cmd)
-
-                logging.info(f"Collection {collection} processed successfully.")
-
-                s3_move(S3_UPLOAD_PREFIX, collection)
-
-            except subprocess.CalledProcessError as e:
-
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
-
-                logging.error(f"Error processing collection {collection}: {e} ")
-                logging.info(f"See {log_file} for more details.")
-
-            except Exception as e:
-
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
-
-                logging.error(f"Unexpected error occurred: {e}")
-                logging.error(f"Executing run_pipeline on collection: {collection}")
-                logging.info(f"See {log_file} for more details.")
-
+    for id,collection in enumerate(collections):
+        print(f"Starting s3 mv for collection: {collection} ... {id}/{len(collections)}")
+        
+        # Toggle depending on if submitting failed collections or successful
+        s3_move(S3_UPLOAD_PREFIX, collection)
+        # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, False)
 
 def read_input(collection_list):
     collections = []
@@ -135,15 +94,14 @@ def strip_newline(collection):
     collection = collection.replace("'", "")
     return collection
 
-
 if __name__ == "__main__":
     """
     Sample Usage:
-        python batch_ripple_pipeline.py -l "collection1 collection2 collection3"
-        python batch_ripple_pipeline.py -l ~/collections.lst
+        python s3_batch_move.py -l "collection1 collection2 collection3"
+        python s3_batch_move.py -l ~/collections.lst
     """
 
-    parser = argparse.ArgumentParser(description="Run ripple pipeline on each collection in the collection list")
+    parser = argparse.ArgumentParser(description="Run s3 mv on each collection in the collection list")
 
     parser.add_argument(
         "-l",
@@ -154,4 +112,5 @@ if __name__ == "__main__":
 
     args = vars(parser.parse_args())
 
-    batch_pipeline(**args)
+    batch_move(**args)
+

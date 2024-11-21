@@ -10,19 +10,21 @@ STAC_URL = ""
 RIPPLE1D_VERSION = "0.7.0"
 
 # Specs
-COLLECTIONS_ROOT_DIR = r"Z:\collections"
-NWM_FLOWLINES_PATH = r"Z:\reference_data\nwm_flowlines.parquet"
+COLLECTIONS_ROOT_DIR = r"C:\collections"
+NWM_FLOWLINES_PATH = r"C:\reference_data\nwm_flowlines.parquet"
 S3_UPLOAD_PREFIX = ""
+S3_UPLOAD_FAILED_PREFIX = ""
 
-OPTIMUM_PARALLEL_PROCESS_COUNT = 5
+OPTIMUM_PARALLEL_PROCESS_COUNT = 48  # this is for 96 core machine
+
 # Ripple settings
 RAS_VERSION = "631"
 US_DEPTH_INCREMENT = 0.5
 DS_DEPTH_INCREMENT = 1
 RESOLUTION = 3.0
 RESOLUTION_UNITS = "Meters"
-TERRAIN_SOURCE_URL = r"Z:\reference_data\seamless_3dep_dem_3m_5070.vrt"
-SOURCE_NETWORK = r"Z:\reference_data\nwm_flowlines_with_bbox.parquet"
+TERRAIN_SOURCE_URL = r"C:\reference_data\seamless_3dep_dem_3m_5070.vrt"
+SOURCE_NETWORK = r"C:\reference_data\nwm_flowlines_with_bbox.parquet"
 SOURCE_NETWORK_VERSION = "2.1"
 SOURCE_NETWORK_TYPE = "nwm_hydrofabric"
 
@@ -47,13 +49,13 @@ PAYLOAD_TEMPLATES = {
     "create_model_run_normal_depth": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
         "plan_suffix": "ind",
-        "num_of_discharges_for_initial_normal_depth_runs": 10,
+        "num_of_discharges_for_initial_normal_depth_runs": 15,
         "ras_version": RAS_VERSION,
     },
     "run_incremental_normal_depth": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
         "plan_suffix": "nd",
-        "depth_increment": DEPTH_INCREMENT,
+        "depth_increment": US_DEPTH_INCREMENT,
         "ras_version": RAS_VERSION,
     },
     "run_known_wse": {
@@ -80,13 +82,13 @@ PAYLOAD_TEMPLATES = {
 }
 
 # Flows2FIM
-FLOW_FILES_DIR = r"Z:\reference_data\flow_files"
+FLOW_FILES_DIR = r"C:\reference_data\flow_files"
 FLOWS2FIM_BIN_PATH = r"C:\OSGeo4W\bin\flows2fim.exe"
 GDAL_BINS_PATH = r"C:\OSGeo4W\bin"
 GDAL_SCRIPTS_PATH = r"C:\OSGeo4W\apps\Python312\Scripts"
 
 # QC
-QC_TEMPLATE_QGIS_FILE = r"Z:\reference_data\qc_map.qgs"
+QC_TEMPLATE_QGIS_FILE = r"C:\reference_data\qc_map.qgs"
 
 # Poll wait time for job status checks
 DEFAULT_POLL_WAIT = 5
