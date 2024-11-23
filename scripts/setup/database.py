@@ -87,7 +87,10 @@ class Database:
         """
         DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
         db_path = collection.db_path
-
+        DS_DEPTH_INCREMENT = collection.config['database']['DS_DEPTH_INCREMENT']
+        RIPPLE1D_VERSION = collection.config['database']['RIPPLE1D_VERSION']
+        US_DEPTH_INCREMENT = collection.config['database']['US_DEPTH_INCREMENT']
+        
         connection = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = connection.cursor()

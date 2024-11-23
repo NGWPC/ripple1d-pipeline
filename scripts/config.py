@@ -7,14 +7,20 @@ AWS_PROFILE = ""
 # URLs
 RIPPLE1D_API_URL = ""
 STAC_URL = ""
+RIPPLE1D_VERSION = "0.7.0"
 
 # Specs
 COLLECTIONS_ROOT_DIR = r"C:\collections"
 NWM_FLOWLINES_PATH = r"C:\reference_data\nwm_flowlines.parquet"
+S3_UPLOAD_PREFIX = ""
+S3_UPLOAD_FAILED_PREFIX = ""
+
+OPTIMUM_PARALLEL_PROCESS_COUNT = 48  # this is for 96 core machine
 
 # Ripple settings
 RAS_VERSION = "631"
-DEPTH_INCREMENT = 1
+US_DEPTH_INCREMENT = 0.5
+DS_DEPTH_INCREMENT = 1
 RESOLUTION = 3.0
 RESOLUTION_UNITS = "Meters"
 TERRAIN_SOURCE_URL = r"C:\reference_data\seamless_3dep_dem_3m_5070.vrt"
@@ -43,14 +49,27 @@ PAYLOAD_TEMPLATES = {
     "create_model_run_normal_depth": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
         "plan_suffix": "ind",
-        "num_of_discharges_for_initial_normal_depth_runs": 10,
+        "num_of_discharges_for_initial_normal_depth_runs": 15,
         "ras_version": RAS_VERSION,
     },
     "run_incremental_normal_depth": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
         "plan_suffix": "nd",
-        "depth_increment": DEPTH_INCREMENT,
+        "depth_increment": US_DEPTH_INCREMENT,
         "ras_version": RAS_VERSION,
+    },
+    "run_known_wse": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plan_suffix": "kwse",
+        "min_elevation": -9999,
+        "max_elevation": -9999,
+        "depth_increment": DS_DEPTH_INCREMENT,
+        "ras_version": "631",
+        "write_depth_grids": True,
+    },
+    "create_rating_curves_db": {
+        "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
+        "plans": ["kwse"],
     },
     "create_fim_lib": {
         "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
@@ -75,6 +94,4 @@ QC_TEMPLATE_QGIS_FILE = r"C:\reference_data\qc_map.qgs"
 DEFAULT_POLL_WAIT = 5
 
 API_LAUNCH_JOBS_RETRY_WAIT = 0.5
-RIPPLE1D_THREAD_COUNT = 20
-
 DB_CONN_TIMEOUT = 30

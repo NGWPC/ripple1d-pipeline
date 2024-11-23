@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 
@@ -13,7 +14,11 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
     try:
         reach_cursor = reach_conn.cursor()
         reach_cursor.execute(
-            "SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition FROM rating_curves"
+            """
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            FROM rating_curves
+            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS TRUE
+            """
         )
         rows = reach_cursor.fetchall()
 
@@ -21,6 +26,25 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         cursor.executemany(
             """
             INSERT OR IGNORE INTO rating_curves (
+                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            rows,
+        )
+
+        reach_cursor.execute(
+            """
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            FROM rating_curves
+            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS FALSE
+            """
+        )
+        rows = reach_cursor.fetchall()
+
+        cursor.executemany(
+            """
+            INSERT OR IGNORE INTO rating_curves_no_map (
                 reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -40,25 +64,31 @@ def load_rating_curve(db_path, reach_id, sub_db_path, timeout=DB_CONN_TIMEOUT):
     try:
         if os.path.exists(sub_db_path):
             process_reach_db(reach_id, sub_db_path, conn)
-            os.remove(sub_db_path)
+            try:
+                os.remove(sub_db_path)
+            except Exception as e:
+                logging.error(f"Could not remove {sub_db_path} Error: {e}")
     finally:
         conn.close()
 
 
-def load_all_rating_curves(library_dir: str, db_path: str) -> None:
+def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
     """
     Loads all rating curves from submodel databases into the central library database.
     """
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:
 
-        for submodel in os.listdir(library_dir):
-            sub_db_path = os.path.join(library_dir, submodel, f"{submodel}.db")
+        for submodel in os.listdir(submodels_dir):
+            sub_db_path = os.path.join(submodels_dir, submodel, f"{submodel}.db")
             if os.path.exists(sub_db_path):
                 process_reach_db(submodel, sub_db_path, conn)
-                os.remove(sub_db_path)
+                try:
+                    os.remove(sub_db_path)
+                except Exception as e:
+                    logging.error(f"Could not remove {sub_db_path} Error: {e}")
 
-        print("All rating curves loaded into central database")
+        logging.info("All rating curves loaded into central database")
     finally:
         conn.close()
 

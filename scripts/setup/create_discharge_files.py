@@ -1,5 +1,7 @@
 """Not used in notebooks"""
 
+import logging
+
 import duckdb
 
 
@@ -16,10 +18,10 @@ def create_discharge_files(parquet_file, output_csv_dir):
             TO '{output_csv}' (FORMAT CSV, HEADER TRUE);
         """
         con.execute(query)
-        print(f"Created {output_csv}")
+        logging.info(f"Created {output_csv}")
 
     con.close()
-    print("All discharge files have been created.")
+    logging.info("All discharge files have been created.")
 
 
 if __name__ == "__main__":

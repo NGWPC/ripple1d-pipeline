@@ -1,3 +1,4 @@
+import logging
 import os
 import sqlite3
 from typing import Type, Dict
@@ -20,7 +21,7 @@ def load_river_table_from_gpkg(gpkg_path: str) -> gpd.GeoDataFrame:
         gdf = gpd.read_file(gpkg_path, columns=[], layer="River")
         return gdf
     except Exception as e:
-        print(f"Error loading River table from {gpkg_path}: {e}")
+        logging.info(f"Error loading River table from {gpkg_path}: {e}")
         return None
 
 
@@ -44,7 +45,7 @@ def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) ->
         gpkg_path = os.path.join(source_models_dir, model_id, f"{model_id}.gpkg")
 
         if not os.path.exists(gpkg_path):
-            print(f"GPKG file not found: {gpkg_path}")
+            logging.info(f"GPKG file not found: {gpkg_path}")
             continue
 
         river_gdf = load_river_table_from_gpkg(gpkg_path)
@@ -64,10 +65,17 @@ def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) ->
         combined_gdf = gpd.GeoDataFrame(pd.concat(river_gdfs, ignore_index=True))
 
         try:
-            # combined_gdf.to_file(output_gpkg_path, layer='River')
-            combined_gdf.to_file(output_gpkg_path, layer='River', driver='GPKG', encoding='utf-8')
-            print(f"Combined River tables saved to {output_gpkg_path}")
+            combined_gdf.to_file(output_gpkg_path, driver="GPKG", layer="River")
+            logging.info(f"Combined River tables saved to {output_gpkg_path}")
         except Exception as e:
-            print(f"Error saving combined River table: {e}")
+            logging.info(f"Error saving combined River table: {e}")
     else:
-        print("No River tables were combined.")
+        logging.info("No River tables were combined.")
+
+
+if __name__ == "__main__":
+    source_models_dir = "data/source_models"  # path to the directory containing model folders
+    model_ids = ["Model_A", "Model_B", "Model_C"]  # list of model keys to combine
+    output_gpkg_path = "output/combined_river.gpkg"  # output GPKG file path
+
+    combine_river_tables(source_models_dir, model_ids, output_gpkg_path)

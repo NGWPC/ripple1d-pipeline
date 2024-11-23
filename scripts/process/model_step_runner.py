@@ -1,4 +1,5 @@
 import json
+import logging
 from time import sleep
 from typing import Tuple
 
@@ -41,11 +42,11 @@ def execute_request(model_id: str, process_name: str, source_model_dir: str) -> 
             job_id = response.json().get("jobID")
             return model_id, job_id, "accepted"
         elif response.status_code == 500:
-            print(f"Retrying. {model_id}")
+            logging.info(f"Retrying. {model_id}")
         else:
             break
         sleep(i * API_LAUNCH_JOBS_RETRY_WAIT)
-    print(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
+    logging.info(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
     return model_id, "", "not_accepted"
 
 
@@ -68,16 +69,16 @@ def execute_model_step(
     not_accepted = [job for job in model_job_id_statuses if job[2] == "not_accepted"]
 
     Database.update_models_table(accepted, process_name, "accepted", db_path)
-    print("Jobs submission complete. Waiting for jobs to finish...")
+    logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
     succeeded, failed, unknown = JobClient.wait_for_jobs(accepted, timeout_minutes=timeout_minutes)
     Database.update_models_table(succeeded, process_name, "successful", db_path)
     Database.update_models_table(failed, process_name, "failed", db_path)
 
-    print(f"Successful: {len(succeeded)}")
-    print(f"Failed: {len(failed)}")
-    print(f"Not Accepted: {len(not_accepted)}")
-    print(f"Status Unknown: {len(unknown)}")
+    logging.info(f"Successful: {len(succeeded)}")
+    logging.info(f"Failed: {len(failed)}")
+    logging.info(f"Not Accepted: {len(not_accepted)}")
+    logging.info(f"Status Unknown: {len(unknown)}")
 
     return succeeded, failed, not_accepted, unknown
 

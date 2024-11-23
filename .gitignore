@@ -13,3 +13,4 @@
 
 # .env files
 *.env
+*.lst
