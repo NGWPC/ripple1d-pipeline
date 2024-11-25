@@ -1,6 +1,6 @@
 import requests
+import logging
 import time
-
 
 from typing import Tuple, Type, List
 from ..setup.collection_data import CollectionData
@@ -57,12 +57,12 @@ class JobClient:
             if status == "successful":
                 return True
             elif status == "failed":
-                print(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true", "job failed")
+                logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true", "job failed")
                 return False
             elif status == "running":
                 elapsed_time = time.time() - self.datetime_to_epoch_utc(self.get_job_update_time(job_id))
                 if elapsed_time / 60 > timeout_minutes:
-                    print(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}", "client timeout")
+                    logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}", "client timeout")
                     return False
             time.sleep(self.DEFAULT_POLL_WAIT)
 
@@ -85,12 +85,12 @@ class JobClient:
                     break
                 elif status == "failed":
                     failed.append((reach_job_ids[i][0], reach_job_ids[i][1], "failed"))
-                    print(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true", "job failed")
+                    logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true", "job failed")
                     break
                 elif status == "running":
                     elapsed_time = time.time() - self.datetime_to_epoch_utc(self.get_job_update_time(reach_job_ids[i][1]))
                     if elapsed_time / 60 > timeout_minutes:
-                        print(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")
+                        logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")
                         unknown.append((reach_job_ids[i][0], reach_job_ids[i][1], "unknown"))
                         break
                 time.sleep(self.DEFAULT_POLL_WAIT)

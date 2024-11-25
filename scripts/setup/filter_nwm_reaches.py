@@ -1,4 +1,5 @@
 import geopandas as gpd
+import logging
 
 from typing import Type
 from .collection_data import CollectionData
@@ -42,5 +43,5 @@ def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
     # Save the filtered NWM flowlines to a new GeoPackage (GPKG) file
     filtered_nwm_gdf.to_file(output_gpkg_path, layer="reaches", driver="GPKG")
 
-    print(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
+    logging.info(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
 

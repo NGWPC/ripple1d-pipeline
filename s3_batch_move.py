@@ -5,6 +5,7 @@ import os
 import pathlib
 import subprocess
 from datetime import datetime
+import logging
 
 from ripple_pipeline import *
 from scripts.setup import *
@@ -42,7 +43,7 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
     subprocess.run(
         s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
     )
-    print(f"Submitted S3 mv command on collection: {collection} ...")
+    logging.info(f"Submitted S3 mv command on collection: {collection} ...")
 
 
 def batch_move(collection_list):
@@ -57,11 +58,11 @@ def batch_move(collection_list):
     collections = read_input(collection_list)
 
     for id,collection in enumerate(collections):
-        print(f"Starting s3 mv for collection: {collection} ... {id}/{len(collections)}")
+        logging.info(f"Starting s3 mv for collection: {collection} ... {id}/{len(collections)}")
         
         # Toggle depending on if submitting failed collections or successful
         s3_move(S3_UPLOAD_PREFIX, collection)
-        # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, False)
+        # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
 
 def read_input(collection_list):
     collections = []

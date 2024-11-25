@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from typing import Dict, List, Type
 
@@ -27,7 +28,7 @@ def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
             json_data = load_json(f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json")
             models_data[model_id] = json_data
         else:
-            print("Does not exist", file_path)
+            logging.info("Does not exist", file_path)
 
     # order matters because we want to overwrite model with least coverages when conflict
     sorted_models_data = sorted(models_data.items(), key=lambda item: len(item[1]["reaches"]))
@@ -35,7 +36,7 @@ def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
     for model_id, json_data in sorted_models_data:
         database.update_model_id_and_eclipsed(json_data, model_id)
 
-    print(f"Conflation loaded to {database.db_path} from .conflation.json files")
+    logging.info(f"Conflation loaded to {database.db_path} from .conflation.json files")
 
 
 # if __name__ == "__main__":

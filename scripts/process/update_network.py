@@ -1,3 +1,4 @@
+import logging
 from typing import Type
 
 from ..setup.database import Database
@@ -31,9 +32,9 @@ def update_network(database: Type[Database]) -> None:
     if updates:
         # Execute batch updates
         database.update_to_id_batch(updates)
-        print(f"Updated {len(updates)} reaches successfully.")
+        logging.info(f"Updated {len(updates)} reaches successfully.")
     else:
-        print("No updates to process.")
+        logging.info("No updates to process.")
 
 
 # if __name__ == "__main__":

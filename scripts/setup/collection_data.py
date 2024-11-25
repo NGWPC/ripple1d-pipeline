@@ -2,6 +2,7 @@ import yaml
 import os
 from pathlib import Path
 from typing import List
+import logging
 
 class CollectionData:
     """
@@ -22,7 +23,7 @@ class CollectionData:
         except yaml.YAMLError:
             raise ValueError("Invalid YAML configuration")
 
-    #TODO - Assign all parameters from config file to "self" to remove the need to use dot or bracket notation for
+    #TODO - Assign ALL parameters from config file to Class to remove the need to use dot or bracket notation for
     # accessing values later?
 
     def assign_paths(self):
@@ -42,8 +43,6 @@ class CollectionData:
         os.makedirs(self.submodels_dir, exist_ok=True)
         os.makedirs(self.library_dir, exist_ok=True)
 
-        print(f"Folders created successfully inside {self.root_dir}")
-
     def get_models(self) -> List:
         models = []
         path = Path(self.source_models_dir)
@@ -59,6 +58,6 @@ class CollectionData:
             return models
 
         except Exception as e:
-            print(f"An error occurred: {e}.")
-            print(f"No models are available.")
+            logging.error(f"An error occurred: {e}.")
+            logging.error(f"No models are available.")
             return []

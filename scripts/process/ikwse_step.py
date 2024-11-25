@@ -4,6 +4,7 @@ import os
 import sqlite3
 import time
 import traceback
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from threading import Lock

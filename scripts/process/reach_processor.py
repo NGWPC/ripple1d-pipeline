@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 import json
 import random
 import requests
@@ -109,11 +110,11 @@ class ReachProcessor(BatchProcessor):
                 job_id = response.json().get("jobID")
                 return nwm_reach_id, job_id, "accepted"
             elif response.status_code == 500:
-                print(f"Retrying. {nwm_reach_id}")
+                logging.info(f"Retrying. {nwm_reach_id}")
             else:
                 break
             sleep(i * self.API_LAUNCH_JOBS_RETRY_WAIT)
-        print(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
+        logging.info(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
         return nwm_reach_id, "", "not_accepted"
 
 
@@ -172,7 +173,7 @@ class ExecuteReachStepBatchProcessor(ReachProcessor):
         self.not_accepted = [job for job in self.reach_job_id_statuses if job[2] == "not_accepted"]
 
         self._update_db(self.accepted, "extract_submodel", "accepted")
-        print("Jobs submission complete. Waiting for jobs to finish...")
+        logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
         self._wait_for_jobs(self.extract_submodel_job_timeout)
 
@@ -180,7 +181,7 @@ class ExecuteReachStepBatchProcessor(ReachProcessor):
         self._update_db(self.failed, "extract_submodel", "failed")
         self._update_db(self.unknown, "extract_submodel", "unknown")
 
-        print(
+        logging.info(
             f"Successful: {len(self.succeeded)}\n"
             f"Failed: {len(self.failed)}\n"
             f"Not Accepted: {len(self.not_accepted)}\n"
@@ -199,7 +200,7 @@ class ExecuteReachStepBatchProcessor(ReachProcessor):
         self.not_accepted = [job for job in self.reach_job_id_statuses if job[2] == "not_accepted"]
 
         self._update_db(self.accepted, process_name, "accepted")
-        print("Jobs submission complete. Waiting for jobs to finish...")
+        logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
         self._wait_for_jobs(timeout)
 
@@ -207,7 +208,7 @@ class ExecuteReachStepBatchProcessor(ReachProcessor):
         self._update_db(self.failed, process_name, "failed")
         self._update_db(self.unknown, process_name, "unknown")
 
-        print(
+        logging.info(
             f"Successful: {len(self.succeeded)}\n"
             f"Failed: {len(self.failed)}\n"
             f"Not Accepted: {len(self.not_accepted)}\n"

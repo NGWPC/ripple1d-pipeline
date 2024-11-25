@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from typing import Dict
 
 import geopandas as gpd
 
@@ -10,12 +11,19 @@ from ..config import (
     US_DEPTH_INCREMENT,
 )
 
-def init_db(collection : Type[CollectionData]):
+
+def filter_nwm_reaches(nwm_flowlines_path: str, river_gpkg_path: str, output_gpkg_path: str) -> None:
     """
-    Initialize database and create tables
+    Filters NWM flowlines that intersect with the convex hull of the River table from the GPKG file
+    and saves the result to a new GPKG file.
+
+    Args:
+        nwm_flowlines_path (str): Path to the NWM flowlines parquet file.
+        river_gpkg_path (str): Path to the GPKG file containing the River table.
+        output_gpkg_path (str): Path to save the filtered NWM flowlines in a GPKG file.
     """
-    DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
-    db_path = collection.db_path
+    # Load NWM Flowlines from Parquet file
+    nwm_flowlines_gdf = gpd.read_parquet(nwm_flowlines_path, columns=["id", "to_id", "geom"])
 
     # Load the River table from the GPKG file
     river_gdf = gpd.read_file(river_gpkg_path, layer="River")
@@ -216,13 +224,8 @@ def init_db(db_path):
         connection.close()
 
 
-def insert_models(models_data: Dict, collection: Type[CollectionData]) -> None:
-    """ 
-    """
-    collection_id = collection.stac_collection_id
-    db_path = collection.db_path
-    DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
-
+def insert_models(models_data: Dict, collection_id, db_path: str) -> None:
+    """ """
     rows = [(collection_id, id, model_data["model_name"]) for id, model_data in models_data.items()]
     conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
     try:

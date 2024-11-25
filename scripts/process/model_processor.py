@@ -1,4 +1,5 @@
 import json
+import logging
 import requests
 from typing import Type, Tuple, List
 from time import sleep
@@ -64,11 +65,11 @@ class ModelProcessor(BatchProcessor):
                 job_id = response.json().get("jobID")
                 return model_id, job_id, "accepted"
             elif response.status_code == 500:
-                print(f"Retrying. {model_id}")
+                logging.info(f"Retrying. {model_id}")
             else:
                 break
             sleep(i * self.API_LAUNCH_JOBS_RETRY_WAIT)
-            print(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
+            logging.info(f"Failed to accept {model_id}, code: {response.status_code}, response: {response.text}")
             return model_id, "", "not_accepted"
 
     def _update_reach_ids(self, reach_data: List[Tuple[int, int, str]]) -> None:
@@ -113,14 +114,14 @@ class ConflateModelBatchProcessor(ModelProcessor):
         self.not_accepted = [job for job in self.model_job_id_statuses if job[2] == "not_accepted"]
 
         self._update_db("accepted")
-        print("Jobs submission complete. Waiting for jobs to finish...")
+        logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
         self._wait_for_jobs()
 
         self._update_db("succeeded")
         self._update_db("failed")
 
-        print(
+        logging.info(
             f"Successful: {len(self.succeeded)}\n"
             f"Failed: {len(self.failed)}\n"
             f"Not Accepted: {len(self.not_accepted)}\n"

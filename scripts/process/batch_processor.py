@@ -1,4 +1,5 @@
 from typing import Type
+import logging
 from ..setup.collection_data import CollectionData
 
 class BatchProcessor:
@@ -12,5 +13,5 @@ class BatchProcessor:
 
     def execute_request(self):
         # Implement request execution logic here
-        print(f"Executing request with payload: {self.payload}")
+        logging.info(f"Executing request with payload: {self.payload}")
 

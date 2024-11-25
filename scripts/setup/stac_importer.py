@@ -1,15 +1,15 @@
 import boto3
+import logging
 import os
 import pystac_client
 from typing import Type, Dict, List
-import urllib.request
 
 from .collection_data import CollectionData
 
 # from dotenv import load_dotenv
 # load_dotenv()
 # AWS_PROFILE = os.getenv("AWS_PROFILE")
-# print(AWS_PROFILE)
+# logging.info(AWS_PROFILE)
 
 class STACImporter:
     """
@@ -51,6 +51,9 @@ class STACImporter:
         models_data = {}
         for item in collection.get_items():
             i += 1
+            if item.properties["has_2d"]:
+                logging.info(f"{item.id} skipping because it has 2d elements")
+                continue
             gpkg_key = ""
             for _, asset in item.assets.items():
                 if "ras-geometry-gpkg" in asset.roles:
@@ -59,11 +62,10 @@ class STACImporter:
             if gpkg_key:
                 models_data[item.id] = {"gpkg": gpkg_key, "model_name": item.properties["model_name"]}
 
-        print(f"Total {i} models in this collection")
-        print(f"Total {len(models_data)} filtered models.")
+        logging.info(f"Total {i} models in this collection")
+        logging.info(f"Total {len(models_data)} filtered models.")
         
         self.models_data = models_data
-        #  below is an artifact 
         # return models_data
     
     def download_models_data(self) -> None:
@@ -96,9 +98,9 @@ class STACImporter:
                 bucket_name, key = gpkg_url.replace("s3://", "").split("/", 1)
                 s3_client.download_file(bucket_name, key, local_gpkg_path)
 
-                print(f"Successfully downloaded files for {id}")
+                logging.info(f"Successfully downloaded files for {id}")
             except Exception as e:
-                print(f"Failed to download files for {id}: {e}")
+                logging.info(f"Failed to download files for {id}: {e}")
 
     def get_model_ids(self) -> List[str]:
         self.model_ids = list(self.models_data.keys())

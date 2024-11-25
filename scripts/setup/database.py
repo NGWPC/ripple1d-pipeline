@@ -1,8 +1,9 @@
+import logging
+import os
 import requests
 import sqlite3
 import time
 import threading
-import os
 
 
 from contextlib import contextmanager
@@ -49,7 +50,7 @@ class Database:
                 cursor.execute(query, params)
                 result = cursor.fetchall()
                 if print_reaches:
-                    print(len(result), "reaches returned")
+                    logging.info(len(result), "reaches returned")
                 return result
         else: 
             with self._get_locked_connection(lock) as conn:
@@ -87,14 +88,33 @@ class Database:
         """
         DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
         db_path = collection.db_path
-        DS_DEPTH_INCREMENT = collection.config['database']['DS_DEPTH_INCREMENT']
-        RIPPLE1D_VERSION = collection.config['database']['RIPPLE1D_VERSION']
-        US_DEPTH_INCREMENT = collection.config['database']['US_DEPTH_INCREMENT']
+        RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
+        US_DEPTH_INCREMENT = collection.config['ripple_settings']['US_DEPTH_INCREMENT']
+        DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
         
         connection = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = connection.cursor()
             cursor.execute("PRAGMA journal_mode=WAL;")
+
+            # Create metadata table to store metadata
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS metadata (
+                    ripple1d_version TEXT,
+                    us_depth_increment REAL,
+                    ds_depth_increment REAL
+                );
+            """
+            )
+
+            cursor.execute(
+                f"""
+                INSERT INTO metadata
+                VALUES (?, ?, ?);
+                """,
+                (RIPPLE1D_VERSION, US_DEPTH_INCREMENT, DS_DEPTH_INCREMENT),
+            )
 
             # Create models table to store model-level information
             cursor.execute(
@@ -161,6 +181,23 @@ class Database:
 
             cursor.execute(
                 """
+                CREATE TABLE IF NOT EXISTS rating_curves_no_map (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    reach_id INTEGER,
+                    us_flow INTEGER,
+                    us_depth REAL,
+                    us_wse REAL,
+                    ds_depth REAL,
+                    ds_wse REAL,
+                    boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
+                    FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
+                    UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
+                );
+            """
+            )
+
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS rating_curves_reach_id ON rating_curves (reach_id);
             """
             )
@@ -181,8 +218,14 @@ class Database:
                     create_model_run_normal_depth_status TEXT,
                     run_incremental_normal_depth_job_id TEXT,
                     run_incremental_normal_depth_status TEXT,
+                    run_iknown_wse_job_id TEXT,
+                    run_iknown_wse_status TEXT,
+                    create_irating_curves_db_job_id TEXT,
+                    create_irating_curves_db_status TEXT,
                     run_known_wse_job_id TEXT,
                     run_known_wse_status TEXT,
+                    create_rating_curves_db_job_id TEXT,
+                    create_rating_curves_db_status TEXT,
                     create_fim_lib_job_id TEXT,
                     create_fim_lib_status TEXT,
                     FOREIGN KEY (collection_id, model_id) REFERENCES models (collection_id, model_id),
@@ -216,9 +259,9 @@ class Database:
             # )
 
             connection.commit()
-            print(f"Database initialized successfully at {db_path}")
+            logging.info(f"Database initialized successfully at {db_path}")
         except Exception as e:
-            print(e)
+            logging.info(e)
             connection.rollback()
         finally:
             connection.close()
@@ -227,7 +270,7 @@ class Database:
     def insert_models(models_data: Dict, collection: Type[CollectionData]) -> None:
         """ 
         """
-        collection_id = collection.stac_collection_id # Not used currently
+        collection_id = collection.stac_collection_id
         db_path = collection.db_path
         DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
 
@@ -243,7 +286,7 @@ class Database:
                 rows,
             )
             conn.commit()
-            print(f"Models record inserted at {db_path}")
+            logging.info(f"Models record inserted at {db_path}")
         finally:
             conn.close()
 
@@ -368,7 +411,7 @@ class Database:
         """
         if use_central_db:
             if not os.path.exists(self.db_path):
-                print(f"central database not found : {self.db_path}")
+                logging.info(f"central database not found : {self.db_path}")
                 return None, None
             select_query = f"""
                 SELECT MIN(us_wse), MAX(us_wse)
@@ -381,8 +424,8 @@ class Database:
         else:
             ds_submodel_db_path = os.path.join(library_directory, str(downstream_id), f"{downstream_id}.db")
             if not os.path.exists(ds_submodel_db_path):
-                print(f"Submodel database not found for reach_id: {downstream_id} \n")
-                print(f"At this location: {ds_submodel_db_path}")
+                logging.info(f"Submodel database not found for reach_id: {downstream_id} \n")
+                logging.info(f"At this location: {ds_submodel_db_path}")
                 return None, None
             select_query = f"""
                 SELECT MIN(us_wse), MAX(us_wse) 

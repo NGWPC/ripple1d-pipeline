@@ -1,6 +1,5 @@
 import logging
 import os
-import sqlite3
 from typing import Type, Dict
 
 import geopandas as gpd
@@ -72,10 +71,3 @@ def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) ->
     else:
         logging.info("No River tables were combined.")
 
-
-if __name__ == "__main__":
-    source_models_dir = "data/source_models"  # path to the directory containing model folders
-    model_ids = ["Model_A", "Model_B", "Model_C"]  # list of model keys to combine
-    output_gpkg_path = "output/combined_river.gpkg"  # output GPKG file path
-
-    combine_river_tables(source_models_dir, model_ids, output_gpkg_path)

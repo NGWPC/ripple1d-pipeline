@@ -1,14 +1,16 @@
 import json
+import logging
 import os
+import requests
 import sqlite3
 import time
 import traceback
+
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from threading import Lock
 from typing import List, Optional, Tuple, Type
 
-import requests
 
 from ..config import DB_CONN_TIMEOUT, RIPPLE1D_API_URL, RIPPLE1D_THREAD_COUNT, RAS_VERSION
 
@@ -68,21 +70,21 @@ def process_single_reach_kwse(
                             "ras_version": RAS_VERSION,
                         }
                     )
-                    print(f"<<<<<< payload for reach {reach_id}\n{payload}")
+                    logging.info(f"<<<<<< payload for reach {reach_id}\n{payload}")
 
                     # to do: launch job with retry
                     response = requests.post(url, headers=headers, data=payload)
                     response_json = response.json()
                     job_id = response_json.get("jobID")
                     if not job_id or not job_client.check_job_successful(job_id):
-                        print(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
+                        logging.info(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
                         with central_db_lock:
                             database.update_processing_table([(reach_id, job_id)], "run_known_wse", "failed")
                     else:
                         with central_db_lock:
                             database.update_processing_table([(reach_id, job_id)], "run_known_wse", "successful")
                 else:
-                    print(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
+                    logging.info(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
 
             fim_url = f"{RIPPLE1D_API_URL}/processes/create_fim_lib/execution"
             fim_payload = json.dumps(
@@ -120,7 +122,7 @@ def process_single_reach_kwse(
             task_queue.put((upstream_reach, reach_id))
 
     except Exception as e:
-        print(f"Error processing reach {reach_id}: {str(e)}")
+        logging.info(f"Error processing reach {reach_id}: {str(e)}")
         traceback.print_exc()
 
 
@@ -145,7 +147,7 @@ def execute_kwse_for_network(
         while not task_queue.empty() or futures:
             while not task_queue.empty():
                 reach_id, downstream_id = task_queue.get()
-                print(f"Submitting task for reach {reach_id} with downstream {downstream_id}")
+                logging.info(f"Submitting task for reach {reach_id} with downstream {downstream_id}")
                 future = executor.submit(
                     process_single_reach_kwse,
                     reach_id,
@@ -211,7 +213,7 @@ def execute_kwse_for_network(
 #     """
 #     if use_central_db:
 #         if not os.path.exists(central_db_path):
-#             print("central database not found")
+#             logging.info("central database not found")
 #             return None, None
 #         with db_lock:
 #             conn = sqlite3.connect(central_db_path, timeout=DB_CONN_TIMEOUT)
@@ -227,7 +229,7 @@ def execute_kwse_for_network(
 #     else:
 #         ds_submodel_db_path = os.path.join(library_directory, str(downstream_id), f"{downstream_id}.db")
 #         if not os.path.exists(ds_submodel_db_path):
-#             print(f"Submodel database not found for reach_id: {downstream_id}")
+#             logging.info(f"Submodel database not found for reach_id: {downstream_id}")
 #             return None, None
 
 #         conn = sqlite3.connect(ds_submodel_db_path)
