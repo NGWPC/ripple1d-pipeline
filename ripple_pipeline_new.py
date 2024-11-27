@@ -7,10 +7,15 @@ from datetime import datetime as dt
 # Import necessary modules
 from scripts import *
 from scripts.debug import *
-from scripts.processing import *
+# from scripts.processing import *
 from scripts.setup import *
+# from scripts.setup import Database
 # from scripts.setup import CollectionData
 # from scripts.setup import STACImporter
+from scripts.process import *
+# from scripts.process import JobClient
+# from scripts.process import ConflateModelBatchProcessor
+# from scripts.process import extract_submodel_batchProcessor, ReachData
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -19,17 +24,17 @@ def setup(collection_name):
     """Setup the resources."""
     logging.info(f"Setting up the resources for collection: {collection_name}")
 
+    #Instantiate CollectionData
     collection = CollectionData(collection_name) 
     logging.info(f"Creating folder structure in {collection.root_dir}")
     collection.create_folders()
 
-    #Instantiate STACImporter Class 
+    #Instantiate STACImporter 
     models = STACImporter(collection)
     logging.info("Downloading models from STAC catalog")
     models.get_models_from_stac()
     models.download_models_data()
 
-    # Call the combine_river_tables function which aggregates all river tables from each model into one gpkg file
     combine_river_tables(models.models_data, collection)
 
     logging.info("Filtering NWM reaches")
@@ -37,150 +42,105 @@ def setup(collection_name):
 
     logging.info("Initializing database")
     Database.init_db(collection)
+
     logging.info("Inserting models into database")
     Database.insert_models(models.models_data, collection)
 
 
-
-def process(collection):
+def process(collection_name):
     """Process the data."""
     logging.info("Starting processing >>>>>>>>")
-    stac_collection_id = collection
-    stop_on_error = False
-    root_dir = os.path.join(COLLECTIONS_ROOT_DIR, stac_collection_id)
-    db_path = os.path.join(root_dir, "ripple.gpkg")
-    source_models_dir = os.path.join(root_dir, "source_models")
-    submodels_dir = os.path.join(root_dir, "submodels")
-    library_dir = os.path.join(root_dir, "library")
-    extent_library_dir = os.path.join(root_dir, "library_extent")
-    f2f_start_file = os.path.join(root_dir, "start_reaches.csv")
-
+    # Instantiate CollectionData, Database, JobClient objects
+    collection = CollectionData(collection_name)
+    database = Database(collection)
+    jobclient = JobClient(collection)
+    
     logging.info("Getting models from STAC")
-    models_data = get_models_from_stac(STAC_URL, stac_collection_id)
-    model_ids = list(models_data.keys())
+    model_ids = collection.get_models()
 
     logging.info("Starting Conflate Model Step >>>>>>")
-    succeded_models, failed_models, not_accepted_models, unknown_status_models = execute_model_step(
-        model_ids, "conflate_model", db_path, source_models_dir, timeout_minutes=10
-    )
+    conflate_model_batch = ConflateModelBatchProcessor(collection, jobclient, database)
+    conflate_model_batch.conflate_model_batch_process()
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
-    load_conflation(
-        [model_id_job_id_status[0] for model_id_job_id_status in succeded_models + unknown_status_models],
-        source_models_dir,
-        db_path,
-    )
+    #TODO 
+    # Create a @dataclass for model_job_status & reach_job_status
+    succeeded_and_unknown_status_models = [model_id[0] for model_id in conflate_model_batch.succeded + conflate_model_batch.unknown]
+    load_conflation(succeeded_and_unknown_status_models, database)
     logging.info("Finished Load Conflation Step")
 
+
     logging.info("Starting Update Network Step >>>>>>")
-    update_network(db_path)
+    update_network(database)
     logging.info("<<<<<< Finished Update Network Step")
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
-    reach_data = get_reaches_by_models(db_path, model_ids)
+    reaches = database.get_reaches_by_models()
+    reach_data = [(data[0], data[2]) for data in reaches]
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
+    # Instantiate reach_processor
+    reach_step_processor = ReachStepProcessor(collection, reach_data, jobclient, database)
+    
     logging.info("Starting Extract Submodel Step >>>>>>")
-    succeded_reaches, failed_reaches, not_accepted_reaches, unknown_status_reaches = execute_step(
-        [(data[0], data[2]) for data in reach_data],
-        "extract_submodel",
-        db_path,
-        source_models_dir,
-        submodels_dir,
-        timeout_minutes=5,
-    )
+    reach_step_processor.execute_extract_submodel_process()
     logging.info("<<<<<< Finihsed Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
-    succeded_reaches, failed_reaches, not_accepted_reaches, unknown_status_reaches = execute_step(
-        [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
-        "create_ras_terrain",
-        db_path,
-        source_models_dir,
-        submodels_dir,
-        timeout_minutes=3,
-    )
+    reach_step_processor.execute_process("create_ras_terrain", timeout=3)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
-    succeded_reaches, failed_reaches, not_accepted_reaches, unknown_status_reaches = execute_step(
-        [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
-        "create_model_run_normal_depth",
-        db_path,
-        source_models_dir,
-        submodels_dir,
-        timeout_minutes=10,
-    )
+    reach_step_processor.execute_process("create_model_run_normal_depth", timeout=10)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
-    succeded_reaches, failed_reaches, not_accepted_reaches, unknown_status_reaches = execute_step(
-        [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
-        "run_incremental_normal_depth",
-        db_path,
-        source_models_dir,
-        submodels_dir,
-        timeout_minutes=25,
-    )
+    reach_step_processor.execute_process("run_incremental_normal_depth", timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
 
+
+
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
-    outlet_reaches = [data[0] for data in reach_data if data[1] is None]
-    execute_ikwse_for_network([(reach, None) for reach in outlet_reaches], submodels_dir, db_path, False, 20)
+    outlet_reaches = [data[0] for data in reaches if data[1] is None]
+    execute_ikwse_for_network([(reach, None) for reach in outlet_reaches], collection, database, jobclient, False, timeout=20)
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
+
+
 
     logging.info("Starting Final execute_kwse_Step >>>>>>")
     kwse_reach_data = [
         (data[0], data[1])
-        for data in reach_data
-        if data[1] is not None and data[0] in [reach[0] for reach in succeded_reaches + unknown_status_reaches]
+        for data in reaches
+        if data[1] is not None and data[0] in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
     ]
-    succeded_reaches_kwse, failed_reaches_kwse, not_accepted_reaches_kwse, unknown_status_reaches_kwse = (
-        execute_kwse_step(kwse_reach_data, db_path, submodels_dir, 180)
-    )
+    kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data, jobclient, database)
+    kwse_step_processor.execute_process("run_known_wse", timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
-    succeded_reaches_rcdb, failed_reaches_rcdb, not_accepted_reaches_rcdb, unknown_status_reaches_rcdb = execute_step(
-        [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
-        "create_rating_curves_db",
-        db_path,
-        source_models_dir,
-        submodels_dir,
-        timeout_minutes=15,
-    )
+    reach_step_processor.execute_process("create_rating_curves_db", timeout=15)
     logging.info("<<<<< Finished Final create_rating_curves_db Step")
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
-    load_all_rating_curves(submodels_dir, db_path)
+    # load_all_rating_curves(collection.library_dir, database)
     logging.info("<<<<< Finished Merge Rating Curves Step")
 
     logging.info("Starting create_fim_lib Step >>>>>>")
-    succeded_reaches_fim_lib, failed_reaches_fim_lib, not_accepted_reaches_fim_lib, unknown_status_reaches_fim_lib = (
-        execute_step(
-            [(reach[0], "") for reach in succeded_reaches + unknown_status_reaches],
-            "create_fim_lib",
-            db_path,
-            source_models_dir,
-            submodels_dir,
-            library_dir,
-            timeout_minutes=30,
-        )
-    )
+    reach_step_processor.execute_process("create_fim_lib", timeout=30)
     logging.info("<<<<< Finished create_fim_lib Step")
 
     try:
         logging.info("Starting create extent library Step >>>>>>")
-        create_extent_lib(library_dir, extent_library_dir, submodels_dir)
+        # create_extent_lib(library_dir, extent_library_dir, submodels_dir)
         logging.info("<<<<< Finished create extent library Step")
     except:
         logging.error("Error - create extent library step failed")
 
     try:
         logging.info("Starting create f2f start file Step >>>>>>")
-        outlet_reaches = [data[0] for data in reach_data if data[1] is None]
-        create_f2f_start_file(outlet_reaches, f2f_start_file)
+        outlet_reaches = [data[0] for data in reaches if data[1] is None]
+        # create_f2f_start_file(outlet_reaches, collection.f2f_start_file)
         logging.info("<<<<< Finished create f2f start file Step")
     except:
         logging.error("Error - create f2f start file step failed")

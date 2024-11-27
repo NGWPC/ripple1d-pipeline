@@ -33,9 +33,12 @@ class Database:
             conn.close()
     
     @contextmanager
-    def _get_locked_connection(self, lock):
+    def _get_locked_connection(self, lock, db_path = None):
         self.lock = lock
-        conn = sqlite3.connect(self.db_path, timeout=self.timeout)
+        if db_path is None:
+            conn = sqlite3.connect(self.db_path, timeout=self.timeout)
+        else:
+            conn = sqlite3.connect(db_path)
         try:
             with self.lock:
                 yield conn
@@ -60,13 +63,20 @@ class Database:
                 return result
 
     # Execute SQL operation: SELECT one
-    def execute_query_fetchone(self, query: str, params: tuple = None, lock: threading.Lock = None):
-        with self._get_locked_connection(lock) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            result = cursor.fetchone()
-            return result
-
+    def execute_query_fetchone(self, query: str, params: tuple = None, lock: threading.Lock = None, db_path: str = None):
+        if db_path is None:
+            with self._get_locked_connection(lock) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                result = cursor.fetchone()
+                return result
+        else:
+            with self._get_locked_connection(lock, db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                result = cursor.fetchone()
+                return result
+            
     # Execute SQL operations: INSERT, UPDATE, DELETE
     def execute_non_query(self, query: str, params: tuple = None):
         with self._get_connection() as conn:
@@ -403,7 +413,7 @@ class Database:
         return result[0] is not None
 
     def get_min_max_elevation(
-        self, downstream_id: int, library_directory: str, db_lock: threading.Lock, use_central_db: bool
+        self, downstream_id: int, submodels_directory: str, db_lock: threading.Lock, use_central_db: bool
     ) -> Tuple[Optional[float], Optional[float]]:
         """
         Fetch min and max upstream elevation for a reach
@@ -422,15 +432,16 @@ class Database:
             
             return min_elevation, max_elevation
         else:
-            ds_submodel_db_path = os.path.join(library_directory, str(downstream_id), f"{downstream_id}.db")
+            ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
             if not os.path.exists(ds_submodel_db_path):
                 logging.info(f"Submodel database not found for reach_id: {downstream_id} \n")
                 logging.info(f"At this location: {ds_submodel_db_path}")
                 return None, None
+            
             select_query = f"""
                 SELECT MIN(us_wse), MAX(us_wse) 
                 FROM rating_curves
             """
-            min_elevation, max_elevation = self.execute_query_fetchone(select_query, (downstream_id,), lock = db_lock)
+            min_elevation, max_elevation = self.execute_query_fetchone(select_query, (downstream_id,), lock = db_lock, db_path = ds_submodel_db_path) 
             
             return min_elevation, max_elevation

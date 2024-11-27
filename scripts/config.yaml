@@ -24,6 +24,7 @@ ripple_settings:
   SOURCE_NETWORK_VERSION:  &SOURCE_NETWORK_VERSION "2.1"
   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
 
+# Can we omit and just use the version in reach_processor.py?
 payload_templates:
   conflate_model:
     source_model_directory: "{source_model_directory}\\{model_id}"
@@ -91,7 +92,6 @@ database:
 
 execution:
   stop_on_error: False
-  RIPPLE1D_THREAD_COUNT: 20
   OPTIMUM_PARALLEL_PROCESS_COUNT: 48  # this is for 96 core machine
 
 ...

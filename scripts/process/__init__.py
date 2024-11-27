@@ -1,8 +1,9 @@
 from .batch_processor import BatchProcessor
 from .model_processor import ConflateModelBatchProcessor
-from .reach_processor import ExecuteReachStepBatchProcessor, ReachData
+from .reach_processor import ReachStepProcessor, ReachData
 from .job_client import JobClient
-from .kwse_step import execute_kwse_for_network
+# from .kwse_step import execute_kwse_for_network
+from .kwse_processor import KWSEStepProcessor
 from .extent_library import create_extent_lib
 # from .get_reaches_by_models import get_reaches_by_models
 from .ikwse_step import execute_ikwse_for_network

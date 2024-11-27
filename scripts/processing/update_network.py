@@ -100,7 +100,3 @@ def update_network(db_path: str) -> None:
         logging.info("No updates to process.")
 
 
-if __name__ == "__main__":
-    # Paths
-    db_path = r"D:\Users\abdul.siddiqui\workbench\projects\production\library.sqlite"
-    update_network(db_path)

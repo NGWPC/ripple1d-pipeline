@@ -36,9 +36,3 @@ def update_network(database: Type[Database]) -> None:
     else:
         logging.info("No updates to process.")
 
-
-# if __name__ == "__main__":
-    # collection = CollectionData("")
-    # database = Database(collection)
-    # update_network(database)
-

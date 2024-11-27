@@ -12,7 +12,6 @@ from ..config import (
     API_LAUNCH_JOBS_RETRY_WAIT,
     PAYLOAD_TEMPLATES,
     RIPPLE1D_API_URL,
-    RIPPLE1D_THREAD_COUNT,
 )
 from .job_client import JobClient
 from ..setup.database import Database
@@ -117,11 +116,3 @@ def execute_step(
 
     return succeeded, failed, not_accepted, unknown
 
-
-if __name__ == "__main__":
-    reach_data = [(2820002, 2820006, "Baxter"), (2820006, 2820012, "Baxter")]
-    process_name = "extract_submodel"
-    db_path = "data/library.sqlite"
-    source_model_dir = "data/source_models"
-    submodels_dir = "data/submodels"
-    execute_step(reach_data, process_name, db_path, source_model_dir, submodels_dir)

@@ -1,17 +1,20 @@
 from typing import Type
 import logging
 from ..setup.collection_data import CollectionData
+from abc import ABC, abstractmethod
 
-class BatchProcessor:
+
+#TODO evaluate if this ABC is really necessary...
+class BatchProcessor(ABC):
     def __init__(self):
         self.payload = None
         self.stop_on_error = False
 
-    def format_payload(self, collection: Type[CollectionData]):
-        self.payload = {}
-        return self.payload
+    @abstractmethod
+    def format_payload(cls):
+        pass
 
+    @abstractmethod
     def execute_request(self):
-        # Implement request execution logic here
-        logging.info(f"Executing request with payload: {self.payload}")
+        pass
 
