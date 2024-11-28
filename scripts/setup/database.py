@@ -10,30 +10,35 @@ from contextlib import contextmanager
 from typing import Type, Dict, List, Tuple, Any, Union, Optional
 from .collection_data import CollectionData
 
+
 class Database:
     """
     Main database class to hold all Database methods (SQL Queries).
     """
+
     def __init__(self, collection: Type[CollectionData]):
         self.db_path = collection.db_path
-        self.stac_collection_id = collection.stac_collection_id # Not used currently
-        self.source_models_dir = collection.source_models_dir # Not used currently
-        self.timeout = collection.config['database']['DB_CONN_TIMEOUT']
+        self.stac_collection_id = collection.stac_collection_id  # Not used currently
+        self.source_models_dir = collection.source_models_dir  # Not used currently
+        self.timeout = collection.config["database"]["DB_CONN_TIMEOUT"]
+        self.submodels_dir = collection.submodels_dir
         self.connection_pool = {}
         self.lock = None
 
     @contextmanager
     def _get_connection(self):
         if self.db_path not in self.connection_pool:
-            self.connection_pool[self.db_path] = sqlite3.connect(self.db_path, timeout=self.timeout)
+            self.connection_pool[self.db_path] = sqlite3.connect(
+                self.db_path, timeout=self.timeout
+            )
         conn = self.connection_pool[self.db_path]
         try:
             yield conn
         finally:
             conn.close()
-    
+
     @contextmanager
-    def _get_locked_connection(self, lock, db_path = None):
+    def _get_locked_connection(self, lock, db_path=None):
         self.lock = lock
         if db_path is None:
             conn = sqlite3.connect(self.db_path, timeout=self.timeout)
@@ -46,7 +51,9 @@ class Database:
             conn.close()
 
     # Execute SQL operation: SELECT
-    def execute_query(self, query: str, params: tuple = None, print_reaches: bool = False, lock = None):
+    def execute_query(
+        self, query: str, params: tuple = None, print_reaches: bool = False, lock=None
+    ):
         if lock == None:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -55,7 +62,7 @@ class Database:
                 if print_reaches:
                     logging.info(len(result), "reaches returned")
                 return result
-        else: 
+        else:
             with self._get_locked_connection(lock) as conn:
                 cursor = conn.cursor()
                 cursor.execute(query, params)
@@ -63,7 +70,13 @@ class Database:
                 return result
 
     # Execute SQL operation: SELECT one
-    def execute_query_fetchone(self, query: str, params: tuple = None, lock: threading.Lock = None, db_path: str = None):
+    def execute_query_fetchone(
+        self,
+        query: str,
+        params: tuple = None,
+        lock: threading.Lock = None,
+        db_path: str = None,
+    ):
         if db_path is None:
             with self._get_locked_connection(lock) as conn:
                 cursor = conn.cursor()
@@ -76,7 +89,7 @@ class Database:
                 cursor.execute(query, params)
                 result = cursor.fetchone()
                 return result
-            
+
     # Execute SQL operations: INSERT, UPDATE, DELETE
     def execute_non_query(self, query: str, params: tuple = None):
         with self._get_connection() as conn:
@@ -92,16 +105,16 @@ class Database:
             conn.commit()
 
     @staticmethod
-    def init_db(collection : Type[CollectionData]) -> None:
+    def init_db(collection: Type[CollectionData]) -> None:
         """
         Initialize database and create tables
         """
-        DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
+        DB_CONN_TIMEOUT = collection.config["database"]["DB_CONN_TIMEOUT"]
         db_path = collection.db_path
-        RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
-        US_DEPTH_INCREMENT = collection.config['ripple_settings']['US_DEPTH_INCREMENT']
-        DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
-        
+        RIPPLE1D_VERSION = collection.config["urls"]["RIPPLE1D_VERSION"]
+        US_DEPTH_INCREMENT = collection.config["ripple_settings"]["US_DEPTH_INCREMENT"]
+        DS_DEPTH_INCREMENT = collection.config["ripple_settings"]["DS_DEPTH_INCREMENT"]
+
         connection = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = connection.cursor()
@@ -278,13 +291,15 @@ class Database:
 
     @staticmethod
     def insert_models(models_data: Dict, collection: Type[CollectionData]) -> None:
-        """ 
-        """
+        """ """
         collection_id = collection.stac_collection_id
         db_path = collection.db_path
-        DB_CONN_TIMEOUT = collection.config['database']['DB_CONN_TIMEOUT']
+        DB_CONN_TIMEOUT = collection.config["database"]["DB_CONN_TIMEOUT"]
 
-        rows = [(collection_id, id, model_data["model_name"]) for id, model_data in models_data.items()]
+        rows = [
+            (collection_id, id, model_data["model_name"])
+            for id, model_data in models_data.items()
+        ]
         conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = conn.cursor()
@@ -300,16 +315,22 @@ class Database:
         finally:
             conn.close()
 
-    def update_models_table(self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
+    def update_models_table(
+        self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
+    ) -> None:
         update_query = f"""
                 UPDATE models
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE model_id = ?;
                 """
-        self.executemany_non_query(update_query, [(model_job_id[1], model_job_id[0])
-                                        for model_job_id in model_job_ids])
-        
-    def update_processing_table(self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
+        self.executemany_non_query(
+            update_query,
+            [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids],
+        )
+
+    def update_processing_table(
+        self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
+    ) -> None:
         """
         Updates the processing table with job_id and job_status for a given process.
         """
@@ -318,7 +339,10 @@ class Database:
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE reach_id = ?;
                 """
-        self.executemany_non_query(update_query, [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids])
+        self.executemany_non_query(
+            update_query,
+            [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids],
+        )
 
     def update_model_id_and_eclipsed(self, data: Dict, model_id: str) -> None:
         """
@@ -375,7 +399,7 @@ class Database:
         Retrieves reach IDs, updated_to_ids, and model keys from the network and processing tables
         where the model keys match and the reach is not eclipsed.
         """
-        select_query= f"""
+        select_query = f"""
                 SELECT n.reach_id, n.updated_to_id, p.model_id
                 FROM network n
                 JOIN processing p ON n.reach_id = p.reach_id
@@ -383,7 +407,9 @@ class Database:
             """
         return self.execute_query(select_query, model_ids, True)
 
-    def get_upstream_reaches(self, updated_to_id: int, db_lock: threading.Lock) -> List[int]:
+    def get_upstream_reaches(
+        self, updated_to_id: int, db_lock: threading.Lock
+    ) -> List[int]:
         """
         Fetch upstream reach IDs from the 'network' table.
         """
@@ -392,7 +418,7 @@ class Database:
                 FROM network
                 WHERE updated_to_id = ?
                 """
-        temp_result = self.execute_query(select_query, (updated_to_id,), lock = db_lock)
+        temp_result = self.execute_query(select_query, (updated_to_id,), lock=db_lock)
         result = [row[0] for row in temp_result]
         return result
 
@@ -405,15 +431,19 @@ class Database:
                 FROM processing
                 WHERE reach_id = ?
                 """
-        result = self.execute_query_fetchone(select_query, (reach_id,), lock = db_lock)
+        result = self.execute_query_fetchone(select_query, (reach_id,), lock=db_lock)
 
         if result is None:
-             raise ValueError(f"No record found for reach_id {reach_id}")
-        
+            raise ValueError(f"No record found for reach_id {reach_id}")
+
         return result[0] is not None
 
     def get_min_max_elevation(
-        self, downstream_id: int, submodels_directory: str, db_lock: threading.Lock, use_central_db: bool
+        self,
+        downstream_id: int,
+        submodels_directory: str,
+        db_lock: threading.Lock,
+        use_central_db: bool,
     ) -> Tuple[Optional[float], Optional[float]]:
         """
         Fetch min and max upstream elevation for a reach
@@ -428,20 +458,31 @@ class Database:
                 FROM rating_curves
                 WHERE reach_ID = ?
             """
-            min_elevation, max_elevation = self.execute_query_fetchone(select_query, (downstream_id,), lock = db_lock)
-            
+            min_elevation, max_elevation = self.execute_query_fetchone(
+                select_query, (downstream_id,), lock=db_lock
+            )
+
             return min_elevation, max_elevation
         else:
-            ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
+            ds_submodel_db_path = os.path.join(
+                submodels_directory, str(downstream_id), f"{downstream_id}.db"
+            )
             if not os.path.exists(ds_submodel_db_path):
-                logging.info(f"Submodel database not found for reach_id: {downstream_id} \n")
+                logging.info(
+                    f"Submodel database not found for reach_id: {downstream_id} \n"
+                )
                 logging.info(f"At this location: {ds_submodel_db_path}")
                 return None, None
-            
+
             select_query = f"""
                 SELECT MIN(us_wse), MAX(us_wse) 
                 FROM rating_curves
             """
-            min_elevation, max_elevation = self.execute_query_fetchone(select_query, (downstream_id,), lock = db_lock, db_path = ds_submodel_db_path) 
-            
+            min_elevation, max_elevation = self.execute_query_fetchone(
+                select_query,
+                (downstream_id,),
+                lock=db_lock,
+                db_path=ds_submodel_db_path,
+            )
+
             return min_elevation, max_elevation
