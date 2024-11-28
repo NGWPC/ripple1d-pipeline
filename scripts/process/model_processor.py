@@ -138,19 +138,12 @@ class ConflateModelBatchProcessor(ModelProcessor):
             self.database.update_models_table(self.succeeded, "conflate_model", "successful")
         elif status == "failed":
             self.database.update_models_table(self.failed, "conflate_model", "failed")
-    
+        elif status == "unknown":
+            self.database.update_processing_table(self.unknown, "conflate_model", "unknown")
+
     def _wait_for_jobs(self):
         self.succeeded, self.failed, self.unknown = self.job_client.wait_for_jobs(self.accepted, timeout_minutes=self.timeout_minutes)
         self.conflate_model_job_statuses['succeeded'] = self.succeeded
         self.conflate_model_job_statuses['failed'] = self.failed
         self.conflate_model_job_statuses['unknown'] = self.unknown
 
-
-## Example Workflow:
-collection = CollectionData("example_collection")
-modelprocessor = ModelProcessor(collection)
-jobclient = JobClient(collection)
-database = Database(collection)
-
-conflatemodelbatch = ConflateModelBatchProcessor(modelprocessor, jobclient, database)
-conflatemodelbatch.conflate_model_batch_process()

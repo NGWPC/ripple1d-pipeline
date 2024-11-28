@@ -1,12 +1,14 @@
 import logging
 import os
 import sqlite3
+from typing import Type
 
-from ..config import DB_CONN_TIMEOUT
+from ..setup.database import Database
+
+# TODO Move functions to ../setup/database.py, delete load_rating_curve?
 
 
-# to do: remove submodel
-def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Connection) -> None:
+def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> None:
     """
     Inserts rating curves from reach_db_path into the central library database.
     """
@@ -56,14 +58,14 @@ def process_reach_db(submodel: str, reach_db_path: str, library_conn: sqlite3.Co
         reach_conn.close()
 
 
-def load_rating_curve(db_path, reach_id, sub_db_path, timeout=DB_CONN_TIMEOUT):
+def load_rating_curve(db_path, reach_id, sub_db_path, timeout):
     """
     Inserts rating curves from sub_db_path into the central library database if sub_db_path exists.
     """
     conn = sqlite3.connect(db_path, timeout=timeout)
     try:
         if os.path.exists(sub_db_path):
-            process_reach_db(reach_id, sub_db_path, conn)
+            process_reach_db(sub_db_path, conn)
             try:
                 os.remove(sub_db_path)
             except Exception as e:
@@ -72,17 +74,20 @@ def load_rating_curve(db_path, reach_id, sub_db_path, timeout=DB_CONN_TIMEOUT):
         conn.close()
 
 
-def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
+def load_all_rating_curves(database: Type[Database]) -> None:
     """
     Loads all rating curves from submodel databases into the central library database.
     """
-    conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
-    try:
+    db_path = database.db_path
+    db_timeout = database.timeout
+    submodels_dir = database.submodels_dir
 
+    conn = sqlite3.connect(db_path, timeout=db_timeout)
+    try:
         for submodel in os.listdir(submodels_dir):
             sub_db_path = os.path.join(submodels_dir, submodel, f"{submodel}.db")
             if os.path.exists(sub_db_path):
-                process_reach_db(submodel, sub_db_path, conn)
+                process_reach_db(sub_db_path, conn)
                 try:
                     os.remove(sub_db_path)
                 except Exception as e:
@@ -91,9 +96,3 @@ def load_all_rating_curves(submodels_dir: str, db_path: str) -> None:
         logging.info("All rating curves loaded into central database")
     finally:
         conn.close()
-
-
-# if __name__ == "__main__":
-#     db_path = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library.sqlite"
-#     library_dir = r"D:\Users\abdul.siddiqui\workbench\projects\test_production\library"
-#     load_all_rating_curves(library_dir, db_path)

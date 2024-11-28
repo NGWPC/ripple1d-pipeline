@@ -21,14 +21,11 @@ class KWSEProcessor(BatchProcessor):
         self.submodels_dir = collection.submodels_dir
         self.library_dir = collection.library_dir
         self.stop_on_error = collection.config['execution']['stop_on_error']
-        self.RESOLUTION = collection.config['ripple_settings']['RESOLUTION']
-        self.RESOLUTION_UNITS = collection.config['ripple_settings']['RESOLUTION_UNITS']
-        self.TERRAIN_SOURCE_URL = collection.config['ripple_settings']['TERRAIN_SOURCE_URL']
         self.RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
         self.RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
-        self.US_DEPTH_INCREMENT = collection.config['ripple_settings']['US_DEPTH_INCREMENT']
         self.DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
-        self.source_models_dir = collection.source_models_dir
+        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+        self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         # self.payloads = collection.config['payload_templates']
         self.payloads = {
             "run_known_wse": {
@@ -41,8 +38,6 @@ class KWSEProcessor(BatchProcessor):
                 "write_depth_grids": True,
             },
         }
-        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
-        self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
 
     
     def format_payload(template: dict, nwm_reach_id: int, submodels_dir: str, min_elev: float, max_elev: float) -> dict:
@@ -124,7 +119,7 @@ class KWSEStepProcessor(KWSEProcessor):
         self.reach_data = reach_data
         self.succesful_and_unknown_reaches = None
 
-    def execute_process(self, process_name: str, timeout: int):
+    def execute_kwse_step(self, process_name: str, timeout: int):
 
         for reach_id in self.reach_data:
             reach_job_id_status = self.execute_request(self.database, reach_id, process_name)
@@ -160,6 +155,8 @@ class KWSEStepProcessor(KWSEProcessor):
             self.database.update_processing_table(self.succeeded, process_name, "successful")
         elif status == "failed":
             self.database.update_processing_table(self.failed, process_name, "failed")
+        elif status == "unknown":
+            self.database.update_processing_table(self.unknown, process_name, "unknown")
 
     def _wait_for_jobs(self, timeout: int):
         self.succeeded, self.failed, self.unknown = self.job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)

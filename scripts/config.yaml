@@ -25,6 +25,7 @@ ripple_settings:
   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
 
 # Can we omit and just use the version in reach_processor.py?
+# Better yet, this should this be its own file, with format_template functions
 payload_templates:
   conflate_model:
     source_model_directory: "{source_model_directory}\\{model_id}"

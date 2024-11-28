@@ -7,29 +7,36 @@ from datetime import datetime as dt
 # Import necessary modules
 from scripts import *
 from scripts.debug import *
+
 # from scripts.processing import *
 from scripts.setup import *
+
 # from scripts.setup import Database
 # from scripts.setup import CollectionData
 # from scripts.setup import STACImporter
 from scripts.process import *
+
 # from scripts.process import JobClient
 # from scripts.process import ConflateModelBatchProcessor
 # from scripts.process import extract_submodel_batchProcessor, ReachData
 
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def setup(collection_name):
     """Setup the resources."""
     logging.info(f"Setting up the resources for collection: {collection_name}")
 
-    #Instantiate CollectionData
-    collection = CollectionData(collection_name) 
+    # Instantiate CollectionData
+    collection = CollectionData(collection_name)
     logging.info(f"Creating folder structure in {collection.root_dir}")
     collection.create_folders()
 
-    #Instantiate STACImporter 
+    # Instantiate STACImporter
     models = STACImporter(collection)
     logging.info("Downloading models from STAC catalog")
     models.get_models_from_stac()
@@ -54,22 +61,23 @@ def process(collection_name):
     collection = CollectionData(collection_name)
     database = Database(collection)
     jobclient = JobClient(collection)
-    
+
     logging.info("Getting models from STAC")
     model_ids = collection.get_models()
 
+    # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
     conflate_model_batch = ConflateModelBatchProcessor(collection, jobclient, database)
     conflate_model_batch.conflate_model_batch_process()
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
-    #TODO 
-    # Create a @dataclass for model_job_status & reach_job_status
-    succeeded_and_unknown_status_models = [model_id[0] for model_id in conflate_model_batch.succeded + conflate_model_batch.unknown]
+    succeeded_and_unknown_status_models = [
+        model_id[0]
+        for model_id in conflate_model_batch.succeded + conflate_model_batch.unknown
+    ]
     load_conflation(succeeded_and_unknown_status_models, database)
     logging.info("Finished Load Conflation Step")
-
 
     logging.info("Starting Update Network Step >>>>>>")
     update_network(database)
@@ -81,8 +89,10 @@ def process(collection_name):
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
     # Instantiate reach_processor
-    reach_step_processor = ReachStepProcessor(collection, reach_data, jobclient, database)
-    
+    reach_step_processor = ReachStepProcessor(
+        collection, reach_data, jobclient, database
+    )
+
     logging.info("Starting Extract Submodel Step >>>>>>")
     reach_step_processor.execute_extract_submodel_process()
     logging.info("<<<<<< Finihsed Extract Submodel Step")
@@ -99,31 +109,37 @@ def process(collection_name):
     reach_step_processor.execute_process("run_incremental_normal_depth", timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
 
-
-
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
     outlet_reaches = [data[0] for data in reaches if data[1] is None]
-    execute_ikwse_for_network([(reach, None) for reach in outlet_reaches], collection, database, jobclient, False, timeout=20)
+    execute_ikwse_for_network(
+        [(reach, None) for reach in outlet_reaches],
+        collection,
+        database,
+        jobclient,
+        False,
+        timeout=20,
+    )
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
-
-
-    logging.info("Starting Final execute_kwse_Step >>>>>>")
+    logging.info("Starting Final KWSE Step >>>>>>")
     kwse_reach_data = [
         (data[0], data[1])
         for data in reaches
-        if data[1] is not None and data[0] in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
+        if data[1] is not None
+        and data[0]
+        in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
     ]
+
     kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data, jobclient, database)
-    kwse_step_processor.execute_process("run_known_wse", timeout=180)
-    logging.info("<<<<< Finished Final execute_kwse_step")
+    kwse_step_processor.execute_kwse_step("run_known_wse", timeout=180)
+    logging.info("<<<<< Finished Final KWSE step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
     reach_step_processor.execute_process("create_rating_curves_db", timeout=15)
     logging.info("<<<<< Finished Final create_rating_curves_db Step")
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
-    # load_all_rating_curves(collection.library_dir, database)
+    load_all_rating_curves(database)
     logging.info("<<<<< Finished Merge Rating Curves Step")
 
     logging.info("Starting create_fim_lib Step >>>>>>")
@@ -132,18 +148,18 @@ def process(collection_name):
 
     try:
         logging.info("Starting create extent library Step >>>>>>")
-        # create_extent_lib(library_dir, extent_library_dir, submodels_dir)
+        create_extent_lib(collection)
         logging.info("<<<<< Finished create extent library Step")
     except:
         logging.error("Error - create extent library step failed")
 
     try:
-        logging.info("Starting create f2f start file Step >>>>>>")
+        logging.info("Creating f2f start file >>>>>>")
         outlet_reaches = [data[0] for data in reaches if data[1] is None]
-        # create_f2f_start_file(outlet_reaches, collection.f2f_start_file)
-        logging.info("<<<<< Finished create f2f start file Step")
+        create_f2f_start_file(outlet_reaches, collection.f2f_start_file)
+        logging.info("<<<<< Created f2f start file")
     except:
-        logging.error("Error - create f2f start file step failed")
+        logging.error("Error - unable to create f2f start file")
 
 
 def run_qc(collection):
@@ -159,8 +175,12 @@ def run_qc(collection):
     logging.info("Creating Excel Error Report >>>>>>>>")
     dfs = []
     for process_name in ["conflate_model"]:
-        poll_and_update_job_status(db_path, process_name, "models")  # this captures final status of unknown status jobs
-        _, failed_reaches, _ = get_reach_status_by_process(db_path, process_name, "models")
+        poll_and_update_job_status(
+            db_path, process_name, "models"
+        )  # this captures final status of unknown status jobs
+        _, failed_reaches, _ = get_reach_status_by_process(
+            db_path, process_name, "models"
+        )
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
         write_failed_jobs_df_to_excel(df, process_name, error_report_path)
@@ -177,7 +197,9 @@ def run_qc(collection):
         "create_rating_curves_db",
         "create_fim_lib",
     ]:
-        poll_and_update_job_status(db_path, process_name)  # this captures final status of unknown status jobs
+        poll_and_update_job_status(
+            db_path, process_name
+        )  # this captures final status of unknown status jobs
         _, failed_reaches, _ = get_reach_status_by_process(db_path, process_name)
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
@@ -214,7 +236,9 @@ if __name__ == "__main__":
         python ripple_pipeline.py -c ble_12100302_Medina
     """
 
-    parser = argparse.ArgumentParser(description="Run ripple pipeline steps on one collection")
+    parser = argparse.ArgumentParser(
+        description="Run ripple pipeline steps on one collection"
+    )
 
     parser.add_argument(
         "-c",

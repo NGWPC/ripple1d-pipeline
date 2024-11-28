@@ -16,8 +16,6 @@ from .job_client import JobClient
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
 
-# from .job_utils import check_job_successful, update_processing_table
-from .load_rating_curves import load_rating_curve
 
 def process_reach(
     reach_id: int,

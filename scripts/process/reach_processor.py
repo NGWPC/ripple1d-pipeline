@@ -25,10 +25,11 @@ class ReachProcessor(BatchProcessor):
         self.RESOLUTION_UNITS = collection.config['ripple_settings']['RESOLUTION_UNITS']
         self.TERRAIN_SOURCE_URL = collection.config['ripple_settings']['TERRAIN_SOURCE_URL']
         self.RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
-        self.RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
         self.US_DEPTH_INCREMENT = collection.config['ripple_settings']['US_DEPTH_INCREMENT']
         self.DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
-        self.source_models_dir = collection.source_models_dir
+        self.RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
+        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+        self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         # self.payloads = collection.config['payload_templates']
         self.payloads = {
             "extract_submodel": {
@@ -77,8 +78,6 @@ class ReachProcessor(BatchProcessor):
             },
             
         }
-        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
-        self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         self.extract_submodel_job_statuses = {}
         self.create_ras_terrain_job_statuses = {}
         self.create_model_run_normal_depth_job_statuses = {}
@@ -228,7 +227,9 @@ class ReachStepProcessor(ReachProcessor):
             self.database.update_processing_table(self.succeeded, process_name, "successful")
         elif status == "failed":
             self.database.update_processing_table(self.failed, process_name, "failed")
-
+        elif status == "unknown":
+            self.database.update_processing_table(self.unknown, process_name, "unknown")
+            
     def _wait_for_jobs(self, timeout: int):
         self.succeeded, self.failed, self.unknown = self.job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)
     
