@@ -36,6 +36,7 @@ class CollectionData:
         self.library_dir = os.path.join(self.root_dir, "library")
         self.extent_library_dir = os.path.join(self.root_dir, "library_extent")
         self.f2f_start_file = os.path.join(self.root_dir, "start_reaches.csv")
+        self.error_report_path = os.path.join(self.root_dir, "error_report.xlsx")
 
     def create_folders(self):
         """ Create folders for source models, submodels, and library."""

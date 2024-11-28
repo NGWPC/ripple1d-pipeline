@@ -6,7 +6,7 @@ from datetime import datetime as dt
 
 # Import necessary modules
 from scripts import *
-from scripts.debug import *
+# from scripts.debug import *
 
 # from scripts.processing import *
 from scripts.setup import *
@@ -19,6 +19,8 @@ from scripts.process import *
 # from scripts.process import JobClient
 # from scripts.process import ConflateModelBatchProcessor
 # from scripts.process import extract_submodel_batchProcessor, ReachData
+
+from scripts.qc import *
 
 logging.basicConfig(
     level=logging.INFO,
@@ -162,28 +164,23 @@ def process(collection_name):
         logging.error("Error - unable to create f2f start file")
 
 
-def run_qc(collection):
+def run_qc(collection_name):
     """Perform quality control."""
     logging.info("Starting QC")
-    stac_collection_id = collection
-    root_dir = os.path.join(COLLECTIONS_ROOT_DIR, stac_collection_id)
-    db_path = os.path.join(root_dir, "ripple.gpkg")
-    library_dir = os.path.join(root_dir, "library")
-    error_report_path = os.path.join(root_dir, "error_report.xlsx")
-    f2f_start_file = os.path.join(root_dir, "start_reaches.csv")
+    collection = CollectionData(collection_name)
 
     logging.info("Creating Excel Error Report >>>>>>>>")
     dfs = []
     for process_name in ["conflate_model"]:
         poll_and_update_job_status(
-            db_path, process_name, "models"
+            collection.db_path, process_name, "models"
         )  # this captures final status of unknown status jobs
         _, failed_reaches, _ = get_reach_status_by_process(
-            db_path, process_name, "models"
+            collection.db_path, process_name, "models"
         )
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
-        write_failed_jobs_df_to_excel(df, process_name, error_report_path)
+        write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
 
     dfs = []
     for process_name in [
@@ -198,21 +195,21 @@ def run_qc(collection):
         "create_fim_lib",
     ]:
         poll_and_update_job_status(
-            db_path, process_name
+            collection.db_path, process_name
         )  # this captures final status of unknown status jobs
-        _, failed_reaches, _ = get_reach_status_by_process(db_path, process_name)
+        _, failed_reaches, _ = get_reach_status_by_process(collection.db_path, process_name)
         df = get_failed_jobs_df(failed_reaches)
         dfs.append(df)
-        write_failed_jobs_df_to_excel(df, process_name, error_report_path)
+        write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
 
     logging.info("<<<<< Finished creating Excel error report")
 
     logging.info("Running copy_qc_map step >>>>>")
-    copy_qc_map(root_dir)
+    copy_qc_map(collection.root_dir)
     logging.info("<<<<< Finished copy_qc_map step")
 
     logging.info("Starting run_flows2fim step >>>>>>")
-    run_flows2fim(root_dir, "qc", library_dir, db_path, start_file=f2f_start_file)
+    run_flows2fim(collection.root_dir, "qc", collection.library_dir, collection.db_path, start_file=collection.f2f_start_file)
     logging.info("<<<<< Finished run_flows2fim step")
 
 
