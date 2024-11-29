@@ -27,11 +27,7 @@ class Database:
 
     @contextmanager
     def _get_connection(self):
-        if self.db_path not in self.connection_pool:
-            self.connection_pool[self.db_path] = sqlite3.connect(
-                self.db_path, timeout=self.timeout
-            )
-        conn = self.connection_pool[self.db_path]
+        conn = sqlite3.connect(self.db_path, timeout=self.timeout)
         try:
             yield conn
         finally:
@@ -54,10 +50,13 @@ class Database:
     def execute_query(
         self, query: str, params: tuple = None, print_reaches: bool = False, lock=None
     ):
-        if lock == None:
+        if lock is None:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute(query, params)
+                if params is None:
+                    cursor.execute(query)
+                else:
+                    cursor.execute(query, params)
                 result = cursor.fetchall()
                 if print_reaches:
                     logging.info(len(result), "reaches returned")
@@ -65,7 +64,10 @@ class Database:
         else:
             with self._get_locked_connection(lock) as conn:
                 cursor = conn.cursor()
-                cursor.execute(query, params)
+                if params is None:
+                    cursor.execute(query)
+                else:
+                    cursor.execute(query, params)
                 result = cursor.fetchall()
                 return result
 
@@ -318,15 +320,13 @@ class Database:
     def update_models_table(
         self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
     ) -> None:
+        params = [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids]
         update_query = f"""
                 UPDATE models
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE model_id = ?;
                 """
-        self.executemany_non_query(
-            update_query,
-            [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids],
-        )
+        self.executemany_non_query(update_query,params)
 
     def update_processing_table(
         self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str

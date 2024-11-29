@@ -148,20 +148,20 @@ class ReachStepProcessor(ReachProcessor):
     Returns:
         None
     """
-    def __init__(self, collection : Type[CollectionData], reach_data: List[Tuple[int, int, str]], job_client : Type[JobClient], database : Type[Database]):
+    def __init__(self, collection : Type[CollectionData], reach_data: List[Tuple[int, int, str]]): # , job_client : Type[JobClient], database : Type[Database]):
         super().__init__(collection)
-        self.job_client = job_client
-        self.database = database
-        self.reach_job_id_statuses = []
-        self.accepted = None
-        self.succeded = None
-        self.failed = None
-        self.not_accepted = None
-        self.unknown = None
+        # self.job_client = job_client
+        # self.database = database
         self.reach_data = reach_data
-        self.succesful_and_unknown_reaches = None
+        self.reach_job_id_statuses = []
+        self.accepted = []
+        self.succeded = []
+        self.failed = []
+        self.not_accepted = []
+        self.unknown = []
+        self.succesful_and_unknown_reaches = []
 
-    def execute_extract_submodel_process(self):
+    def execute_extract_submodel_process(self, job_client: Type[JobClient], database: Type[Database]):
 
         for reach_id, model_id in self.reach_data:
             reach_job_id_status = self.execute_request(reach_id, "extract_submodel", model_id)
@@ -170,15 +170,15 @@ class ReachStepProcessor(ReachProcessor):
         self.accepted = [job for job in self.reach_job_id_statuses if job[2] == "accepted"]
         self.not_accepted = [job for job in self.reach_job_id_statuses if job[2] == "not_accepted"]
 
-        self._update_db(self.accepted, "extract_submodel", "accepted")
+        self._update_db(database, "accepted", "extract_submodel")
         logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
         # This will update the self.successful, self.failed, and self.unknown
-        self._wait_for_jobs(self.extract_submodel_job_timeout)
+        self._wait_for_jobs(job_client, self.extract_submodel_job_timeout)
 
-        self._update_db(self.succeeded, "extract_submodel", "successful")
-        self._update_db(self.failed, "extract_submodel", "failed")
-        self._update_db(self.unknown, "extract_submodel", "unknown")
+        self._update_db(database, "successful", "extract_submodel")
+        self._update_db(database, "failed", "extract_submodel")
+        self._update_db(database, "unknown", "extract_submodel")
 
         logging.info(
             f"Successful: {len(self.succeeded)}\n"
@@ -191,7 +191,7 @@ class ReachStepProcessor(ReachProcessor):
 
         # return self.succeeded, self.failed, self.not_accepted, self.unknown
 
-    def execute_process(self, process_name: str, timeout: int):
+    def execute_process(self, job_client: Type[JobClient], database: Type[Database], process_name: str, timeout: int):
 
         for reach_id in self.succesful_and_unknown_reaches:
             reach_job_id_status = self.execute_request(reach_id, process_name)
@@ -200,14 +200,14 @@ class ReachStepProcessor(ReachProcessor):
         self.accepted = [job for job in self.reach_job_id_statuses if job[2] == "accepted"]
         self.not_accepted = [job for job in self.reach_job_id_statuses if job[2] == "not_accepted"]
 
-        self._update_db(self.accepted, process_name, "accepted")
+        self._update_db(database, "accepted", process_name)
         logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
-        self._wait_for_jobs(timeout)
+        self._wait_for_jobs(job_client, timeout)
 
-        self._update_db(self.succeeded, process_name, "successful")
-        self._update_db(self.failed, process_name, "failed")
-        self._update_db(self.unknown, process_name, "unknown")
+        self._update_db(database, "successful", process_name)
+        self._update_db(database, "failed", process_name)
+        self._update_db(database, "unknown", process_name)
 
         logging.info(
             f"Successful: {len(self.succeeded)}\n"
@@ -219,19 +219,19 @@ class ReachStepProcessor(ReachProcessor):
         self._set_succesful_and_unknown_reaches_list()
         # return self.succeeded, self.failed, self.not_accepted, self.unknown
 
-    def _update_db(self, status:str, process_name: str):
+    def _update_db(self, database: Type[Database], status:str, process_name: str):
         
         if status == "accepted": 
-            self.database.update_processing_table(self.accepted, process_name, "accepted")
+            database.update_processing_table(self.accepted, process_name, "accepted")
         elif status == "succeeded":
-            self.database.update_processing_table(self.succeeded, process_name, "successful")
+            database.update_processing_table(self.succeeded, process_name, "successful")
         elif status == "failed":
-            self.database.update_processing_table(self.failed, process_name, "failed")
+            database.update_processing_table(self.failed, process_name, "failed")
         elif status == "unknown":
-            self.database.update_processing_table(self.unknown, process_name, "unknown")
+            database.update_processing_table(self.unknown, process_name, "unknown")
             
-    def _wait_for_jobs(self, timeout: int):
-        self.succeeded, self.failed, self.unknown = self.job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)
+    def _wait_for_jobs(self, job_client: Type[JobClient], timeout: int):
+        self.succeeded, self.failed, self.unknown = job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)
     
     def _set_succesful_and_unknown_reaches_list(self):
         self.succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown]
@@ -242,3 +242,4 @@ class ReachStepProcessor(ReachProcessor):
 #     reach_id : int
 #     updated_to_id : int
 #     model_id: str
+

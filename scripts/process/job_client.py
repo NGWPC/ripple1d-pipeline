@@ -88,6 +88,7 @@ class JobClient:
                     logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true", "job failed")
                     break
                 elif status == "running":
+                    print("datetime_ro_epoch_utc ", self.datetime_to_epoch_utc(self.get_job_update_time(reach_job_ids[i][1])))
                     elapsed_time = time.time() - self.datetime_to_epoch_utc(self.get_job_update_time(reach_job_ids[i][1]))
                     if elapsed_time / 60 > timeout_minutes:
                         logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")

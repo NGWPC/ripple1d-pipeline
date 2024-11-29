@@ -16,6 +16,8 @@ from .job_client import JobClient
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
 
+def get_min_max_elevation():
+    pass
 
 def process_reach(
     reach_id: int,

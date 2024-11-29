@@ -9,6 +9,7 @@ import pandas as pd
 import requests
 from openpyxl import load_workbook
 
+# TODO - migrate away from usage of config.py 
 from ..config import DB_CONN_TIMEOUT, QC_TEMPLATE_QGIS_FILE, RIPPLE1D_API_URL
 
 
@@ -49,6 +50,7 @@ def get_failed_jobs_df(failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
     return df
 
 
+#TODO move to ../setup/database.py?
 def get_all_job_ids_for_process(
     db_path: str, process_name: str, process_table: str = "processing"
 ) -> List[Tuple[int, str]]:
@@ -78,7 +80,7 @@ def get_all_job_ids_for_process(
         conn.close()
     return job_ids
 
-
+#TODO move to own script?
 def poll_and_update_job_status(
     db_path: str,
     process_name: str,
@@ -134,7 +136,7 @@ def poll_and_update_job_status(
     finally:
         conn.close()
 
-
+#TODO move to ../setup/database.py?
 def get_reach_status_by_process(
     db_path: str, process_name: str, process_table: str = "processing"
 ) -> Tuple[List[Tuple[int, str, str]], List[Tuple[int, str, str]], List[Tuple[int, str, str]]]:

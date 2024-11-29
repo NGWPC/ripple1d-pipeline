@@ -69,8 +69,8 @@ def process(collection_name):
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
-    conflate_model_batch = ConflateModelBatchProcessor(collection, jobclient, database)
-    conflate_model_batch.conflate_model_batch_process()
+    conflate_model_batch = ConflateModelBatchProcessor(collection) #, jobclient, database)
+    conflate_model_batch.conflate_model_batch_process(jobclient, database)
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
@@ -91,24 +91,22 @@ def process(collection_name):
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
     # Instantiate reach_processor
-    reach_step_processor = ReachStepProcessor(
-        collection, reach_data, jobclient, database
-    )
+    reach_step_processor = ReachStepProcessor(collection, reach_data)
 
     logging.info("Starting Extract Submodel Step >>>>>>")
-    reach_step_processor.execute_extract_submodel_process()
+    reach_step_processor.execute_extract_submodel_process(jobclient, database)
     logging.info("<<<<<< Finihsed Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
-    reach_step_processor.execute_process("create_ras_terrain", timeout=3)
+    reach_step_processor.execute_process(jobclient, database, "create_ras_terrain", timeout=3)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
-    reach_step_processor.execute_process("create_model_run_normal_depth", timeout=10)
+    reach_step_processor.execute_process(jobclient, database, "create_model_run_normal_depth", timeout=10)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
-    reach_step_processor.execute_process("run_incremental_normal_depth", timeout=25)
+    reach_step_processor.execute_process(jobclient, database, "run_incremental_normal_depth", timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
 
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
@@ -132,12 +130,12 @@ def process(collection_name):
         in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
     ]
 
-    kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data, jobclient, database)
-    kwse_step_processor.execute_kwse_step("run_known_wse", timeout=180)
+    kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data)
+    kwse_step_processor.execute_kwse_step(jobclient, database, "run_known_wse", timeout=180)
     logging.info("<<<<< Finished Final KWSE step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
-    reach_step_processor.execute_process("create_rating_curves_db", timeout=15)
+    reach_step_processor.execute_process(jobclient, database, "create_rating_curves_db", timeout=15)
     logging.info("<<<<< Finished Final create_rating_curves_db Step")
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
@@ -145,7 +143,7 @@ def process(collection_name):
     logging.info("<<<<< Finished Merge Rating Curves Step")
 
     logging.info("Starting create_fim_lib Step >>>>>>")
-    reach_step_processor.execute_process("create_fim_lib", timeout=30)
+    reach_step_processor.execute_process(jobclient, database, "create_fim_lib", timeout=30)
     logging.info("<<<<< Finished create_fim_lib Step")
 
     try:
@@ -163,7 +161,7 @@ def process(collection_name):
     except:
         logging.error("Error - unable to create f2f start file")
 
-
+ 
 def run_qc(collection_name):
     """Perform quality control."""
     logging.info("Starting QC")
@@ -218,7 +216,7 @@ def run_pipeline(collection: str):
     Automate the execution of all steps previously in setup.ipynb, process.ipynb, and qc.ipynb.
     """
 
-    setup(collection)
+    # setup(collection)
     process(collection)
 
     try:

@@ -49,7 +49,7 @@ class ModelProcessor(BatchProcessor):
                 payload[key] = value
         return payload
 
-    def execute_single_request(self, model_id: str, process_name: str)  -> Tuple[int, str, str]:
+    def execute_request(self, model_id: str, process_name: str)  -> Tuple[int, str, str]:
         """
         Executes an API request for a given process and returns the job ID and status.
         Retries upto 5 times
@@ -92,34 +92,34 @@ class ConflateModelBatchProcessor(ModelProcessor):
     Returns:
         None
     """
-    def __init__(self, collection : Type[CollectionData], job_client : Type[JobClient], database : Type[Database]):
+    def __init__(self, collection : Type[CollectionData]): # , job_client : Type[JobClient], database : Type[Database]):
         super().__init__(collection)
-        self.job_client = job_client
-        self.database = database
+        # self.job_client = job_client
+        # self.database = database
         self.timeout_minutes = 10
         self.model_job_id_statuses = []
-        self.accepted = None
-        self.succeded = None
-        self.failed = None
-        self.not_accepted = None
-        self.unknown = None
+        self.accepted = []
+        self.succeded =[]
+        self.failed = []
+        self.not_accepted = []
+        self.unknown = []
 
-    def conflate_model_batch_process(self):
+    def conflate_model_batch_process(self, job_client : Type[JobClient], database: Type[Database]):
         for model_id in self.model_ids:
-            single_model_job_id_status = self.execute_single_request(model_id, "conflate_model")
+            single_model_job_id_status = self.execute_request(model_id, "conflate_model")
 
             self.model_job_id_statuses.append(single_model_job_id_status)
 
         self.accepted = [job for job in self.model_job_id_statuses if job[2] == "accepted"]
         self.not_accepted = [job for job in self.model_job_id_statuses if job[2] == "not_accepted"]
 
-        self._update_db("accepted")
+        self._update_db(database, "accepted")
         logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
-        self._wait_for_jobs()
+        self._wait_for_jobs(job_client)
 
-        self._update_db("succeeded")
-        self._update_db("failed")
+        self._update_db(database, "succeeded")
+        self._update_db(database,"failed")
 
         logging.info(
             f"Successful: {len(self.succeeded)}\n"
@@ -130,19 +130,19 @@ class ConflateModelBatchProcessor(ModelProcessor):
         
         return self.succeeded, self.failed, self.not_accepted, self.unknown
             
-    def _update_db(self, status: str):
+    def _update_db(self, database: Type[Database],  status: str):
 
         if status == "accepted": 
-            self.database.update_models_table(self.accepted, "conflate_model", "accepted")
+            database.update_models_table(self.accepted, "conflate_model", "accepted")
         elif status == "succeeded":
-            self.database.update_models_table(self.succeeded, "conflate_model", "successful")
+            database.update_models_table(self.succeeded, "conflate_model", "successful")
         elif status == "failed":
-            self.database.update_models_table(self.failed, "conflate_model", "failed")
+            database.update_models_table(self.failed, "conflate_model", "failed")
         elif status == "unknown":
-            self.database.update_processing_table(self.unknown, "conflate_model", "unknown")
+            database.update_processing_table(self.unknown, "conflate_model", "unknown")
 
-    def _wait_for_jobs(self):
-        self.succeeded, self.failed, self.unknown = self.job_client.wait_for_jobs(self.accepted, timeout_minutes=self.timeout_minutes)
+    def _wait_for_jobs(self, job_client):
+        self.succeeded, self.failed, self.unknown = job_client.wait_for_jobs(self.accepted, timeout_minutes=self.timeout_minutes)
         self.conflate_model_job_statuses['succeeded'] = self.succeeded
         self.conflate_model_job_statuses['failed'] = self.failed
         self.conflate_model_job_statuses['unknown'] = self.unknown
