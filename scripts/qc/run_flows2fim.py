@@ -1,20 +1,21 @@
 import logging
 import os
 import subprocess
-from typing import List
+from typing import List, Type
+from ..setup.collection_data import CollectionData
 
-from ..config import (
-    FLOW_FILES_DIR,
-    FLOWS2FIM_BIN_PATH,
-    GDAL_BINS_PATH,
-    GDAL_SCRIPTS_PATH,
-)
+# from ..config import (
+#     FLOW_FILES_DIR,
+#     FLOWS2FIM_BIN_PATH,
+# )
 
 
-def setup_gdal_environment():
+def setup_gdal_environment(collection: Type[CollectionData]):
     """
     Add GDAL binaries to the system PATH
     """
+    GDAL_BINS_PATH = collection.config['flows2fim']['GDAL_BINS_PATH']
+    GDAL_SCRIPTS_PATH = collection.config['flows2fim']['GDAL_SCRIPTS_PATH']
 
     if GDAL_BINS_PATH:
         # Add GDAL path to the system PATH
@@ -25,27 +26,38 @@ def setup_gdal_environment():
 
 
 def run_flows2fim(
-    output_dir: str,
-    output_subfolder: str,
-    library_path: str,
-    library_db_path: str,
-    start_file: str = "",
+    # output_dir: str,
+    # library_path: str,
+    # library_db_path: str,
+    # flow_files_dir: str = FLOW_FILES_DIR,
+    # start_file: str = "",
+    collection : Type[CollectionData],
+    output_subfolder: str = "qc",
     start_reaches: List = [],
-    flow_files_dir: str = FLOW_FILES_DIR,
     fim_format: str = "tif",
 ) -> None:
     """
     Create control CSVs and FIM outputs for each flow file in the flow_files_dir.
 
     Args:
-        output_dir (str): Directory where the output subfolder is located.
+        collection (CollectionData object): Contains parameters from config file.
+            # output_dir (str): Directory where the output subfolder is located.
+            # library_path (str): Path to the library directory.
+            # library_db_path (str): Path to the SQLite library database.
+            # flow_files_dir (str): Directory containing flow files (CSV format).
+            # start_file (str): Name of flows to fim start file.
         output_subfolder (str): Subfolder where outputs will be placed.
-        library_path (str): Path to the library directory.
-        library_db_path (str): Path to the SQLite library database.
-        flow_files_dir (str): Directory containing flow files (CSV format).
+        start_reaches (List): List of reaches to start.
         fim_format (str): Output format for FIM files ('tif' or 'vrt').
     """
-    setup_gdal_environment()
+    output_dir = collection.root_dir
+    library_path = collection.library_dir
+    library_db_path = collection.db_path
+    start_file = collection.f2f_start_file
+    flow_files_dir = collection.config['flows2fim']['FLOW_FILES_DIR']
+    FLOWS2FIM_BIN_PATH = collection.config['flows2fim']['FLOWS2FIM_BIN_PATH']
+
+    setup_gdal_environment(collection)
 
     output_subfolder_path = os.path.join(output_dir, output_subfolder)
     if not os.path.exists(output_subfolder_path):

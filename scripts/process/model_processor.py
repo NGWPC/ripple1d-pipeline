@@ -92,18 +92,12 @@ class ConflateModelBatchProcessor(ModelProcessor):
     Returns:
         None
     """
-    def __init__(self, collection : Type[CollectionData]): # , job_client : Type[JobClient], database : Type[Database]):
+    def __init__(self, collection : Type[CollectionData], model_ids: List):
         super().__init__(collection)
-        # self.job_client = job_client
-        # self.database = database
+        self.model_ids = model_ids
         self.timeout_minutes = 10
         self.model_job_id_statuses = []
-        self.accepted = []
-        self.succeded =[]
-        self.failed = []
-        self.not_accepted = []
-        self.unknown = []
-
+        
     def conflate_model_batch_process(self, job_client : Type[JobClient], database: Type[Database]):
         for model_id in self.model_ids:
             single_model_job_id_status = self.execute_request(model_id, "conflate_model")
@@ -121,14 +115,10 @@ class ConflateModelBatchProcessor(ModelProcessor):
         self._update_db(database, "succeeded")
         self._update_db(database,"failed")
 
-        logging.info(
-            f"Successful: {len(self.succeeded)}\n"
-            f"Failed: {len(self.failed)}\n"
-            f"Not Accepted: {len(self.not_accepted)}\n"
-            f"Status Unknown: {len(self.unknown)}\n"
-        )           
-        
-        return self.succeeded, self.failed, self.not_accepted, self.unknown
+        logging.info(f"Successful: {len(self.succeeded)}")
+        logging.info(f"Failed: {len(self.failed)}")
+        logging.info(f"Not Accepted: {len(self.not_accepted)}")
+        logging.info(f"Status Unknown: {len(self.unknown)}")           
             
     def _update_db(self, database: Type[Database],  status: str):
 

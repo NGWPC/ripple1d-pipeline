@@ -69,14 +69,14 @@ def process(collection_name):
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
-    conflate_model_batch = ConflateModelBatchProcessor(collection) #, jobclient, database)
+    conflate_model_batch = ConflateModelBatchProcessor(collection, model_ids) #, jobclient, database)
     conflate_model_batch.conflate_model_batch_process(jobclient, database)
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
     succeeded_and_unknown_status_models = [
         model_id[0]
-        for model_id in conflate_model_batch.succeded + conflate_model_batch.unknown
+        for model_id in conflate_model_batch.succeeded + conflate_model_batch.unknown
     ]
     load_conflation(succeeded_and_unknown_status_models, database)
     logging.info("Finished Load Conflation Step")
@@ -86,7 +86,7 @@ def process(collection_name):
     logging.info("<<<<<< Finished Update Network Step")
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
-    reaches = database.get_reaches_by_models()
+    reaches = database.get_reaches_by_models(model_ids)
     reach_data = [(data[0], data[2]) for data in reaches]
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
@@ -166,19 +166,23 @@ def run_qc(collection_name):
     """Perform quality control."""
     logging.info("Starting QC")
     collection = CollectionData(collection_name)
+    database = Database(collection)
+    job_client = JobClient(collection)
 
     logging.info("Creating Excel Error Report >>>>>>>>")
     dfs = []
     for process_name in ["conflate_model"]:
-        poll_and_update_job_status(
-            collection.db_path, process_name, "models"
-        )  # this captures final status of unknown status jobs
-        _, failed_reaches, _ = get_reach_status_by_process(
-            collection.db_path, process_name, "models"
-        )
-        df = get_failed_jobs_df(failed_reaches)
+        # logging.info(f"Getting job status for {process_name} ")
+        # Capture the final status of unknown status jobs
+        job_client.poll_and_update_job_status(database, process_name, "models")
+        # logging.info("Finished poll_and_update_job_status")
+        _, _, failed_reaches = database.get_reach_status_by_process(process_name, "models")
+        # logging.info("Finished database.get_reach_status_by_process")
+        df = job_client.get_failed_jobs_df(failed_reaches)
+        # logging.info("Finished get_failed_jobs_df")
         dfs.append(df)
         write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
+        # logging.info("Finished write_failed_jobs_df_to_excel")
 
     dfs = []
     for process_name in [
@@ -192,22 +196,26 @@ def run_qc(collection_name):
         "create_rating_curves_db",
         "create_fim_lib",
     ]:
-        poll_and_update_job_status(
-            collection.db_path, process_name
-        )  # this captures final status of unknown status jobs
-        _, failed_reaches, _ = get_reach_status_by_process(collection.db_path, process_name)
-        df = get_failed_jobs_df(failed_reaches)
+        # logging.info(f"Getting job status for: {process_name}")
+        # Capture the final status of unknown status jobs
+        job_client.poll_and_update_job_status(database, process_name)
+        # logging.info("Finished poll_and_update_job_status")
+        _, _, failed_reaches = database.get_reach_status_by_process(process_name)
+        # logging.info("Finished database.get_reach_status_by_process")
+        df = job_client.get_failed_jobs_df(failed_reaches)
+        # logging.info("Finished get_failed_jobs_df")
         dfs.append(df)
         write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
+        # logging.info("Finished write_failed_jobs_df_to_excel")
 
     logging.info("<<<<< Finished creating Excel error report")
 
     logging.info("Running copy_qc_map step >>>>>")
-    copy_qc_map(collection.root_dir)
+    copy_qc_map(collection)
     logging.info("<<<<< Finished copy_qc_map step")
 
     logging.info("Starting run_flows2fim step >>>>>>")
-    run_flows2fim(collection.root_dir, "qc", collection.library_dir, collection.db_path, start_file=collection.f2f_start_file)
+    run_flows2fim(collection)
     logging.info("<<<<< Finished run_flows2fim step")
 
 

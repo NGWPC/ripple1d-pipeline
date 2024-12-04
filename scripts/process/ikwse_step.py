@@ -44,13 +44,13 @@ def process_reach(
     RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
 
     try:
-        submodel_directory_path = os.path.join(collection.submodels_directory, str(reach_id))
+        submodel_directory_path = os.path.join(collection.submodels_dir, str(reach_id))
         headers = {"Content-Type": "application/json"}
         valid_plans = ["nd"]
 
         if downstream_id:
             min_elevation, max_elevation = database.get_min_max_elevation(
-                downstream_id, collection.submodels_directory, central_db_lock, use_central_db
+                downstream_id, collection.submodels_dir, central_db_lock, use_central_db
             )
             if min_elevation and max_elevation:
 

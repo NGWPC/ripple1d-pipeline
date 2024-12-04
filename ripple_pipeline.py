@@ -7,9 +7,8 @@ from datetime import datetime as dt
 # Import necessary modules
 from scripts import *
 from scripts.debug import *
-from scripts.qc import *
 from scripts.processing import *
-from scripts.process import *
+from scripts.processing import *
 from scripts.setup import *
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M:%S")

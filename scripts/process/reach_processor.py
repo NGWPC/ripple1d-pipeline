@@ -148,18 +148,18 @@ class ReachStepProcessor(ReachProcessor):
     Returns:
         None
     """
-    def __init__(self, collection : Type[CollectionData], reach_data: List[Tuple[int, int, str]]): # , job_client : Type[JobClient], database : Type[Database]):
+    def __init__(self, collection : Type[CollectionData], reach_data: List[Tuple[int, int, str]]):
         super().__init__(collection)
-        # self.job_client = job_client
-        # self.database = database
         self.reach_data = reach_data
         self.reach_job_id_statuses = []
-        self.accepted = []
-        self.succeded = []
-        self.failed = []
-        self.not_accepted = []
-        self.unknown = []
-        self.succesful_and_unknown_reaches = []
+        # self.job_client = job_client
+        # self.database = database
+        # self.accepted = []
+        # self.succeded = []
+        # self.failed = []
+        # self.not_accepted = []
+        # self.unknown = []
+        # self.succesful_and_unknown_reaches = []
 
     def execute_extract_submodel_process(self, job_client: Type[JobClient], database: Type[Database]):
 
@@ -180,19 +180,18 @@ class ReachStepProcessor(ReachProcessor):
         self._update_db(database, "failed", "extract_submodel")
         self._update_db(database, "unknown", "extract_submodel")
 
-        logging.info(
-            f"Successful: {len(self.succeeded)}\n"
-            f"Failed: {len(self.failed)}\n"
-            f"Not Accepted: {len(self.not_accepted)}\n"
-            f"Unknown status: {len(self.unknown)}\n"
-        )
+        logging.info(f"Successful: {len(self.succeeded)}")
+        logging.info(f"Failed: {len(self.failed)}")
+        logging.info(f"Not Accepted: {len(self.not_accepted)}")
+        logging.info(f"Unknown status: {len(self.unknown)}")
 
         self._set_succesful_and_unknown_reaches_list()
 
-        # return self.succeeded, self.failed, self.not_accepted, self.unknown
-
     def execute_process(self, job_client: Type[JobClient], database: Type[Database], process_name: str, timeout: int):
-
+        
+        #Clear state of previous job
+        self._reset_states()
+        
         for reach_id in self.succesful_and_unknown_reaches:
             reach_job_id_status = self.execute_request(reach_id, process_name)
             self.reach_job_id_statuses.append(reach_job_id_status)
@@ -209,15 +208,12 @@ class ReachStepProcessor(ReachProcessor):
         self._update_db(database, "failed", process_name)
         self._update_db(database, "unknown", process_name)
 
-        logging.info(
-            f"Successful: {len(self.succeeded)}\n"
-            f"Failed: {len(self.failed)}\n"
-            f"Not Accepted: {len(self.not_accepted)}\n"
-            f"Unknown status: {len(self.unknown)}\n"
-        )
+        logging.info(f"Successful: {len(self.succeeded)}")
+        logging.info(f"Failed: {len(self.failed)}")
+        logging.info(f"Not Accepted: {len(self.not_accepted)}")
+        logging.info(f"Unknown status: {len(self.unknown)}")
 
         self._set_succesful_and_unknown_reaches_list()
-        # return self.succeeded, self.failed, self.not_accepted, self.unknown
 
     def _update_db(self, database: Type[Database], status:str, process_name: str):
         
@@ -236,6 +232,13 @@ class ReachStepProcessor(ReachProcessor):
     def _set_succesful_and_unknown_reaches_list(self):
         self.succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown]
 
+    def _reset_states(self):
+        self.accepted = []
+        self.succeded = []
+        self.failed = []
+        self.not_accepted = []
+        self.unknown = []
+        self.succesful_and_unknown_reaches = []
 
 # @dataclass
 # class ReachData:

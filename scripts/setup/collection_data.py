@@ -51,7 +51,7 @@ class CollectionData:
         try:
             # Walk through the directory tree
             for root, dirs, files in os.walk(path):
-                model = root.split("/")[-1]
+                model = root.split("\\")[-1]
                 # The root directory is expressed as "source_models" from line above, 
                 #  which is not an actual model, and must be ommitted
                 if model != "source_models":

@@ -2,7 +2,6 @@ import logging
 from typing import Type
 
 from ..setup.database import Database
-# from ..setup.collection_data import CollectionData
 
 def update_network(database: Type[Database]) -> None:
     """

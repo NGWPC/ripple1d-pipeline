@@ -59,7 +59,7 @@ class Database:
                     cursor.execute(query, params)
                 result = cursor.fetchall()
                 if print_reaches:
-                    logging.info(len(result), "reaches returned")
+                    logging.info(f"{len(result)} reaches returned")
                 return result
         else:
             with self._get_locked_connection(lock) as conn:
@@ -326,7 +326,7 @@ class Database:
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE model_id = ?;
                 """
-        self.executemany_non_query(update_query,params)
+        self.executemany_non_query(update_query, params)
 
     def update_processing_table(
         self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
@@ -339,9 +339,10 @@ class Database:
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE reach_id = ?;
                 """
+        params = [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids]
         self.executemany_non_query(
             update_query,
-            [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids],
+            params,
         )
 
     def update_model_id_and_eclipsed(self, data: Dict, model_id: str) -> None:
@@ -486,3 +487,77 @@ class Database:
             )
 
             return min_elevation, max_elevation
+    
+    def get_all_job_ids_for_process(
+        self,
+        process_name: str,
+        process_table: str = "processing"
+    ) -> List[Tuple[int, str]]:
+        """
+        Retrieves all job IDs for the specified process from the processing table.
+
+        Args:
+            db_path: Path to the SQLite database.
+            process_name: The name of the process (e.g., "create_fim_lib").
+
+        Returns:
+            List of tuples containing reach_id and job_id for the specified process.
+        """
+
+        select_query = f"""
+                SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id
+                FROM {process_table}
+                WHERE {process_name}_job_id IS NOT NULL
+            """
+        return self.execute_query(select_query)
+
+    def get_reach_status_by_process(
+        self,
+        process_name: str,
+        process_table: str = "processing"
+    ) -> Tuple[List[Tuple[int, str, str]], List[Tuple[int, str, str]], List[Tuple[int, str, str]]]:
+        """
+        Retrieves successful, accepted, and failed reaches for a given process name
+        by reading statuses from the processing table.
+
+        Returns:
+            successful: List of tuples (reach_id, job_id, status) for successful reaches.
+            failed: List of tuples (reach_id, job_id, status) for failed reaches.
+            accepted: List of tuples (reach_id, job_id, status) for accepted reaches.
+        """
+        
+        # Build dynamic SQL queries for retrieving status and job IDs
+        accepted_query = f"""
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
+            FROM {process_table}
+            WHERE {process_name}_status = 'accepted'
+        """
+        successful_query = f"""
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
+            FROM {process_table}
+            WHERE {process_name}_status = 'successful'
+        """
+        failed_query = f"""
+            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
+            FROM {process_table}
+            WHERE {process_name}_status = 'failed'
+        """
+
+        # Retrieve accepted reaches
+        accepted = self.execute_query(accepted_query)
+        # Retrieve successful reaches
+        successful = self.execute_query(successful_query)
+        # Retrieve failed reaches
+        failed = self.execute_query(failed_query)
+
+        return accepted, successful, failed
+
+    def update_table_with_job_status(self, process_table: str, process_name: str, job_status, entity):
+
+        query=f"""
+            UPDATE {process_table}
+            SET {process_name}_status = ?
+            WHERE {"reach_id" if process_table == "processing" else "model_id"} = ?;
+        """
+        params = (job_status, entity)
+        self.execute_query(query, params)
