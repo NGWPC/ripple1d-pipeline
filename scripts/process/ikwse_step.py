@@ -16,8 +16,6 @@ from .job_client import JobClient
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
 
-def get_min_max_elevation():
-    pass
 
 def process_reach(
     reach_id: int,
@@ -42,15 +40,16 @@ def process_reach(
     DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
     RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
     RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+    submodels_directory = collection.submodels_dir
 
     try:
-        submodel_directory_path = os.path.join(collection.submodels_dir, str(reach_id))
+        submodel_directory_path = os.path.join(submodels_directory, str(reach_id))
         headers = {"Content-Type": "application/json"}
         valid_plans = ["nd"]
 
         if downstream_id:
             min_elevation, max_elevation = database.get_min_max_elevation(
-                downstream_id, collection.submodels_dir, central_db_lock, use_central_db
+                downstream_id, submodels_directory, central_db_lock, use_central_db
             )
             if min_elevation and max_elevation:
 
@@ -99,7 +98,7 @@ def process_reach(
                 database.update_processing_table(
                     [(reach_id, rc_db_job_id)], "create_irating_curves_db", "failed"
                 )
-            
+
             upstream_reaches = database.get_upstream_reaches(reach_id, central_db_lock)
             for upstream_reach in upstream_reaches:
                 task_queue.put((upstream_reach, None))
@@ -124,7 +123,7 @@ def execute_ikwse_for_network(
     database : Type[Database],
     job_client : Type[JobClient],
     use_central_db: bool,
-    timeout: int,
+    timeout: int = 30,
 ) -> None:
     """
     Start processing the network from the given list of initial reaches.
@@ -154,7 +153,6 @@ def execute_ikwse_for_network(
                     use_central_db,
                     timeout,
                 )
-
                 futures.append(future)
 
             for future in futures.copy():
@@ -162,3 +160,4 @@ def execute_ikwse_for_network(
                     futures.remove(future)
 
             time.sleep(1)
+

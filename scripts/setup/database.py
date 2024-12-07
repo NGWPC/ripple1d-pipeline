@@ -32,6 +32,14 @@ class Database:
             yield conn
         finally:
             conn.close()
+    
+    @contextmanager
+    def _get_connection_non_central_db(self, db):
+        conn = sqlite3.connect(db, timeout=self.timeout)
+        try:
+            yield conn
+        finally:
+            conn.close()
 
     @contextmanager
     def _get_locked_connection(self, lock, db_path=None):
@@ -320,12 +328,13 @@ class Database:
     def update_models_table(
         self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
     ) -> None:
-        params = [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids]
         update_query = f"""
                 UPDATE models
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE model_id = ?;
                 """
+        params = [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids]
+        
         self.executemany_non_query(update_query, params)
 
     def update_processing_table(
@@ -340,10 +349,8 @@ class Database:
                 WHERE reach_id = ?;
                 """
         params = [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids]
-        self.executemany_non_query(
-            update_query,
-            params,
-        )
+        
+        self.executemany_non_query(update_query, params)
 
     def update_model_id_and_eclipsed(self, data: Dict, model_id: str) -> None:
         """
@@ -459,35 +466,47 @@ class Database:
                 FROM rating_curves
                 WHERE reach_ID = ?
             """
-            min_elevation, max_elevation = self.execute_query_fetchone(
+            min_elevation, max_elevation = self.execute_query_fetch_min_max(
                 select_query, (downstream_id,), lock=db_lock
             )
-
+            logging.info(f"min_elevation, max_elevation : {min_elevation, max_elevation}")
             return min_elevation, max_elevation
         else:
             ds_submodel_db_path = os.path.join(
                 submodels_directory, str(downstream_id), f"{downstream_id}.db"
             )
             if not os.path.exists(ds_submodel_db_path):
-                logging.info(
-                    f"Submodel database not found for reach_id: {downstream_id} \n"
-                )
-                logging.info(f"At this location: {ds_submodel_db_path}")
+                logging.info(f"Submodel database not found for reach_id: {downstream_id}")
                 return None, None
 
             select_query = f"""
                 SELECT MIN(us_wse), MAX(us_wse) 
                 FROM rating_curves
             """
-            min_elevation, max_elevation = self.execute_query_fetchone(
-                select_query,
-                (downstream_id,),
-                lock=db_lock,
-                db_path=ds_submodel_db_path,
-            )
-
+            min_elevation, max_elevation = self.execute_query_fetch_min_max(select_query)
+            logging.info(f"min_elevation, max_elevation : {min_elevation, max_elevation}")
             return min_elevation, max_elevation
     
+    def execute_query_fetch_min_max(
+        self,
+        query: str,
+        params: tuple = None,
+        lock: threading.Lock = None,
+        db_path: str = None,
+    ):
+        if db_path is None:
+            with self._get_locked_connection(lock) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                min, max = cursor.fetchone()
+                return min, max
+        else:
+            with self._get_connection_non_central_db(db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute(query)
+                min, max = cursor.fetchone()
+                return min, max
+            
     def get_all_job_ids_for_process(
         self,
         process_name: str,

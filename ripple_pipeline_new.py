@@ -6,20 +6,8 @@ from datetime import datetime as dt
 
 # Import necessary modules
 from scripts import *
-# from scripts.debug import *
-
-# from scripts.processing import *
 from scripts.setup import *
-
-# from scripts.setup import Database
-# from scripts.setup import CollectionData
-# from scripts.setup import STACImporter
 from scripts.process import *
-
-# from scripts.process import JobClient
-# from scripts.process import ConflateModelBatchProcessor
-# from scripts.process import extract_submodel_batchProcessor, ReachData
-
 from scripts.qc import *
 
 logging.basicConfig(
@@ -64,7 +52,7 @@ def process(collection_name):
     database = Database(collection)
     jobclient = JobClient(collection)
 
-    logging.info("Getting models from STAC")
+    logging.info("Getting models succesfully pulled from STAC")
     model_ids = collection.get_models()
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
@@ -224,7 +212,7 @@ def run_pipeline(collection: str):
     Automate the execution of all steps previously in setup.ipynb, process.ipynb, and qc.ipynb.
     """
 
-    # setup(collection)
+    setup(collection)
     process(collection)
 
     try:
