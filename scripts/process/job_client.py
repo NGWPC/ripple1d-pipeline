@@ -55,6 +55,7 @@ class JobClient:
         Wait for a job to finish and return true or false based on success or failure
         timeout_minutes count start from the job last updated status
         """
+
         while True:
             status = self.get_job_status(job_id)
             if status == "successful":
@@ -67,7 +68,6 @@ class JobClient:
                 if elapsed_time / 60 > timeout_minutes:
                     logging.warning(f"{self.RIPPLE1D_API_URL}/jobs/{job_id} client timeout")
                     return False
-
             time.sleep(self.DEFAULT_POLL_WAIT)
 
     def wait_for_jobs(self, 

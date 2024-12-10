@@ -125,7 +125,7 @@ class KWSEStepProcessor(KWSEProcessor):
 
         self._wait_for_jobs(job_client, timeout)
 
-        self._update_db(database, "successful", process_name)
+        self._update_db(database, "succeeded", process_name)
         self._update_db(database, "failed", process_name)
         self._update_db(database, "unknown", process_name)
 

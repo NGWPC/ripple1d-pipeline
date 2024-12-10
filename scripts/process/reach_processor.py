@@ -30,54 +30,7 @@ class ReachProcessor(BatchProcessor):
         self.RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
         self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
-        # self.payloads = collection.config['payload_templates']
-        self.payloads = {
-            "extract_submodel": {
-                "source_model_directory": "{source_model_directory}\\{model_id}",
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "nwm_id": "{nwm_reach_id}",
-            },
-            "create_ras_terrain": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "terrain_source_url": self.TERRAIN_SOURCE_URL,
-                # "resolution": self.RESOLUTION,
-                # "resolution_units": self.RESOLUTION_UNITS,
-            },
-            "create_model_run_normal_depth": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "plan_suffix": "ind",
-                "num_of_discharges_for_initial_normal_depth_runs": 10,
-                "ras_version": self.RAS_VERSION,
-            },
-            "run_incremental_normal_depth": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "plan_suffix": "nd",
-                "depth_increment": self.US_DEPTH_INCREMENT,
-                "ras_version": self.RAS_VERSION,
-            },
-            "run_known_wse": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "plan_suffix": "kwse",
-                "min_elevation": -9999,
-                "max_elevation": -9999,
-                "depth_increment": self.DS_DEPTH_INCREMENT,
-                "ras_version": "631",
-                "write_depth_grids": True,
-            },
-            "create_rating_curves_db": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "plans": ["kwse"],
-            },
-            "create_fim_lib": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "plans": ["nd", "kwse"],
-                "resolution": self.RESOLUTION,
-                "resolution_units": self.RESOLUTION_UNITS,
-                "library_directory": "{library_directory}",
-                "cleanup": True,
-            },
-            
-        }
+        self.payloads = collection.config['payload_templates']
         self.extract_submodel_job_statuses = {}
         self.create_ras_terrain_job_statuses = {}
         self.create_model_run_normal_depth_job_statuses = {}
@@ -177,15 +130,16 @@ class ReachStepProcessor(ReachProcessor):
         logging.info(f"Not Accepted: {len(self.not_accepted)}")
         logging.info(f"Unknown status: {len(self.unknown)}")
 
-        self._set_succesful_and_unknown_reaches_list(True)
+        self._set_succesful_and_unknown_reaches_list()
 
         self._clear_job_status_lists()
 
 
     def execute_process(self, job_client: Type[JobClient], database: Type[Database], process_name: str, timeout: int):
 
+        self.reach_job_id_statuses = []
+
         for reach_id in self.succesful_and_unknown_reaches:
-            logging.info(f" Execute request for : {process_name}")
             reach_job_id_status = self.execute_request(reach_id, process_name)
             self.reach_job_id_statuses.append(reach_job_id_status)
 
@@ -198,9 +152,14 @@ class ReachStepProcessor(ReachProcessor):
 
         self._wait_for_jobs(job_client, timeout)
 
-        self._update_db(database, "successful", process_name)
+        self._update_db(database, "succeeded", process_name)
         self._update_db(database, "failed", process_name)
         self._update_db(database, "unknown", process_name)
+        
+        logging.info(f"Successful: {len(self.succeeded)}")
+        logging.info(f"Failed: {len(self.failed)}")
+        logging.info(f"Not Accepted: {len(self.not_accepted)}")
+        logging.info(f"Unknown status: {len(self.unknown)}")
 
         self._set_succesful_and_unknown_reaches_list()
         
@@ -222,21 +181,16 @@ class ReachStepProcessor(ReachProcessor):
         self.succeeded, self.failed, self.unknown = job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)
 
     
-    def _set_succesful_and_unknown_reaches_list(self, first: bool = False):
-        if first:
-            self.succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown]
-        else:
-            temp_succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown] 
-            # TODO Come up with a claner alternative to the following line. self.succesful_and_unknown_reaches was compounding on sequential calls to execute_process. self.succesful_and_unknown_reaches = [] does not work.
-            self.succesful_and_unknown_reaches = list(set(temp_succesful_and_unknown_reaches))
+    def _set_succesful_and_unknown_reaches_list(self):
+        self.succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown]
 
-
-    def _clear_job_status_lists(self): 
+    def _clear_job_status_lists(self):
         self.accepted = []
         self.succeeded = []
         self.failed = []
         self.not_accepted = []
         self.unknown = []
+
 
 # @dataclass
 # class ReachData:

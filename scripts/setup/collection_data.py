@@ -14,6 +14,7 @@ class CollectionData:
         self.assign_paths()
         
 
+    #TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class? 
     def load_config(self, config_file):
         try:
             with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
@@ -23,8 +24,6 @@ class CollectionData:
         except yaml.YAMLError:
             raise ValueError("Invalid YAML configuration")
 
-    #TODO - Assign ALL parameters from config file to Class to remove the need to use dot or bracket notation for
-    # accessing values later?
 
     def assign_paths(self):
         """ Assign filepaths to CollectionData object."""
@@ -44,6 +43,8 @@ class CollectionData:
         os.makedirs(self.source_models_dir, exist_ok=True)
         os.makedirs(self.submodels_dir, exist_ok=True)
         os.makedirs(self.library_dir, exist_ok=True)
+
+        logging.info(f"Folders created successfully inside {self.root_dir}")
 
     def get_models(self) -> List:
         models = []

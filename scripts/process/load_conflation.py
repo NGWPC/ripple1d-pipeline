@@ -3,7 +3,7 @@ import logging
 import os
 from typing import Dict, List, Type
 
-from ..setup.database import Database #, CollectionData
+from ..setup.database import Database
 
 
 def load_json(file_path: str) -> Dict:
@@ -38,9 +38,3 @@ def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
 
     logging.info(f"Conflation loaded to {database.db_path} from .conflation.json files")
 
-
-# if __name__ == "__main__":
-    # collection = CollectionData("example_collection")
-    # database = Database(collection)
-    # model_ids = ["Baxter"]
-    # load_conflation(model_ids, database)

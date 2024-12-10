@@ -66,7 +66,6 @@ class STACImporter:
         logging.info(f"Total {len(models_data)} filtered models.")
         
         self.models_data = models_data
-        # return models_data
     
     def download_models_data(self) -> None:
         """

@@ -12,8 +12,10 @@ from scripts.qc import *
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format="%(message)s",
+    # datefmt="%Y-%m-%d %H:%M:%S",
+    # format="%(asctime)s - %(levelname)s - %(message)s",
+    # datefmt="%Y-%m-%d %H:%M:%S",
 )
 
 
@@ -109,7 +111,7 @@ def process(collection_name):
     )
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
-    logging.info("Starting Final KWSE Step >>>>>>")
+    logging.info("Starting Final execute_kwse_step >>>>>>")
     kwse_reach_data = [
         (data[0], data[1])
         for data in reaches
@@ -120,7 +122,7 @@ def process(collection_name):
 
     kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data)
     kwse_step_processor.execute_kwse_step(jobclient, database, "run_known_wse", timeout=180)
-    logging.info("<<<<< Finished Final KWSE step")
+    logging.info("<<<<< Finished Final execute_kwse_step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
     reach_step_processor.execute_process(jobclient, database, "create_rating_curves_db", timeout=15)
