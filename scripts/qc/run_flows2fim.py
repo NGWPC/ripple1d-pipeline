@@ -4,12 +4,6 @@ import subprocess
 from typing import List, Type
 from ..setup.collection_data import CollectionData
 
-# from ..config import (
-#     FLOW_FILES_DIR,
-#     FLOWS2FIM_BIN_PATH,
-# )
-
-
 def setup_gdal_environment(collection: Type[CollectionData]):
     """
     Add GDAL binaries to the system PATH
@@ -26,11 +20,6 @@ def setup_gdal_environment(collection: Type[CollectionData]):
 
 
 def run_flows2fim(
-    # output_dir: str,
-    # library_path: str,
-    # library_db_path: str,
-    # flow_files_dir: str = FLOW_FILES_DIR,
-    # start_file: str = "",
     collection : Type[CollectionData],
     output_subfolder: str = "qc",
     start_reaches: List = [],
@@ -113,10 +102,8 @@ def run_flows2fim(
 
 
 if __name__ == "__main__":
-    output_dir = r"Z:\collections\ebfe-12030106_EastForkTrinity"
-    output_subfolder = "qc"
 
-    library_path = r"Z:\collections\ebfe-12030106_EastForkTrinity\library"
-    library_db_path = r"Z:\collections\ebfe-12030106_EastForkTrinity\ripple.db"
+    collection_name = "" 
+    collection = CollectionData(collection_name)
+    run_flows2fim(collection)
 
-    # run_flows2fim(...)

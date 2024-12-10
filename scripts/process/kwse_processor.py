@@ -1,7 +1,5 @@
-import concurrent.futures
 import logging
 import json
-import random
 import requests
 
 from time import sleep
@@ -26,18 +24,7 @@ class KWSEProcessor(BatchProcessor):
         self.DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
         self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
-        # self.payloads = collection.config['payload_templates']
-        self.payloads = {
-            "run_known_wse": {
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "plan_suffix": "kwse",
-                "min_elevation": -9999,
-                "max_elevation": -9999,
-                "depth_increment": self.DS_DEPTH_INCREMENT,
-                "ras_version": self.RAS_VERSION,
-                "write_depth_grids": True,
-            },
-        }
+        self.payloads = collection.config['payload_templates']
 
     
     def format_payload(template: dict, nwm_reach_id: int, submodels_dir: str, min_elev: float, max_elev: float) -> dict:

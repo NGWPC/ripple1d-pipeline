@@ -7,8 +7,6 @@ import tempfile
 from pathlib import Path
 from typing import Type
 
-from ..config import GDAL_BINS_PATH, GDAL_SCRIPTS_PATH
-
 from ..setup.collection_data import CollectionData
 
 def setup_gdal_environment(collection):

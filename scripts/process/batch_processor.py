@@ -4,7 +4,7 @@ from ..setup.collection_data import CollectionData
 from abc import ABC, abstractmethod
 
 
-#TODO evaluate if this ABC is really necessary...
+# TODO - is this ABC is really necessary?
 class BatchProcessor(ABC):
     def __init__(self):
         self.payload = None

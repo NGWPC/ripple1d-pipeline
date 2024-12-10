@@ -5,19 +5,27 @@ import logging
 import os
 import pathlib
 import subprocess
+import yaml
+from pathlib import Path
 from datetime import datetime
 
 from ripple_pipeline import *
 from scripts.setup import *
-from scripts.config import (
-    COLLECTIONS_ROOT_DIR,
-    S3_UPLOAD_PREFIX,
-    S3_UPLOAD_FAILED_PREFIX,
-    RIPPLE1D_VERSION,
-)
 
 
-def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
+def load_config(config_file):
+    try:
+        with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the scripts directory.")
+    except yaml.YAMLError:
+        raise ValueError("Invalid YAML configuration")
+    
+    return config
+
+def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_version:str = None, failed: bool = False):
+
 
     if failed:
         dateime_obj = datetime.now()
@@ -26,8 +34,8 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
             "aws",
             "s3",
             "mv",
-            f"{COLLECTIONS_ROOT_DIR}/{collection}",
-            f"{s3_upload_prefix}/{collection}_{RIPPLE1D_VERSION}_{timestamp}",
+            f"{col_root_dir}/{collection}",
+            f"{s3_upload_prefix}/{collection}_{ripple1d_version}_{timestamp}",
             "--recursive",
         ]
     else:
@@ -35,7 +43,7 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
             "aws",
             "s3",
             "mv",
-            f"{COLLECTIONS_ROOT_DIR}/{collection}",
+            f"{col_root_dir}/{collection}",
             f"{s3_upload_prefix}/{collection}",
             "--recursive",
         ]
@@ -54,6 +62,13 @@ def batch_pipeline(collection_list):
         collection_list: A filepath to line separated list of collections.
             OR a string in quotes with space delimeted collections.
     """
+
+    config = load_config("config.yaml")
+
+    COLLECTIONS_ROOT_DIR = config['paths']['COLLECTIONS_ROOT_DIR']
+    S3_UPLOAD_PREFIX = config['paths']['S3_UPLOAD_PREFIX']
+    S3_UPLOAD_FAILED_PREFIX = config['paths']['S3_UPLOAD_FAILED_PREFIX']
+    RIPPLE1D_VERSION = config['urls']['RIPPLE1D_VERSION']
 
     collections = read_input(collection_list)
 
@@ -87,18 +102,18 @@ def batch_pipeline(collection_list):
 
                 logging.info(f"Collection {collection} processed successfully.")
 
-                s3_move(S3_UPLOAD_PREFIX, collection)
+                s3_move(S3_UPLOAD_PREFIX, collection, COLLECTIONS_ROOT_DIR)
 
             except subprocess.CalledProcessError as e:
 
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
+                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
                 logging.error(f"Error processing collection {collection}: {e} ")
                 logging.info(f"See {log_file} for more details.")
 
             except Exception as e:
 
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
+                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
                 logging.error(f"Unexpected error occurred: {e}")
                 logging.error(f"Executing run_pipeline on collection: {collection}")

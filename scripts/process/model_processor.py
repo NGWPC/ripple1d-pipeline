@@ -14,21 +14,8 @@ class ModelProcessor(BatchProcessor):
 
     def __init__(self, collection: Type[CollectionData]):
         self.stop_on_error = collection.config['execution']['stop_on_error']
-        self.SOURCE_NETWORK = collection.config['ripple_settings']['SOURCE_NETWORK']
-        self.SOURCE_NETWORK_VERSION = collection.config['ripple_settings']['SOURCE_NETWORK_VERSION']
-        self.SOURCE_NETWORK_TYPE = collection.config['ripple_settings']['SOURCE_NETWORK_TYPE']
+        self.payloads = collection.config['payload_templates']
         self.source_models_dir = collection.source_models_dir
-        self.payloads = {
-            "conflate_model": {
-                "source_model_directory": "{source_model_directory}\\{model_id}",
-                "source_network": {"file_name": self.SOURCE_NETWORK, "version": self.SOURCE_NETWORK_VERSION, "type": self.SOURCE_NETWORK_TYPE},
-            },
-            "extract_submodel": {
-                "source_model_directory": "{source_model_directory}\\{model_id}",
-                "submodel_directory": "{submodels_directory}\\{nwm_reach_id}",
-                "nwm_id": "{nwm_reach_id}",
-            }
-        }
         self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         self.model_ids = collection.get_models()

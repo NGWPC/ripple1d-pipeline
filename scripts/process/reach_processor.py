@@ -1,7 +1,5 @@
-import concurrent.futures
 import logging
 import json
-import random
 import requests
 
 from time import sleep
@@ -31,16 +29,6 @@ class ReachProcessor(BatchProcessor):
         self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         self.payloads = collection.config['payload_templates']
-        self.extract_submodel_job_statuses = {}
-        self.create_ras_terrain_job_statuses = {}
-        self.create_model_run_normal_depth_job_statuses = {}
-        self.run_incremental_normal_depth_job_statuses = {}
-        self.create_fim_lib_job_statuses = {}
-        self.extract_submodel_job_timeout = 5
-        self.create_ras_terrain_job_timeout = 3
-        self.create_model_run_normal_depth_job_timeout = 10
-        self.run_incremental_normal_depth_job_timeout = 15
-        self.create_fim_lib_job_timeout = 20
 
     
     def format_payload(self, template: dict, nwm_reach_id: int, model_id : str = "") -> dict:
@@ -106,7 +94,7 @@ class ReachStepProcessor(ReachProcessor):
         self.reach_data = reach_data
         self.reach_job_id_statuses = []
 
-    def execute_extract_submodel_process(self, job_client: Type[JobClient], database: Type[Database]):
+    def execute_extract_submodel_process(self, job_client: Type[JobClient], database: Type[Database], timeout: int):
 
         for reach_id, model_id in self.reach_data:
             reach_job_id_status = self.execute_request(reach_id, "extract_submodel", model_id)
@@ -118,8 +106,8 @@ class ReachStepProcessor(ReachProcessor):
         self._update_db(database, "accepted", "extract_submodel")
         logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
-        # This will update the self.successful, self.failed, and self.unknown
-        self._wait_for_jobs(job_client, self.extract_submodel_job_timeout)
+        # This will update self.successful, self.failed, and self.unknown
+        self._wait_for_jobs(job_client, timeout)
 
         self._update_db(database, "successful", "extract_submodel")
         self._update_db(database, "failed", "extract_submodel")

@@ -4,20 +4,23 @@ import argparse
 import os
 import pathlib
 import subprocess
-from datetime import datetime
 import logging
+import yaml
+from pathlib import Path
 
+from datetime import datetime
 from ripple_pipeline import *
 from scripts.setup import *
-from scripts.config import (
-    COLLECTIONS_ROOT_DIR,
-    S3_UPLOAD_PREFIX,
-    S3_UPLOAD_FAILED_PREFIX,
-    RIPPLE1D_VERSION,
-)
 
 
-def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
+def s3_move(collection: str, failed: bool = False):
+
+    config = load_config("config.yaml")
+
+    COLLECTIONS_ROOT_DIR = config['paths']['COLLECTIONS_ROOT_DIR']
+    S3_UPLOAD_PREFIX = config['paths']['S3_UPLOAD_PREFIX']
+    S3_UPLOAD_FAILED_PREFIX = config['paths']['S3_UPLOAD_FAILED_PREFIX']
+    RIPPLE1D_VERSION = config['urls']['RIPPLE1D_VERSION']
 
     if failed:
         dateime_obj = datetime.now()
@@ -27,7 +30,7 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
             "s3",
             "mv",
             f"{COLLECTIONS_ROOT_DIR}/{collection}",
-            f"{s3_upload_prefix}/{collection}_{RIPPLE1D_VERSION}_{timestamp}",
+            f"{S3_UPLOAD_FAILED_PREFIX}/{collection}_{RIPPLE1D_VERSION}_{timestamp}",
             "--recursive",
         ]
     else:
@@ -36,7 +39,7 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
             "s3",
             "mv",
             f"{COLLECTIONS_ROOT_DIR}/{collection}",
-            f"{s3_upload_prefix}/{collection}",
+            f"{S3_UPLOAD_PREFIX}/{collection}",
             "--recursive",
         ]
 
@@ -46,6 +49,17 @@ def s3_move(s3_upload_prefix: str, collection: str, failed: bool = False):
     logging.info(f"Submitted S3 mv command on collection: {collection} ...")
 
 
+def load_config(config_file):
+    try:
+        with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the scripts directory.")
+    except yaml.YAMLError:
+        raise ValueError("Invalid YAML configuration")
+    
+    return config
+        
 def batch_move(collection_list):
     """
     Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, and qc steps for each collection.
@@ -61,8 +75,8 @@ def batch_move(collection_list):
         logging.info(f"Starting s3 mv for collection: {collection} ... {id}/{len(collections)}")
         
         # Toggle depending on if submitting failed collections or successful
-        s3_move(S3_UPLOAD_PREFIX, collection)
-        # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, True)
+        s3_move(collection) # Successful
+        # s3_move(collection, True) # Failed
 
 def read_input(collection_list):
     collections = []
