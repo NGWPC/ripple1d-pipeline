@@ -1,8 +1,7 @@
+#!/usr/bin/env python3
+
 import argparse
 import logging
-import os
-import sys
-from datetime import datetime as dt
 
 # Import necessary modules
 from src import *
@@ -12,14 +11,9 @@ from src.qc import *
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(message)s",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
 )
-
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s - %(levelname)s - %(message)s",
-#     datefmt="%Y-%m-%d %H:%M:%S",
-# )
 
 
 def setup(collection_name):
