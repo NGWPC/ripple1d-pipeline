@@ -3,6 +3,7 @@ from typing import Type
 
 from ..setup.database import Database
 
+
 def update_network(database: Type[Database]) -> None:
     """
     Build the modified network by updating updated_to_id based on valid and eclipsed reaches.
@@ -34,4 +35,3 @@ def update_network(database: Type[Database]) -> None:
         logging.info(f"Updated {len(updates)} reaches successfully.")
     else:
         logging.info("No updates to process.")
-

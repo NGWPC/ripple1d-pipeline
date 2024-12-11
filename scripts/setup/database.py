@@ -30,7 +30,7 @@ class Database:
             yield conn
         finally:
             conn.close()
-    
+
     @contextmanager
     def _get_connection_non_central_db(self, db):
         conn = sqlite3.connect(db, timeout=self.timeout)
@@ -53,9 +53,7 @@ class Database:
             conn.close()
 
     # Execute SQL operation: SELECT
-    def execute_query(
-        self, query: str, params: tuple = None, print_reaches: bool = False, lock=None
-    ):
+    def execute_query(self, query: str, params: tuple = None, print_reaches: bool = False, lock=None):
         if lock is None:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -304,10 +302,7 @@ class Database:
         db_path = collection.db_path
         DB_CONN_TIMEOUT = collection.config["database"]["DB_CONN_TIMEOUT"]
 
-        rows = [
-            (collection_id, id, model_data["model_name"])
-            for id, model_data in models_data.items()
-        ]
+        rows = [(collection_id, id, model_data["model_name"]) for id, model_data in models_data.items()]
         conn = sqlite3.connect(db_path, timeout=DB_CONN_TIMEOUT)
         try:
             cursor = conn.cursor()
@@ -323,21 +318,17 @@ class Database:
         finally:
             conn.close()
 
-    def update_models_table(
-        self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
-    ) -> None:
+    def update_models_table(self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
         update_query = f"""
                 UPDATE models
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
                 WHERE model_id = ?;
                 """
         params = [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids]
-        
+
         self.executemany_non_query(update_query, params)
 
-    def update_processing_table(
-        self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str
-    ) -> None:
+    def update_processing_table(self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
         """
         Updates the processing table with job_id and job_status for a given process.
         """
@@ -347,7 +338,7 @@ class Database:
                 WHERE reach_id = ?;
                 """
         params = [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids]
-        
+
         self.executemany_non_query(update_query, params)
 
     def update_model_id_and_eclipsed(self, data: Dict, model_id: str) -> None:
@@ -413,9 +404,7 @@ class Database:
             """
         return self.execute_query(select_query, model_ids, True)
 
-    def get_upstream_reaches(
-        self, updated_to_id: int, db_lock: threading.Lock
-    ) -> List[int]:
+    def get_upstream_reaches(self, updated_to_id: int, db_lock: threading.Lock) -> List[int]:
         """
         Fetch upstream reach IDs from the 'network' table.
         """
@@ -470,9 +459,7 @@ class Database:
             logging.info(f"min_elevation, max_elevation : {min_elevation, max_elevation}")
             return min_elevation, max_elevation
         else:
-            ds_submodel_db_path = os.path.join(
-                submodels_directory, str(downstream_id), f"{downstream_id}.db"
-            )
+            ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
             if not os.path.exists(ds_submodel_db_path):
                 logging.info(f"Submodel database not found for reach_id: {downstream_id}")
                 return None, None
@@ -484,7 +471,7 @@ class Database:
             min_elevation, max_elevation = self.execute_query_fetch_min_max(select_query)
             logging.info(f"min_elevation, max_elevation : {min_elevation, max_elevation}")
             return min_elevation, max_elevation
-    
+
     def execute_query_fetch_min_max(
         self,
         query: str,
@@ -504,11 +491,9 @@ class Database:
                 cursor.execute(query)
                 min, max = cursor.fetchone()
                 return min, max
-            
+
     def get_all_job_ids_for_process(
-        self,
-        process_name: str,
-        process_table: str = "processing"
+        self, process_name: str, process_table: str = "processing"
     ) -> List[Tuple[int, str]]:
         """
         Retrieves all job IDs for the specified process from the processing table.
@@ -529,9 +514,7 @@ class Database:
         return self.execute_query(select_query)
 
     def get_reach_status_by_process(
-        self,
-        process_name: str,
-        process_table: str = "processing"
+        self, process_name: str, process_table: str = "processing"
     ) -> Tuple[List[Tuple[int, str, str]], List[Tuple[int, str, str]], List[Tuple[int, str, str]]]:
         """
         Retrieves successful, accepted, and failed reaches for a given process name
@@ -542,7 +525,7 @@ class Database:
             failed: List of tuples (reach_id, job_id, status) for failed reaches.
             accepted: List of tuples (reach_id, job_id, status) for accepted reaches.
         """
-        
+
         # Build dynamic SQL queries for retrieving status and job IDs
         accepted_query = f"""
             SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
@@ -571,7 +554,7 @@ class Database:
 
     def update_table_with_job_status(self, process_table: str, process_name: str, job_status, entity):
 
-        query=f"""
+        query = f"""
             UPDATE {process_table}
             SET {process_name}_status = ?
             WHERE {"reach_id" if process_table == "processing" else "model_id"} = ?;

@@ -5,38 +5,39 @@ from typing import List
 import logging
 from dotenv import load_dotenv
 
+
 class CollectionData:
     """
     Load configuration file, assign filepaths, create folders within the collection's root directory.
     """
-    def __init__(self, stac_collection_id, config_file='config.yaml'):
+
+    def __init__(self, stac_collection_id, config_file="config.yaml"):
         self.stac_collection_id = stac_collection_id
         self.load_dotenv(".env")
         self.load_yaml(config_file)
         self.assign_paths()
-        
 
-    #TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class? 
+    # TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class?
     def load_yaml(self, config_file):
         try:
-            with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
+            with open(str(Path.cwd() / "scripts" / config_file), "r") as file:
                 self.config = yaml.safe_load(file)
         except FileNotFoundError:
             raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the scripts directory.")
         except yaml.YAMLError:
             raise ValueError("Invalid YAML configuration")
-        
+
     def load_dotenv(self, dotenv_file):
         try:
             load_dotenv(dotenv_file)
-            self.RIPPLE1D_API_URL = os.getenv('RIPPLE1D_API_URL')
-            self.STAC_URL = os.getenv('STAC_URL')
+            self.RIPPLE1D_API_URL = os.getenv("RIPPLE1D_API_URL")
+            self.STAC_URL = os.getenv("STAC_URL")
         except:
             raise ValueError("Invalid .env configuration")
 
     def assign_paths(self):
-        """ Assign filepaths to CollectionData object."""
-        self.root_dir = os.path.join(self.config['paths']['COLLECTIONS_ROOT_DIR'], str(self.stac_collection_id))
+        """Assign filepaths to CollectionData object."""
+        self.root_dir = os.path.join(self.config["paths"]["COLLECTIONS_ROOT_DIR"], str(self.stac_collection_id))
         self.db_path = os.path.join(self.root_dir, "ripple.gpkg")
         self.source_models_dir = os.path.join(self.root_dir, "source_models")
         self.merged_gpkg_path = os.path.join(self.root_dir, "source_models", "all_rivers.gpkg")
@@ -47,7 +48,7 @@ class CollectionData:
         self.error_report_path = os.path.join(self.root_dir, "error_report.xlsx")
 
     def create_folders(self):
-        """ Create folders for source models, submodels, and library."""
+        """Create folders for source models, submodels, and library."""
 
         os.makedirs(self.source_models_dir, exist_ok=True)
         os.makedirs(self.submodels_dir, exist_ok=True)
@@ -62,7 +63,7 @@ class CollectionData:
             # Walk through the directory tree
             for root, dirs, files in os.walk(path):
                 model = root.split("\\")[-1]
-                # The root directory is expressed as "source_models" from line above, 
+                # The root directory is expressed as "source_models" from line above,
                 #  which is not an actual model, and must be ommitted
                 if model != "source_models":
                     # Add all models pulled from the STAC Catalog

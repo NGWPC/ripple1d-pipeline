@@ -9,12 +9,13 @@ from typing import Type
 
 from ..setup.collection_data import CollectionData
 
+
 def setup_gdal_environment(collection):
     """
     Add GDAL binaries to the system PATH
     """
-    GDAL_BINS_PATH = collection.config['flows2fim']['GDAL_BINS_PATH']
-    GDAL_SCRIPTS_PATH = collection.config['flows2fim']['GDAL_SCRIPTS_PATH']
+    GDAL_BINS_PATH = collection.config["flows2fim"]["GDAL_BINS_PATH"]
+    GDAL_SCRIPTS_PATH = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
 
     if GDAL_BINS_PATH:
         # Add GDAL path to the system PATH
@@ -115,8 +116,8 @@ def create_extent_lib(collection: Type[CollectionData], print_progress=False):
     library_dir = collection.library_dir
     extent_library_dir = collection.extent_library_dir
     submodels_dir = collection.submodels_dir
-    OPTIMUM_PARALLEL_PROCESS_COUNT = collection.config['execution']['OPTIMUM_PARALLEL_PROCESS_COUNT']
-    
+    OPTIMUM_PARALLEL_PROCESS_COUNT = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+
     setup_gdal_environment(collection)
     create_mirrored_structure(library_dir, extent_library_dir)
 
@@ -139,4 +140,3 @@ def create_extent_lib(collection: Type[CollectionData], print_progress=False):
                 update_progress()
     if print_progress:
         sys.stdout.write("\n")
-

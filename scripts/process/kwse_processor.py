@@ -12,21 +12,21 @@ from ..setup.database import Database
 from .batch_processor import BatchProcessor
 from .job_client import JobClient
 
+
 class KWSEProcessor(BatchProcessor):
-        
+
     def __init__(self, collection: Type[CollectionData]):
         self.source_models_dir = collection.source_models_dir
         self.submodels_dir = collection.submodels_dir
         self.library_dir = collection.library_dir
-        self.stop_on_error = collection.config['execution']['stop_on_error']
-        self.RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
-        self.RIPPLE1D_VERSION = collection.config['RIPPLE1D_VERSION']
-        self.DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
+        self.stop_on_error = collection.config["execution"]["stop_on_error"]
+        self.RAS_VERSION = collection.config["ripple_settings"]["RAS_VERSION"]
+        self.RIPPLE1D_VERSION = collection.config["RIPPLE1D_VERSION"]
+        self.DS_DEPTH_INCREMENT = collection.config["ripple_settings"]["DS_DEPTH_INCREMENT"]
         self.RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
-        self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
-        self.payloads = collection.config['payload_templates']
+        self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"]
+        self.payloads = collection.config["payload_templates"]
 
-    
     def format_payload(template: dict, nwm_reach_id: int, submodels_dir: str, min_elev: float, max_elev: float) -> dict:
         """
         Formats a payload based on a given template and parameters.
@@ -45,7 +45,9 @@ class KWSEProcessor(BatchProcessor):
         payload["max_elevation"] = max_elev
         return payload
 
-    def execute_request(self, database : Type[Database], nwm_reach_id: int, submodels_dir: str, downstream_id: int) -> Tuple[int, str, str]:
+    def execute_request(
+        self, database: Type[Database], nwm_reach_id: int, submodels_dir: str, downstream_id: int
+    ) -> Tuple[int, str, str]:
         """
         Executes an API request for a given process and returns the job ID and status.
         Retries upto 5 times
@@ -73,14 +75,17 @@ class KWSEProcessor(BatchProcessor):
                     else:
                         break
                     sleep(i * self.API_LAUNCH_JOBS_RETRY_WAIT)
-                logging.info(f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}")
+                logging.info(
+                    f"Failed to accept {nwm_reach_id}, code: {response.status_code}, response: {response.text}"
+                )
 
         return nwm_reach_id, "", "not_accepted"
 
+
 class KWSEStepProcessor(KWSEProcessor):
     """
-    Inherits from the ReachProcessor class. This subclass sends API requests and 
-    manages the each "step" for reach level processing in ripple1d. 
+    Inherits from the ReachProcessor class. This subclass sends API requests and
+    manages the each "step" for reach level processing in ripple1d.
     Args:
         Collection object
         JobClient object
@@ -93,7 +98,8 @@ class KWSEStepProcessor(KWSEProcessor):
     Returns:
         None
     """
-    def __init__(self, collection : Type[CollectionData], reach_data: List[Tuple[int, int, str]]):
+
+    def __init__(self, collection: Type[CollectionData], reach_data: List[Tuple[int, int, str]]):
         super().__init__(collection)
         self.reach_data = reach_data
         self.reach_job_id_statuses = []
@@ -107,7 +113,7 @@ class KWSEStepProcessor(KWSEProcessor):
         self.accepted = [job for job in self.reach_job_id_statuses if job[2] == "accepted"]
         self.not_accepted = [job for job in self.reach_job_id_statuses if job[2] == "not_accepted"]
 
-        self._update_db(database, "accepted",  process_name)
+        self._update_db(database, "accepted", process_name)
         logging.info("Jobs submission complete. Waiting for jobs to finish...")
 
         self._wait_for_jobs(job_client, timeout)
@@ -123,9 +129,9 @@ class KWSEStepProcessor(KWSEProcessor):
 
         self._set_succesful_and_unknown_reaches_list()
 
-    def _update_db(self, database: Type[Database], status:str, process_name: str):
-        
-        if status == "accepted": 
+    def _update_db(self, database: Type[Database], status: str, process_name: str):
+
+        if status == "accepted":
             database.update_processing_table(self.accepted, process_name, "accepted")
         elif status == "succeeded":
             database.update_processing_table(self.succeeded, process_name, "successful")
@@ -136,6 +142,6 @@ class KWSEStepProcessor(KWSEProcessor):
 
     def _wait_for_jobs(self, job_client: Type[JobClient], timeout: int):
         self.succeeded, self.failed, self.unknown = job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)
-    
+
     def _set_succesful_and_unknown_reaches_list(self):
         self.succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown]

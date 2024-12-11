@@ -20,9 +20,9 @@ from ..setup.database import Database
 def process_reach(
     reach_id: int,
     downstream_id: Optional[int],
-    collection : Type[CollectionData],
-    database : Type[Database],
-    job_client : Type[JobClient],
+    collection: Type[CollectionData],
+    database: Type[Database],
+    job_client: Type[JobClient],
     task_queue: Queue,
     central_db_lock: Lock,
     use_central_db: bool,
@@ -37,8 +37,8 @@ def process_reach(
     5. Put upstream reaches in queue for later processing
     """
 
-    DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
-    RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
+    DS_DEPTH_INCREMENT = collection.config["ripple_settings"]["DS_DEPTH_INCREMENT"]
+    RAS_VERSION = collection.config["ripple_settings"]["RAS_VERSION"]
     RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
     submodels_directory = collection.submodels_dir
 
@@ -95,18 +95,14 @@ def process_reach(
 
         if not rc_db_job_id or not job_client.check_job_successful(rc_db_job_id, timeout_minutes=timeout_minutes):
             with central_db_lock:
-                database.update_processing_table(
-                    [(reach_id, rc_db_job_id)], "create_irating_curves_db", "failed"
-                )
+                database.update_processing_table([(reach_id, rc_db_job_id)], "create_irating_curves_db", "failed")
 
             upstream_reaches = database.get_upstream_reaches(reach_id, central_db_lock)
             for upstream_reach in upstream_reaches:
                 task_queue.put((upstream_reach, None))
             return
         with central_db_lock:
-            database.update_processing_table(
-                [(reach_id, rc_db_job_id)], "create_irating_curves_db", "successful"
-            )
+            database.update_processing_table([(reach_id, rc_db_job_id)], "create_irating_curves_db", "successful")
 
         upstream_reaches = database.get_upstream_reaches(reach_id, central_db_lock)
         for upstream_reach in upstream_reaches:
@@ -119,16 +115,16 @@ def process_reach(
 
 def execute_ikwse_for_network(
     initial_reaches: List[Tuple[int, Optional[int]]],
-    collection : Type[CollectionData],
-    database : Type[Database],
-    job_client : Type[JobClient],
+    collection: Type[CollectionData],
+    database: Type[Database],
+    job_client: Type[JobClient],
     use_central_db: bool,
     timeout: int = 30,
 ) -> None:
     """
     Start processing the network from the given list of initial reaches.
     """
-    OPTIMUM_PARALLEL_PROCESS_COUNT = collection.config['execution']['OPTIMUM_PARALLEL_PROCESS_COUNT']
+    OPTIMUM_PARALLEL_PROCESS_COUNT = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
 
     task_queue = Queue()
     db_lock = Lock()
@@ -160,4 +156,3 @@ def execute_ikwse_for_network(
                     futures.remove(future)
 
             time.sleep(1)
-

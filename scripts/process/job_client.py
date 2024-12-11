@@ -8,13 +8,15 @@ from typing import Tuple, Type, List
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
 
+
 class JobClient:
     """
     Main class to communicate with Ripple1d API.
     """
+
     def __init__(self, collection: Type[CollectionData]):
         self.stac_collection_id = collection.stac_collection_id
-        self.DEFAULT_POLL_WAIT = collection.config['polling']['DEFAULT_POLL_WAIT']
+        self.DEFAULT_POLL_WAIT = collection.config["polling"]["DEFAULT_POLL_WAIT"]
         self.RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
 
     @staticmethod
@@ -50,7 +52,7 @@ class JobClient:
         job_status = response.json().get("status")
         return job_status
 
-    def check_job_successful(self, job_id: str, timeout_minutes : int = 90):
+    def check_job_successful(self, job_id: str, timeout_minutes: int = 90):
         """
         Wait for a job to finish and return true or false based on success or failure
         timeout_minutes count start from the job last updated status
@@ -70,9 +72,9 @@ class JobClient:
                     return False
             time.sleep(self.DEFAULT_POLL_WAIT)
 
-    def wait_for_jobs(self, 
-                      reach_job_ids: List[Tuple[int, str]], 
-                      timeout_minutes=90) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
+    def wait_for_jobs(
+        self, reach_job_ids: List[Tuple[int, str]], timeout_minutes=90
+    ) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
         """
         Waits for jobs to finish and returns lists of successful, failed, and unknown status jobsjobs.
         """
@@ -101,7 +103,6 @@ class JobClient:
                 time.sleep(self.DEFAULT_POLL_WAIT)
 
         return succeeded, failed, unknown
-
 
     def get_failed_jobs_df(self, failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
         """
@@ -178,4 +179,3 @@ class JobClient:
                         )
                 except requests.RequestException as e:
                     logging.info(f"Error polling job {job_id} for reach {entity}: {e}")
-

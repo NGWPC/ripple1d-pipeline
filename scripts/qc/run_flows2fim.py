@@ -4,12 +4,13 @@ import subprocess
 from typing import List, Type
 from ..setup.collection_data import CollectionData
 
+
 def setup_gdal_environment(collection: Type[CollectionData]):
     """
     Add GDAL binaries to the system PATH
     """
-    GDAL_BINS_PATH = collection.config['flows2fim']['GDAL_BINS_PATH']
-    GDAL_SCRIPTS_PATH = collection.config['flows2fim']['GDAL_SCRIPTS_PATH']
+    GDAL_BINS_PATH = collection.config["flows2fim"]["GDAL_BINS_PATH"]
+    GDAL_SCRIPTS_PATH = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
 
     if GDAL_BINS_PATH:
         # Add GDAL path to the system PATH
@@ -20,7 +21,7 @@ def setup_gdal_environment(collection: Type[CollectionData]):
 
 
 def run_flows2fim(
-    collection : Type[CollectionData],
+    collection: Type[CollectionData],
     output_subfolder: str = "qc",
     start_reaches: List = [],
     fim_format: str = "tif",
@@ -43,8 +44,8 @@ def run_flows2fim(
     library_path = collection.library_dir
     library_db_path = collection.db_path
     start_file = collection.f2f_start_file
-    flow_files_dir = collection.config['flows2fim']['FLOW_FILES_DIR']
-    FLOWS2FIM_BIN_PATH = collection.config['flows2fim']['FLOWS2FIM_BIN_PATH']
+    flow_files_dir = collection.config["flows2fim"]["FLOW_FILES_DIR"]
+    FLOWS2FIM_BIN_PATH = collection.config["flows2fim"]["FLOWS2FIM_BIN_PATH"]
 
     setup_gdal_environment(collection)
 
@@ -103,7 +104,6 @@ def run_flows2fim(
 
 if __name__ == "__main__":
 
-    collection_name = "" 
+    collection_name = ""
     collection = CollectionData(collection_name)
     run_flows2fim(collection)
-

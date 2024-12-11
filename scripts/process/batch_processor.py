@@ -1,8 +1,4 @@
-from typing import Type
-import logging
-from ..setup.collection_data import CollectionData
 from abc import ABC, abstractmethod
-
 
 # TODO - is this ABC is really necessary?
 class BatchProcessor(ABC):
@@ -17,4 +13,3 @@ class BatchProcessor(ABC):
     @abstractmethod
     def execute_request(self):
         pass
-

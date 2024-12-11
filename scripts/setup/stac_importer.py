@@ -8,11 +8,13 @@ from .collection_data import CollectionData
 
 from dotenv import load_dotenv
 
+
 class STACImporter:
     """
     Methods to identify models from a STAC Collection, and download each model's gpkg files from AWS S3.
     """
-    def __init__(self, collectiondata : Type[CollectionData]):
+
+    def __init__(self, collectiondata: Type[CollectionData]):
         self.db_path = collectiondata.db_path
         self.stac_collection = collectiondata.stac_collection_id
         self.stac_endpoint = collectiondata.STAC_URL
@@ -20,14 +22,13 @@ class STACImporter:
         self.models_data = None
         self.model_ids = None
         self.get_aws_profile()
-    
+
     def get_aws_profile(self):
         load_dotenv(".env")
         self.AWS_PROFILE = os.getenv("AWS_PROFILE")
 
-
     def get_models_from_stac(self) -> Dict:
-        #TODO add filter
+        # TODO add filter
         """
         Retrieves GeoPackage file and conflation file paths for models in an STAC collection.
         Parameters:
@@ -55,9 +56,9 @@ class STACImporter:
 
         logging.info(f"Total {i} models in this collection")
         logging.info(f"Total {len(models_data)} filtered models.")
-        
+
         self.models_data = models_data
-    
+
     def download_models_data(self) -> None:
         """
         Downloads GeoPackage for models to a local folder.
@@ -89,4 +90,3 @@ class STACImporter:
     def get_model_ids(self) -> List[str]:
         self.model_ids = list(self.models_data.keys())
         return self.model_ids
-

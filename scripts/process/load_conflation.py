@@ -37,4 +37,3 @@ def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
         database.update_model_id_and_eclipsed(json_data, model_id)
 
     logging.info(f"Conflation loaded to {database.db_path} from .conflation.json files")
-

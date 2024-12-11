@@ -17,7 +17,7 @@ def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
             output_gpkg_path (str): Path to save the filtered NWM flowlines in a GPKG file.
     """
 
-    nwm_flowlines_path = collection.config['paths']['NWM_FLOWLINES_PATH']
+    nwm_flowlines_path = collection.config["paths"]["NWM_FLOWLINES_PATH"]
     river_gpkg_path = collection.merged_gpkg_path
     output_gpkg_path = collection.db_path
 
@@ -44,4 +44,3 @@ def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
     filtered_nwm_gdf.to_file(output_gpkg_path, layer="reaches", driver="GPKG")
 
     logging.info(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
-

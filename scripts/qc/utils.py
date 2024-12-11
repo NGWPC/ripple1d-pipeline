@@ -39,6 +39,6 @@ def copy_qc_map(collection: Type[CollectionData]):
     """Copy QGIS Template file inside a 'qc' folder in root_dir"""
     dest_location = os.path.join(collection.root_dir, "qc", "qc_map.qgs")
     os.makedirs(os.path.join(collection.root_dir, "qc"), exist_ok=True)
-    shutil.copyfile(collection.config['qc']['QC_TEMPLATE_QGIS_FILE'], dest_location)
+    shutil.copyfile(collection.config["qc"]["QC_TEMPLATE_QGIS_FILE"], dest_location)
 
     logging.info(f"QC map created at {dest_location}")

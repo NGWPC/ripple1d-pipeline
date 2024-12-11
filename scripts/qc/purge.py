@@ -191,9 +191,9 @@ def delete_reaches_data(
 
 if __name__ == "__main__":
     reach_ids = []
-    library_dir = "" # r"D:\Users\<user_name>\<collection_name>\library"
-    submodels_dir = "" # r"D:\Users\<user_name>\<collection_name>\submodels"
-    library_db_path = "" # r"D:\Users\<user_name>\<collection_name>\library.sqlite"
+    library_dir = ""  # r"D:\Users\<user_name>\<collection_name>\library"
+    submodels_dir = ""  # r"D:\Users\<user_name>\<collection_name>\submodels"
+    library_db_path = ""  # r"D:\Users\<user_name>\<collection_name>\library.sqlite"
     delete_submodels = False
     delete_library = False
     delete_rc_records = False

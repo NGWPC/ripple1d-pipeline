@@ -33,7 +33,7 @@ def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) ->
         CollectionData (Object) : Instance of the CollectionData class.
     """
 
-    source_models_dir = collection.source_models_dir 
+    source_models_dir = collection.source_models_dir
     output_gpkg_path = collection.merged_gpkg_path
 
     river_gdfs = []
@@ -70,4 +70,3 @@ def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) ->
             logging.info(f"Error saving combined River table: {e}")
     else:
         logging.info("No River tables were combined.")
-

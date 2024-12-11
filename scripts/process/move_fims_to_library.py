@@ -22,6 +22,6 @@ def move_fims_to_library(submodels_dir: str, library_dir: str) -> None:
 
 
 if __name__ == "__main__":
-    submodels_dir = "" # r"<path to collection>\submodels"
-    library_dir = "" # r"<path to collection>\library"
+    submodels_dir = ""  # r"<path to collection>\submodels"
+    library_dir = ""  # r"<path to collection>\library"
     move_fims_to_library(submodels_dir, library_dir)
