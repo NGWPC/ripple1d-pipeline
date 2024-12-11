@@ -120,7 +120,8 @@ def process(collection_name):
         for data in reaches
         if data[1] is not None
         and data[0]
-        in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
+        in reach_step_processor.succesful_and_unknown_reaches
+        # in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
     ]
 
     kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data)

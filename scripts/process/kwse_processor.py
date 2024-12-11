@@ -27,7 +27,7 @@ class KWSEProcessor(BatchProcessor):
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"]
         self.payloads = collection.config["payload_templates"]
 
-    def format_payload(template: dict, nwm_reach_id: int, submodels_dir: str, min_elev: float, max_elev: float) -> dict:
+    def format_payload(self, template: dict, nwm_reach_id: int, submodels_dir: str, min_elev: float, max_elev: float) -> dict:
         """
         Formats a payload based on a given template and parameters.
         """
@@ -46,22 +46,23 @@ class KWSEProcessor(BatchProcessor):
         return payload
 
     def execute_request(
-        self, database: Type[Database], nwm_reach_id: int, submodels_dir: str, downstream_id: int
+        self, database: Type[Database], nwm_reach_id: int, downstream_id: int, process_name:str,
     ) -> Tuple[int, str, str]:
         """
         Executes an API request for a given process and returns the job ID and status.
         Retries upto 5 times
         """
+        submodels_directory = database.submodels_dir
 
         if downstream_id:
-            min_elevation, max_elevation = database.get_min_max_elevation(downstream_id, submodels_dir, None, False)
+            min_elevation, max_elevation = database.get_min_max_elevation(downstream_id, submodels_directory, None, False)
             if min_elevation and max_elevation:
 
                 for i in range(5):
-                    url = f"{self.RIPPLE1D_API_URL}/processes/run_known_wse/execution"
+                    url = f"{self.RIPPLE1D_API_URL}/processes/{process_name}/execution"
                     payload = json.dumps(
                         self.format_payload(
-                            self.payloads["run_known_wse"], nwm_reach_id, submodels_dir, min_elevation, max_elevation
+                            self.payloads[process_name], nwm_reach_id, submodels_directory, min_elevation, max_elevation
                         )
                     )
                     headers = {"Content-Type": "application/json"}
@@ -104,10 +105,10 @@ class KWSEStepProcessor(KWSEProcessor):
         self.reach_data = reach_data
         self.reach_job_id_statuses = []
 
-    def execute_kwse_step(self, job_client: Type[JobClient], database: Type[Database], process_name: str, timeout: int):
+    def execute_kwse_step(self, job_client: Type[JobClient], database: Type[Database], process_name: str, timeout: int) -> None:
 
-        for reach_id in self.reach_data:
-            reach_job_id_status = self.execute_request(self.database, reach_id, process_name)
+        for reach_id, ds_id in self.reach_data:
+            reach_job_id_status = self.execute_request(database, reach_id, ds_id, process_name)
             self.reach_job_id_statuses.append(reach_job_id_status)
 
         self.accepted = [job for job in self.reach_job_id_statuses if job[2] == "accepted"]
@@ -129,7 +130,7 @@ class KWSEStepProcessor(KWSEProcessor):
 
         self._set_succesful_and_unknown_reaches_list()
 
-    def _update_db(self, database: Type[Database], status: str, process_name: str):
+    def _update_db(self, database: Type[Database], status: str, process_name: str) -> None:
 
         if status == "accepted":
             database.update_processing_table(self.accepted, process_name, "accepted")
@@ -140,8 +141,8 @@ class KWSEStepProcessor(KWSEProcessor):
         elif status == "unknown":
             database.update_processing_table(self.unknown, process_name, "unknown")
 
-    def _wait_for_jobs(self, job_client: Type[JobClient], timeout: int):
+    def _wait_for_jobs(self, job_client: Type[JobClient], timeout: int) -> None:
         self.succeeded, self.failed, self.unknown = job_client.wait_for_jobs(self.accepted, timeout_minutes=timeout)
 
-    def _set_succesful_and_unknown_reaches_list(self):
+    def _set_succesful_and_unknown_reaches_list(self) -> None:
         self.succesful_and_unknown_reaches = [reach[0] for reach in self.succeeded + self.unknown]

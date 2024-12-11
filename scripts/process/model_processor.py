@@ -87,7 +87,7 @@ class ConflateModelBatchProcessor(ModelProcessor):
         self.timeout_minutes = 10
         self.model_job_id_statuses = []
 
-    def conflate_model_batch_process(self, job_client: Type[JobClient], database: Type[Database]):
+    def conflate_model_batch_process(self, job_client: Type[JobClient], database: Type[Database]) -> None:
         for model_id in self.model_ids:
             single_model_job_id_status = self.execute_request(model_id, "conflate_model")
 
@@ -109,7 +109,7 @@ class ConflateModelBatchProcessor(ModelProcessor):
         logging.info(f"Not Accepted: {len(self.not_accepted)}")
         logging.info(f"Status Unknown: {len(self.unknown)}")
 
-    def _update_db(self, database: Type[Database], status: str):
+    def _update_db(self, database: Type[Database], status: str) -> None:
 
         if status == "accepted":
             database.update_models_table(self.accepted, "conflate_model", "accepted")
@@ -120,7 +120,7 @@ class ConflateModelBatchProcessor(ModelProcessor):
         elif status == "unknown":
             database.update_processing_table(self.unknown, "conflate_model", "unknown")
 
-    def _wait_for_jobs(self, job_client):
+    def _wait_for_jobs(self, job_client) -> None:
         self.succeeded, self.failed, self.unknown = job_client.wait_for_jobs(
             self.accepted, timeout_minutes=self.timeout_minutes
         )

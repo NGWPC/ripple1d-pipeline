@@ -21,7 +21,7 @@ class Database:
         self.timeout = collection.config["database"]["DB_CONN_TIMEOUT"]
         self.submodels_dir = collection.submodels_dir
         self.connection_pool = {}
-        self.lock = None
+        # self.lock = None
 
     @contextmanager
     def _get_connection(self):
@@ -41,13 +41,13 @@ class Database:
 
     @contextmanager
     def _get_locked_connection(self, lock, db_path=None):
-        self.lock = lock
+        # self.lock = lock
         if db_path is None:
             conn = sqlite3.connect(self.db_path, timeout=self.timeout)
         else:
             conn = sqlite3.connect(db_path)
         try:
-            with self.lock:
+            with lock:
                 yield conn
         finally:
             conn.close()
@@ -456,7 +456,6 @@ class Database:
             min_elevation, max_elevation = self.execute_query_fetch_min_max(
                 select_query, (downstream_id,), lock=db_lock
             )
-            logging.info(f"min_elevation, max_elevation : {min_elevation, max_elevation}")
             return min_elevation, max_elevation
         else:
             ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
@@ -468,8 +467,7 @@ class Database:
                 SELECT MIN(us_wse), MAX(us_wse) 
                 FROM rating_curves
             """
-            min_elevation, max_elevation = self.execute_query_fetch_min_max(select_query)
-            logging.info(f"min_elevation, max_elevation : {min_elevation, max_elevation}")
+            min_elevation, max_elevation = self.execute_query_fetch_min_max(select_query, db_path=ds_submodel_db_path)
             return min_elevation, max_elevation
 
     def execute_query_fetch_min_max(

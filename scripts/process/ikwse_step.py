@@ -65,7 +65,6 @@ def process_reach(
                         "write_depth_grids": False,
                     }
                 )
-                logging.info(f"<<<<<< payload for reach {reach_id}\n{payload}")
 
                 # to do: launch job with retry
                 response = requests.post(url, headers=headers, data=payload)
