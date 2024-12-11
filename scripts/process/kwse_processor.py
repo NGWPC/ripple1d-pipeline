@@ -20,9 +20,9 @@ class KWSEProcessor(BatchProcessor):
         self.library_dir = collection.library_dir
         self.stop_on_error = collection.config['execution']['stop_on_error']
         self.RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
-        self.RIPPLE1D_VERSION = collection.config['urls']['RIPPLE1D_VERSION']
+        self.RIPPLE1D_VERSION = collection.config['RIPPLE1D_VERSION']
         self.DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
-        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+        self.RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         self.payloads = collection.config['payload_templates']
 

@@ -20,7 +20,7 @@ def s3_move(collection: str, failed: bool = False):
     COLLECTIONS_ROOT_DIR = config['paths']['COLLECTIONS_ROOT_DIR']
     S3_UPLOAD_PREFIX = config['paths']['S3_UPLOAD_PREFIX']
     S3_UPLOAD_FAILED_PREFIX = config['paths']['S3_UPLOAD_FAILED_PREFIX']
-    RIPPLE1D_VERSION = config['urls']['RIPPLE1D_VERSION']
+    RIPPLE1D_VERSION = config['RIPPLE1D_VERSION']
 
     if failed:
         dateime_obj = datetime.now()

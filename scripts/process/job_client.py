@@ -15,7 +15,7 @@ class JobClient:
     def __init__(self, collection: Type[CollectionData]):
         self.stac_collection_id = collection.stac_collection_id
         self.DEFAULT_POLL_WAIT = collection.config['polling']['DEFAULT_POLL_WAIT']
-        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+        self.RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
 
     @staticmethod
     def datetime_to_epoch_utc(datetime_str):

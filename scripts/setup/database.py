@@ -1,13 +1,11 @@
 import logging
 import os
-import requests
 import sqlite3
-import time
 import threading
 
 
 from contextlib import contextmanager
-from typing import Type, Dict, List, Tuple, Any, Union, Optional
+from typing import Type, Dict, List, Tuple, Optional
 from .collection_data import CollectionData
 
 
@@ -121,7 +119,7 @@ class Database:
         """
         DB_CONN_TIMEOUT = collection.config["database"]["DB_CONN_TIMEOUT"]
         db_path = collection.db_path
-        RIPPLE1D_VERSION = collection.config["urls"]["RIPPLE1D_VERSION"]
+        RIPPLE1D_VERSION = collection.config["RIPPLE1D_VERSION"]
         US_DEPTH_INCREMENT = collection.config["ripple_settings"]["US_DEPTH_INCREMENT"]
         DS_DEPTH_INCREMENT = collection.config["ripple_settings"]["DS_DEPTH_INCREMENT"]
 

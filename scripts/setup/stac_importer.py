@@ -6,10 +6,7 @@ from typing import Type, Dict, List
 
 from .collection_data import CollectionData
 
-# from dotenv import load_dotenv
-# load_dotenv()
-# AWS_PROFILE = os.getenv("AWS_PROFILE")
-# logging.info(AWS_PROFILE)
+from dotenv import load_dotenv
 
 class STACImporter:
     """
@@ -18,21 +15,15 @@ class STACImporter:
     def __init__(self, collectiondata : Type[CollectionData]):
         self.db_path = collectiondata.db_path
         self.stac_collection = collectiondata.stac_collection_id
-        self.stac_endpoint = collectiondata.config['urls']['STAC_URL']
+        self.stac_endpoint = collectiondata.STAC_URL
         self.source_models_dir = collectiondata.source_models_dir
-        self.AWS_PROFILE = collectiondata.config['environment']['AWS_PROFILE']
         self.models_data = None
         self.model_ids = None
-        # self.get_aws_profile()
+        self.get_aws_profile()
     
-    # def get_aws_profile(self):
-    #     from dotenv import load_dotenv
-    #     load_dotenv()
-    #     self.AWS_PROFILE = os.getenv("AWS_PROFILE")
-    #     self.aws_access_key_id = os.getenv("aws_access_key_id")
-    #     self.aws_secret_access_key = os.getenv("aws_secret_access_key")
-    #     self.region = os.getenv("region")
-    #     self.output = os.getenv("output")
+    def get_aws_profile(self):
+        load_dotenv(".env")
+        self.AWS_PROFILE = os.getenv("AWS_PROFILE")
 
 
     def get_models_from_stac(self) -> Dict:
@@ -76,12 +67,6 @@ class STACImporter:
         - self.source_models_dir (str): The local directory to store the downloaded models.
         """
         session = boto3.Session(profile_name=self.AWS_PROFILE)
-        # session = boto3.Session(aws_access_key_id=self.aws_access_key_id, 
-        #                         aws_secret_access_key=self.aws_secret_access_key,
-        #                         region_name= self.region, 
-        #                         profile_name=self.AWS_PROFILE,
-        #                         aws_session_token=None, 
-        #                         botocore_session=None) 
         s3_client = session.client("s3")
 
         for id, data in self.models_data.items():

@@ -16,7 +16,7 @@ class ModelProcessor(BatchProcessor):
         self.stop_on_error = collection.config['execution']['stop_on_error']
         self.payloads = collection.config['payload_templates']
         self.source_models_dir = collection.source_models_dir
-        self.RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+        self.RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
         self.API_LAUNCH_JOBS_RETRY_WAIT = collection.config['polling']['API_LAUNCH_JOBS_RETRY_WAIT']
         self.model_ids = collection.get_models()
         self.conflate_model_job_statuses = {}

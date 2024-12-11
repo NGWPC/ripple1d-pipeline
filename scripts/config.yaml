@@ -1,17 +1,17 @@
 ---
-environment:
-  AWS_PROFILE: ""
 
-urls:
-  RIPPLE1D_API_URL: ""
-  STAC_URL: ""
-  RIPPLE1D_VERSION: 0.7.0
+# *NEW* - A .env file is necessary in the project root directory, and must contain the following:
+# AWS_PROFILE = ""
+# RIPPLE1D_API_URL = ""
+# STAC_URL = ""
+  
+RIPPLE1D_VERSION: 0.7.0
 
 paths:
   COLLECTIONS_ROOT_DIR: C:\collections
   NWM_FLOWLINES_PATH: C:\reference_data\nwm_flowlines.parquet
-  S3_UPLOAD_PREFIX: ""
-  S3_UPLOAD_FAILED_PREFIX: ""
+  S3_UPLOAD_PREFIX: "" # Exclude trailing slash of S3 Bucket
+  S3_UPLOAD_FAILED_PREFIX: "" # Exclude trailing slash of S3 Bucket
 
 ripple_settings:
   RAS_VERSION: &RAS_VERSION "631"
@@ -24,8 +24,7 @@ ripple_settings:
   SOURCE_NETWORK_VERSION:  &SOURCE_NETWORK_VERSION "2.1"
   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
 
-# Can we omit and just use the version in reach_processor.py?
-# Better yet, this should this be its own file, with format_template functions
+# payload_templates might be best in a seperate file
 payload_templates:
   conflate_model:
     source_model_directory: "{source_model_directory}\\{model_id}"
@@ -93,6 +92,6 @@ database:
 
 execution:
   stop_on_error: False
-  OPTIMUM_PARALLEL_PROCESS_COUNT: 48  # this is for 96 core machine
+  OPTIMUM_PARALLEL_PROCESS_COUNT: 8  # Rule of thumb - use half the cores available.
 
 ...

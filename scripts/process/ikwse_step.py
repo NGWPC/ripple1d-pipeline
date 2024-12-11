@@ -39,7 +39,7 @@ def process_reach(
 
     DS_DEPTH_INCREMENT = collection.config['ripple_settings']['DS_DEPTH_INCREMENT']
     RAS_VERSION = collection.config['ripple_settings']['RAS_VERSION']
-    RIPPLE1D_API_URL = collection.config['urls']['RIPPLE1D_API_URL']
+    RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
     submodels_directory = collection.submodels_dir
 
     try:

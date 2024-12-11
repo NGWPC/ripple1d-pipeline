@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from typing import List
 import logging
+from dotenv import load_dotenv
 
 class CollectionData:
     """
@@ -10,12 +11,13 @@ class CollectionData:
     """
     def __init__(self, stac_collection_id, config_file='config.yaml'):
         self.stac_collection_id = stac_collection_id
-        self.load_config(config_file)
+        self.load_dotenv(".env")
+        self.load_yaml(config_file)
         self.assign_paths()
         
 
     #TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class? 
-    def load_config(self, config_file):
+    def load_yaml(self, config_file):
         try:
             with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
                 self.config = yaml.safe_load(file)
@@ -23,7 +25,14 @@ class CollectionData:
             raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the scripts directory.")
         except yaml.YAMLError:
             raise ValueError("Invalid YAML configuration")
-
+        
+    def load_dotenv(self, dotenv_file):
+        try:
+            load_dotenv(dotenv_file)
+            self.RIPPLE1D_API_URL = os.getenv('RIPPLE1D_API_URL')
+            self.STAC_URL = os.getenv('STAC_URL')
+        except:
+            raise ValueError("Invalid .env configuration")
 
     def assign_paths(self):
         """ Assign filepaths to CollectionData object."""
