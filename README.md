@@ -4,9 +4,9 @@ Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/
 Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
 
 ## Contents
-- [Initialization/Pre Processing sripts](scripts/setup)
-- [Ripple1d API Calls/Processing scripts](scripts/process)
-- [Quality Control/Post processin scripts](scripts/qc)
+- [Initialization/Pre Processing source code](src/setup)
+- [Ripple1d API Calls/Processing source code](src/process)
+- [Quality Control/Post processin source code](src/qc)
 
 
 ## Dependencies
@@ -40,7 +40,7 @@ Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
      ```Powershell
      ripple1d_pipeline\Scripts\activate
      ```
-   - **Mac/Linux:**
+   - **Linux:**
      ```bash
      source ripple1d_pipeline/bin/activate
      ```
@@ -51,7 +51,7 @@ Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
      ```Powershell
      cd d\ path\to\your\repo
      ```
-   - **Mac/Linux:**
+   - **Linux:**
      ```bash
      cd path/to/your/repo
      ```
@@ -74,7 +74,8 @@ Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
       ```
 
 ### Notes on Setup:
-It is highly recommended to run all steps using the Windows Command Prompt Terminal Window Application, not the Windonws PowerShell application.
+- Using a Linux Operating System is untested.
+- It is highly recommended to run all steps using the Windows Command Prompt Terminal Window Application, not the Windonws PowerShell application.
 
 ---
 

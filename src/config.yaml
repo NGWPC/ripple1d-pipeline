@@ -62,8 +62,7 @@ payload_templates:
     write_depth_grids: True
   create_rating_curves_db: 
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    plans: 
-      -kwse
+    plans: ["kwse"]
   create_fim_lib:
     submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
     plans:

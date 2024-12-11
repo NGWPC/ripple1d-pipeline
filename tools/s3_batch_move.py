@@ -10,7 +10,7 @@ from pathlib import Path
 
 from datetime import datetime
 from ripple_pipeline import *
-from scripts.setup import *
+from src.setup import *
 
 
 def s3_move(collection: str, failed: bool = False):
@@ -51,10 +51,10 @@ def s3_move(collection: str, failed: bool = False):
 
 def load_config(config_file):
     try:
-        with open(str(Path.cwd() / "scripts" / config_file), 'r') as file:
+        with open(str(Path.cwd() / "src" / config_file), 'r') as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
-        raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the scripts directory.")
+        raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
     except yaml.YAMLError:
         raise ValueError("Invalid YAML configuration")
     

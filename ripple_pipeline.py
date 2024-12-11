@@ -5,10 +5,10 @@ import sys
 from datetime import datetime as dt
 
 # Import necessary modules
-from scripts import *
-from scripts.setup import *
-from scripts.process import *
-from scripts.qc import *
+from src import *
+from src.setup import *
+from src.process import *
+from src.qc import *
 
 logging.basicConfig(
     level=logging.INFO,

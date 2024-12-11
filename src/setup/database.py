@@ -20,8 +20,6 @@ class Database:
         self.source_models_dir = collection.source_models_dir  # Not used currently
         self.timeout = collection.config["database"]["DB_CONN_TIMEOUT"]
         self.submodels_dir = collection.submodels_dir
-        self.connection_pool = {}
-        # self.lock = None
 
     @contextmanager
     def _get_connection(self):
