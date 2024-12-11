@@ -13,3 +13,6 @@
 
 *.env
 *.lst
+
+# Virtual Environments 
+*.venv
