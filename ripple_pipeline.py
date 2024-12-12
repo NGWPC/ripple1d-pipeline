@@ -159,17 +159,12 @@ def run_qc(collection_name):
     logging.info("Creating Excel Error Report >>>>>>>>")
     dfs = []
     for process_name in ["conflate_model"]:
-        # logging.info(f"Getting job status for {process_name} ")
         # Capture the final status of unknown status jobs
         job_client.poll_and_update_job_status(database, process_name, "models")
-        # logging.info("Finished poll_and_update_job_status")
         _, _, failed_reaches = database.get_reach_status_by_process(process_name, "models")
-        # logging.info("Finished database.get_reach_status_by_process")
         df = job_client.get_failed_jobs_df(failed_reaches)
-        # logging.info("Finished get_failed_jobs_df")
         dfs.append(df)
         write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
-        # logging.info("Finished write_failed_jobs_df_to_excel")
 
     dfs = []
     for process_name in [
@@ -183,17 +178,12 @@ def run_qc(collection_name):
         "create_rating_curves_db",
         "create_fim_lib",
     ]:
-        # logging.info(f"Getting job status for: {process_name}")
         # Capture the final status of unknown status jobs
         job_client.poll_and_update_job_status(database, process_name)
-        # logging.info("Finished poll_and_update_job_status")
         _, _, failed_reaches = database.get_reach_status_by_process(process_name)
-        # logging.info("Finished database.get_reach_status_by_process")
         df = job_client.get_failed_jobs_df(failed_reaches)
-        # logging.info("Finished get_failed_jobs_df")
         dfs.append(df)
         write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
-        # logging.info("Finished write_failed_jobs_df_to_excel")
 
     logging.info("<<<<< Finished creating Excel error report")
 
