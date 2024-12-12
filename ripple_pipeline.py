@@ -56,7 +56,7 @@ def process(collection_name):
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
-    conflate_model_batch = ConflateModelBatchProcessor(collection, model_ids) #, jobclient, database)
+    conflate_model_batch = ConflateModelBatchProcessor(collection, model_ids)
     conflate_model_batch.conflate_model_batch_process(jobclient, database)
     logging.info("<<<<<<Finished Conflate Model Step")
 
@@ -115,7 +115,6 @@ def process(collection_name):
         if data[1] is not None
         and data[0]
         in reach_step_processor.succesful_and_unknown_reaches
-        # in [reach[0] for reach in reach_step_processor.succesful_and_unknown_reaches]
     ]
 
     kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data)
