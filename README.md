@@ -81,12 +81,42 @@ Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
 
 ## **Running the Pipeline for A Collection**
 
+### **Configuration**
+#### Environment files
+There must be am `.env` file in the project root directory, with ENV variables defined, that are necessary to interact with external APIs. 
+```
+AWS_PROFILE=<your profile name> 
+
+RIPPLE1D_API_URL= <location of running RIPPLE1d server>
+STAC_URL= <location of STAC Collection>
+```
+The value of `AWS_PROFILE` must be the same as what is listed in your `~/.aws/config`. This profile must contain valid credentials (access key id and secret access key) to authenticate with AWS S3.
+
+#### Configuration file 
+
+The `config.yaml` file in the `/src` directory contains all other necessary configuration parameters. Please ensure filepaths, timeouts, endpoints, etc are up to date for your machine, and if not, modify the file to suit your collection-specific requirements. 
+
+
 ### **Using batch_ripple_pipeline.py or ripple_pipeline.py**
+
+The automation of the whole pipeline can be accomplished using one of two scripts. `ripple_pipeline.py` is used to process a single colelction, identically to the Jupyter Notebook steps. `batch_ripple_pipeline.py` is a wrapper around `ripple_pipeline.py` which will serially process a list (or single) of collections, as well as push the data to a specified S3 url. 
+
+For Example:
+```powershell
+(ripple1d_pipeline) C:\Users\<user name>\ripple1d_pipeline>python .\ripple_pipeline.py -c mip_02060004
+```
+
+or 
+
+```powershell
+(ripple1d_pipeline) C:\Users\<user name>\ripple1d_pipeline>python .\batch_ripple_pipeline.py -l "C:\collection_lists\test_collections.lst"
+```
 
 ### **Using Notebooks**
 
-#### 1. **Update the Configuration File**
-   - Modify the `config.py` file if needed to suit your collection-specific requirements (e.g., TERRAIN_SOURCE_URL, RIPPLE1D_API_URL, etc).
+#### 1. Duplicate and Rename Notebooks
+
+- Duplicate all three notebooks provided in the repo, and rename them to represent the current collection you are working on. For example: `setup_<collection_name>.ipynb`
 
 #### 2. **Access Notebooks**
    - **Option 1: Using VSCode**
@@ -101,7 +131,7 @@ Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
      2. Open `localhost:8888` in your browser to access Jupyter Lab and open the notebooks.
 
 #### 3. **Update Notebooks Parameters**
-   - In the parameters cell of the notebooks, update the relevant paths and parameters to point to the working folder you created for the collection.
+   - In the parameters cell of the notebooks, define the `collection_name` variable to the collection you'd like to process.
 
 #### 4. **Execute and Export Notebooks as HTML**
    - Execute `setup_<collection_name>.ipynb` first and then `process_<collection_name>.ipynb` and finally `qc_<collection_name>.ipynb`
