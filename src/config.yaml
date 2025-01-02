@@ -1,9 +1,4 @@
 ---
-
-# *NEW* - A .env file is necessary in the project root directory, and must contain the following:
-# AWS_PROFILE = ""
-# RIPPLE1D_API_URL = ""
-# STAC_URL = ""
   
 RIPPLE1D_VERSION: 0.7.0
 
