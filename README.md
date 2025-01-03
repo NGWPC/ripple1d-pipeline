@@ -84,19 +84,20 @@ The easiest way is to download the [OSGeo4W network installer](https://download.
 1. Download the [flows2fim zip](https://github.com/ar-siddiqui/flows2fim/releases/download/v0.2.1/flows2fim-windows-amd64.zip)
 2. Extract the .zip file's contents to `C:\OSGeo4W\bin\`
 
+   ###  **Pull flow files**
+   ```Powershell
+   mkdir C:\reference_data\flow_files
+   aws s3 sync s3://fimc-data/reference/nwm_return_period_flows C:\reference_data\flow_files
+   ```
+
 ### 9. **Install HEC-RAS**
 1. Download the [HEC-RAS v631 Setup executable](https://github.com/HydrologicEngineeringCenter/hec-downloads/releases/download/1.0.26/HEC-RAS_631_Setup.exe)
 2. Follow the install instructions, all default. 
 3. Open HEC-RAS once to accept the Terms and Conditions. 
 
-### 10. **Pull in flow files**
-
-
 ### Notes on Setup:
 - Using a Linux Operating System is untested.
 - It is highly recommended to run all steps using the Windows Command Prompt Application, not the Windonws PowerShell application.
-
----
 
 ## **Configuration**
 ### Environment file
@@ -112,13 +113,13 @@ The `config.yaml` file in the `/src` directory contains all other necessary conf
 The automation of the whole pipeline can be accomplished using one of two scripts. `ripple_pipeline.py` is used to process a single colelction, identically to the Jupyter Notebook steps. `batch_ripple_pipeline.py` is a wrapper around `ripple_pipeline.py` which will serially process a list (or single) of collections, as well as push the data to a specified S3 bucket. 
 
 For Example:
-```powershell
+```Powershell
 (ripple1d_pipeline) C:\Users\<user name>\ripple1d_pipeline>python .\ripple_pipeline.py -c mip_02060004
 ```
 
 or 
 
-```powershell
+```Powershell
 (ripple1d_pipeline) C:\Users\<user name>\ripple1d_pipeline>python .\batch_ripple_pipeline.py -l "C:\collection_lists\test_collections.lst"
 ```
 
