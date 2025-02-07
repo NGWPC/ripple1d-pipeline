@@ -60,12 +60,9 @@ class CollectionData:
         models = []
         path = Path(self.source_models_dir)
         try:
-            # Walk through the directory tree
-            for root, dirs, files in os.walk(path):
-                model = root.split("\\")[-1]
-                # The root directory is expressed as "source_models" from line above,
-                #  which is not an actual model, and must be ommitted
-                if model != "source_models":
+            for model in os.listdir(path):
+                model_path = os.path.join(path, model)
+                if os.path.isdir(model_path):
                     # Add all models pulled from the STAC Catalog
                     models.append(model)
             return models
