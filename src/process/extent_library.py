@@ -5,14 +5,17 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Type
 
-from ..config import GDAL_BINS_PATH, GDAL_SCRIPTS_PATH, OPTIMUM_PARALLEL_PROCESS_COUNT
+from ..setup.collection_data import CollectionData
 
 
-def setup_gdal_environment():
+def setup_gdal_environment(collection):
     """
     Add GDAL binaries to the system PATH
     """
+    GDAL_BINS_PATH = collection.config["flows2fim"]["GDAL_BINS_PATH"]
+    GDAL_SCRIPTS_PATH = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
 
     if GDAL_BINS_PATH:
         # Add GDAL path to the system PATH
@@ -108,9 +111,15 @@ def get_all_tif_paths(src_dir):
     return tif_paths
 
 
-def create_extent_lib(library_dir, library_extent_dir, submodels_dir, print_progress=False):
-    setup_gdal_environment()
-    create_mirrored_structure(library_dir, library_extent_dir)
+def create_extent_lib(collection: Type[CollectionData], print_progress=False):
+    # Assign local variables from CollectionData Object
+    library_dir = collection.library_dir
+    extent_library_dir = collection.extent_library_dir
+    submodels_dir = collection.submodels_dir
+    OPTIMUM_PARALLEL_PROCESS_COUNT = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+
+    setup_gdal_environment(collection)
+    create_mirrored_structure(library_dir, extent_library_dir)
 
     tif_paths = get_all_tif_paths(library_dir)
 
@@ -124,18 +133,10 @@ def create_extent_lib(library_dir, library_extent_dir, submodels_dir, print_prog
 
     with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
         for _ in pool.imap_unordered(
-            worker, [(path, library_dir, library_extent_dir, submodels_dir) for path in tif_paths]
+            worker, [(path, library_dir, extent_library_dir, submodels_dir) for path in tif_paths]
         ):
             processed_files += 1
             if print_progress:
                 update_progress()
     if print_progress:
         sys.stdout.write("\n")
-
-
-if __name__ == "__main__":
-    LIBRARY_DIR = r"D:\collections\ble_08020203_LowerStFrancis\library"
-    SUBMODELS_DIR = r"D:\collections\ble_08020203_LowerStFrancis\submodels"
-    LIBRARY_EXTENT_DIR = r"D:\collections\ble_08020203_LowerStFrancis\library_extent"
-
-    create_extent_lib(LIBRARY_DIR, LIBRARY_EXTENT_DIR, SUBMODELS_DIR)

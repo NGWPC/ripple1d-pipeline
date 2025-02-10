@@ -10,4 +10,9 @@
 *.pyc
 */__pycache__/*
 */__pycache__/*
+
+*.env
 *.lst
+
+# Virtual Environments 
+*.venv

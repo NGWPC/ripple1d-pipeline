@@ -1,4 +1,4 @@
-"""Not used in notebooks"""
+"""Not used in ripple_pipeline.py or notebooks"""
 
 import logging
 
