@@ -1,3 +1,5 @@
+import logging
+
 import pandas as pd
 
 from .purge import delete_reach_data
@@ -9,3 +11,6 @@ pd.set_option("display.max_colwidth", None)
 # Display all rows
 # pd.set_option('display.max_rows', None)
 pd.set_option("display.max_columns", None)
+
+
+logging.basicConfig(level=logging.INFO)

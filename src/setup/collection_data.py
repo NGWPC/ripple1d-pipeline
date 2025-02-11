@@ -1,8 +1,9 @@
-import yaml
+import logging
 import os
 from pathlib import Path
 from typing import List
-import logging
+
+import yaml
 from dotenv import load_dotenv
 
 
@@ -70,4 +71,5 @@ class CollectionData:
         except Exception as e:
             logging.error(f"An error occurred: {e}.")
             logging.error(f"No models are available.")
+            return []
             return []
