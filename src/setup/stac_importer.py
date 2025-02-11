@@ -1,12 +1,12 @@
-import boto3
 import logging
 import os
+from typing import List, Type
+
+import boto3
 import pystac_client
-from typing import Type, Dict, List
+from dotenv import load_dotenv
 
 from .collection_data import CollectionData
-
-from dotenv import load_dotenv
 
 
 class STACImporter:
@@ -27,15 +27,13 @@ class STACImporter:
         load_dotenv(".env")
         self.AWS_PROFILE = os.getenv("AWS_PROFILE")
 
-    def get_models_from_stac(self) -> Dict:
+    def get_models_from_stac(self) -> None:
         # TODO add filter
         """
         Retrieves GeoPackage file and conflation file paths for models in an STAC collection.
         Parameters:
         - self.stac_endpoint (str): The STAC API endpoint.
         - self.stac_collection (str): The name of the STAC collection.
-        Returns:
-        - models_data (dict): Dictionary containing model IDs and their file URLs.
         """
         client = pystac_client.Client.open(self.stac_endpoint)
         collection = client.get_collection(self.stac_collection)
