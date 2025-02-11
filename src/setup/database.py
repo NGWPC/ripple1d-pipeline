@@ -1,11 +1,9 @@
 import logging
-import os
 import sqlite3
 import threading
-
-
 from contextlib import contextmanager
-from typing import Type, Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Type
+
 from .collection_data import CollectionData
 
 
@@ -431,62 +429,17 @@ class Database:
 
         return result[0] is not None
 
-    def get_min_max_elevation(
-        self,
-        downstream_id: int,
-        submodels_directory: str,
-        db_lock: threading.Lock,
-        use_central_db: bool,
-    ) -> Tuple[Optional[float], Optional[float]]:
-        """
-        Fetch min and max upstream elevation for a reach
-        If use_central_db is true central database is used
-        """
-        if use_central_db:
-            if not os.path.exists(self.db_path):
-                logging.info(f"central database not found : {self.db_path}")
-                return None, None
-            select_query = f"""
-                SELECT MIN(us_wse), MAX(us_wse)
-                FROM rating_curves
-                WHERE reach_ID = ?
-            """
-            min_elevation, max_elevation = self.execute_query_fetch_min_max(
-                select_query, (downstream_id,), lock=db_lock
-            )
-            return min_elevation, max_elevation
-        else:
-            ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
-            if not os.path.exists(ds_submodel_db_path):
-                logging.info(f"Submodel database not found for reach_id: {downstream_id}")
-                return None, None
-
-            select_query = f"""
-                SELECT MIN(us_wse), MAX(us_wse) 
-                FROM rating_curves
-            """
-            min_elevation, max_elevation = self.execute_query_fetch_min_max(select_query, db_path=ds_submodel_db_path)
-            return min_elevation, max_elevation
-
     def execute_query_fetch_min_max(
         self,
         query: str,
         params: tuple = None,
         lock: threading.Lock = None,
-        db_path: str = None,
     ):
-        if db_path is None:
-            with self._get_locked_connection(lock) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query, params)
-                min, max = cursor.fetchone()
-                return min, max
-        else:
-            with self._get_connection_non_central_db(db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute(query)
-                min, max = cursor.fetchone()
-                return min, max
+        with self._get_locked_connection(lock) as conn:
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            min, max = cursor.fetchone()
+            return min, max
 
     def get_all_job_ids_for_process(
         self, process_name: str, process_table: str = "processing"
