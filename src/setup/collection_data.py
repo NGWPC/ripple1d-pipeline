@@ -30,7 +30,7 @@ class CollectionData:
 
     def load_dotenv(self, dotenv_file):
         try:
-            load_dotenv(dotenv_file)
+            load_dotenv(dotenv_file, override=True)
             self.RIPPLE1D_API_URL = os.getenv("RIPPLE1D_API_URL")
             self.STAC_URL = os.getenv("STAC_URL")
         except:

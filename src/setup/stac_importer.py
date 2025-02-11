@@ -24,7 +24,7 @@ class STACImporter:
         self.get_aws_profile()
 
     def get_aws_profile(self):
-        load_dotenv(".env")
+        load_dotenv(".env", override=True)
         self.AWS_PROFILE = os.getenv("AWS_PROFILE")
 
     def get_models_from_stac(self) -> None:
