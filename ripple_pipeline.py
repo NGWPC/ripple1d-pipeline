@@ -123,7 +123,7 @@ def process(collection_name):
     logging.info("<<<<< Finished Final execute_kwse_step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
-    valid_reach_data = [(reach, "") for reach in kwse_step_processeor.valid_entities]
+    valid_reach_data = [(reach, "") for reach in kwse_step_processor.valid_entities]
     rc_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_rating_curves_db")
     rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished Final create_rating_curves_db Step")

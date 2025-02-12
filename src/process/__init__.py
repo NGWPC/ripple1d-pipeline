@@ -6,7 +6,7 @@ from .extent_library import create_extent_lib
 from .generic_reach_step_processor import GenericReachStepProcessor
 from .ikwse_step import execute_ikwse_for_network
 from .job_client import JobClient
-from .kwse_step_processeor import KWSEStepProcessor
+from .kwse_step_processor import KWSEStepProcessor
 from .load_conflation import load_conflation
 from .load_rating_curves import load_all_rating_curves
 from .move_fims_to_library import move_fims_to_library
