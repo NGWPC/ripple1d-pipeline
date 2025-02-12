@@ -4,10 +4,9 @@ import argparse
 import logging
 
 # Import necessary modules
-from src import *
-from src.setup import *
 from src.process import *
 from src.qc import *
+from src.setup import *
 
 logging.basicConfig(
     level=logging.INFO,
@@ -26,12 +25,14 @@ def setup(collection_name):
     collection.create_folders()
 
     # Instantiate STACImporter
-    models = STACImporter(collection)
+    stac_importer = STACImporter(collection)
     logging.info("Downloading models from STAC catalog")
-    models.get_models_from_stac()
-    models.download_models_data()
+    stac_importer.get_models_from_stac()
+    stac_importer.download_models_data()
+    models_data = stac_importer.models_data
+    # models_data = {"Baxter": {"model_name": "Baxter"}}
 
-    combine_river_tables(models.models_data, collection)
+    combine_river_tables(models_data, collection)
 
     logging.info("Filtering NWM reaches")
     filter_nwm_reaches(collection)
@@ -40,7 +41,7 @@ def setup(collection_name):
     Database.init_db(collection)
 
     logging.info("Inserting models into database")
-    Database.insert_models(models.models_data, collection)
+    Database.insert_models({"Baxter": {"model_name": "Baxter"}}, collection)
 
 
 def process(collection_name):
@@ -51,21 +52,18 @@ def process(collection_name):
     database = Database(collection)
     jobclient = JobClient(collection)
 
-    logging.info("Getting models succesfully pulled from STAC")
     model_ids = collection.get_models()
+    logging.info(f"{len(model_ids)} unique models identified")
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
-    conflate_model_batch = ConflateModelBatchProcessor(collection, model_ids)
-    conflate_model_batch.conflate_model_batch_process(jobclient, database)
+    conflate_step_processor = ConflateModelStepProcessor(collection, model_ids)
+    conflate_step_processor.execute_step(jobclient, database, timeout=5)
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
-    succeeded_and_unknown_status_models = [
-        model_id[0]
-        for model_id in conflate_model_batch.succeeded + conflate_model_batch.unknown
-    ]
-    load_conflation(succeeded_and_unknown_status_models, database)
+    valid_models = conflate_step_processor.valid_entities
+    load_conflation(valid_models, database)
     logging.info("Finished Load Conflation Step")
 
     logging.info("Starting Update Network Step >>>>>>")
@@ -77,23 +75,31 @@ def process(collection_name):
     reach_data = [(data[0], data[2]) for data in reaches]
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
-    # Instantiate reach_processor
-    reach_step_processor = ReachStepProcessor(collection, reach_data)
+    # Reach Steps
 
     logging.info("Starting Extract Submodel Step >>>>>>")
-    reach_step_processor.execute_extract_submodel_process(jobclient, database, timeout=5)
+    submodel_step_processor = GenericReachStepProcessor(collection, reach_data, "extract_submodel")
+    submodel_step_processor.execute_step(jobclient, database, timeout=5)
     logging.info("<<<<<< Finihsed Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
-    reach_step_processor.execute_process(jobclient, database, "create_ras_terrain", timeout=3)
+    valid_reach_data = [(reach, "") for reach in submodel_step_processor.valid_entities]
+    terrain_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_ras_terrain")
+    terrain_step_processor.execute_step(jobclient, database, timeout=3)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
-    reach_step_processor.execute_process(jobclient, database, "create_model_run_normal_depth", timeout=10)
+    valid_reach_data = [(reach, "") for reach in terrain_step_processor.valid_entities]
+    create_model_step_processor = GenericReachStepProcessor(
+        collection, valid_reach_data, "create_model_run_normal_depth"
+    )
+    create_model_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
-    reach_step_processor.execute_process(jobclient, database, "run_incremental_normal_depth", timeout=25)
+    valid_reach_data = [(reach, "") for reach in create_model_step_processor.valid_entities]
+    nd_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "run_incremental_normal_depth")
+    nd_step_processor.execute_step(jobclient, database, timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
 
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
@@ -103,26 +109,23 @@ def process(collection_name):
         collection,
         database,
         jobclient,
-        False,
         timeout=20,
     )
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
     logging.info("Starting Final execute_kwse_step >>>>>>")
-    kwse_reach_data = [
-        (data[0], data[1])
-        for data in reaches
-        if data[1] is not None
-        and data[0]
-        in reach_step_processor.succesful_and_unknown_reaches
+    valid_reach_data = [
+        (data[0], data[1]) for data in reaches if data[1] is not None and data[0] in nd_step_processor.valid_entities
     ]
 
-    kwse_step_processor = KWSEStepProcessor(collection, kwse_reach_data)
-    kwse_step_processor.execute_kwse_step(jobclient, database, "run_known_wse", timeout=180)
+    kwse_step_processor = KWSEStepProcessor(collection, valid_reach_data)
+    kwse_step_processor.execute_step(jobclient, database, timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
-    reach_step_processor.execute_process(jobclient, database, "create_rating_curves_db", timeout=15)
+    valid_reach_data = [(reach, "") for reach in kwse_step_processor.valid_entities]
+    rc_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_rating_curves_db")
+    rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished Final create_rating_curves_db Step")
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
@@ -130,7 +133,9 @@ def process(collection_name):
     logging.info("<<<<< Finished Merge Rating Curves Step")
 
     logging.info("Starting create_fim_lib Step >>>>>>")
-    reach_step_processor.execute_process(jobclient, database, "create_fim_lib", timeout=30)
+    valid_reach_data = [(reach, "") for reach in nd_step_processor.valid_entities]
+    fimlib_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_fim_lib")
+    fimlib_step_processor.execute_step(jobclient, database, timeout=150)
     logging.info("<<<<< Finished create_fim_lib Step")
 
     try:
@@ -148,7 +153,7 @@ def process(collection_name):
     except:
         logging.error("Error - unable to create f2f start file")
 
- 
+
 def run_qc(collection_name):
     """Perform quality control."""
     logging.info("Starting QC")
@@ -216,9 +221,7 @@ if __name__ == "__main__":
         python ripple_pipeline.py -c ble_12100302_Medina
     """
 
-    parser = argparse.ArgumentParser(
-        description="Run ripple pipeline steps on one collection"
-    )
+    parser = argparse.ArgumentParser(description="Run ripple pipeline steps on one collection")
 
     parser.add_argument(
         "-c",

@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Type, Dict
+from typing import Dict, Type
 
 import geopandas as gpd
 import pandas as pd
@@ -40,8 +40,7 @@ def combine_river_tables(models_data: Dict, collection: Type[CollectionData]) ->
     target_crs = "EPSG:5070"  # Desired CRS for the combined output
 
     for model_id, model_data in models_data.items():
-        # gpkg_path = os.path.join(source_models_dir, model_id, f"{model_data["model_name"]}.gpkg") # 0.7.0
-        gpkg_path = os.path.join(source_models_dir, model_id, f"{model_id}.gpkg")
+        gpkg_path = os.path.join(source_models_dir, model_id, f"{model_data["model_name"]}.gpkg")  # 0.7.0
 
         if not os.path.exists(gpkg_path):
             logging.info(f"GPKG file not found: {gpkg_path}")

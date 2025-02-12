@@ -14,5 +14,5 @@
 *.env
 *.lst
 
-# Virtual Environments 
+# Virtual Environments
 *.venv

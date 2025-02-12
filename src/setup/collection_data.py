@@ -1,8 +1,9 @@
-import yaml
+import logging
 import os
 from pathlib import Path
 from typing import List
-import logging
+
+import yaml
 from dotenv import load_dotenv
 
 
@@ -29,7 +30,7 @@ class CollectionData:
 
     def load_dotenv(self, dotenv_file):
         try:
-            load_dotenv(dotenv_file)
+            load_dotenv(dotenv_file, override=True)
             self.RIPPLE1D_API_URL = os.getenv("RIPPLE1D_API_URL")
             self.STAC_URL = os.getenv("STAC_URL")
         except:
@@ -70,4 +71,5 @@ class CollectionData:
         except Exception as e:
             logging.error(f"An error occurred: {e}.")
             logging.error(f"No models are available.")
+            return []
             return []

@@ -1,20 +1,42 @@
 import json
 import logging
 import os
+import sqlite3
 import time
 import traceback
-from typing import List, Optional, Tuple, Type
-import logging
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from threading import Lock
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Type
 
 import requests
 
-from .job_client import JobClient
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
+from .job_client import JobClient
+
+
+def get_min_max_elevation(
+    downstream_id: int,
+    submodels_directory: str,
+) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Fetch min and max upstream elevation for a reach
+    """
+
+    ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
+    if not os.path.exists(ds_submodel_db_path):
+        logging.info(f"Submodel database not found for reach_id: {downstream_id}")
+        return None, None
+
+    conn = sqlite3.connect(ds_submodel_db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves")
+        min_elevation, max_elevation = cursor.fetchone()
+    finally:
+        conn.close()
+    return min_elevation, max_elevation
 
 
 def process_reach(
@@ -25,7 +47,6 @@ def process_reach(
     job_client: Type[JobClient],
     task_queue: Queue,
     central_db_lock: Lock,
-    use_central_db: bool,
     timeout_minutes: int = 30,
 ) -> None:
     """
@@ -48,9 +69,7 @@ def process_reach(
         valid_plans = ["nd"]
 
         if downstream_id:
-            min_elevation, max_elevation = database.get_min_max_elevation(
-                downstream_id, submodels_directory, central_db_lock, use_central_db
-            )
+            min_elevation, max_elevation = get_min_max_elevation(downstream_id, submodels_directory)
             if min_elevation and max_elevation:
 
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
@@ -88,6 +107,7 @@ def process_reach(
                 "plans": valid_plans,
             }
         )
+
         response = requests.post(rc_db, headers=headers, data=rc_db_payload)
         rc_db_response_json = response.json()
         rc_db_job_id = rc_db_response_json.get("jobID")
@@ -117,7 +137,6 @@ def execute_ikwse_for_network(
     collection: Type[CollectionData],
     database: Type[Database],
     job_client: Type[JobClient],
-    use_central_db: bool,
     timeout: int = 30,
 ) -> None:
     """
@@ -145,7 +164,6 @@ def execute_ikwse_for_network(
                     job_client,
                     task_queue,
                     db_lock,
-                    use_central_db,
                     timeout,
                 )
                 futures.append(future)
