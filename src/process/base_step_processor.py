@@ -57,3 +57,8 @@ class BaseStepProcessor:
         logging.info(f"Failed: {len(self.job_statuses['failed'])}")
         logging.info(f"Not Accepted: {len(self.job_statuses['not_accepted'])}")
         logging.info(f"Unknown: {len(self.job_statuses['unknown'])}")
+
+    @property
+    def valid_entities(self):
+        """Returns all entities that were succeeded or timedout(unknown)"""
+        return [job_status[0] for job_status in self.job_statuses["succeeded"] + self.job_statuses["unknown"]]

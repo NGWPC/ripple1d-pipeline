@@ -62,12 +62,8 @@ def process(collection_name):
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
-    succeeded_and_unknown_status_models = [
-        job_status[0]
-        for job_status in conflate_step_processor.job_statuses["succeeded"]
-        + conflate_step_processor.job_statuses["unknown"]
-    ]
-    load_conflation(succeeded_and_unknown_status_models, database)
+    valid_models = conflate_step_processor.valid_entities
+    load_conflation(valid_models, database)
     logging.info("Finished Load Conflation Step")
 
     logging.info("Starting Update Network Step >>>>>>")
@@ -87,32 +83,22 @@ def process(collection_name):
     logging.info("<<<<<< Finihsed Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
-    valid_reaches = [
-        (job_status[0], "")
-        for job_status in submodel_step_processor.job_statuses["succeeded"]
-        + submodel_step_processor.job_statuses["unknown"]
-    ]
-    terrain_step_processor = GenericReachStepProcessor(collection, valid_reaches, "create_ras_terrain")
+    valid_reach_data = [(reach, "") for reach in submodel_step_processor.valid_entities]
+    terrain_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_ras_terrain")
     terrain_step_processor.execute_step(jobclient, database, timeout=3)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
-    valid_reaches = [
-        (job_status[0], "")
-        for job_status in terrain_step_processor.job_statuses["succeeded"]
-        + terrain_step_processor.job_statuses["unknown"]
-    ]
-    create_model_step_processor = GenericReachStepProcessor(collection, valid_reaches, "create_model_run_normal_depth")
+    valid_reach_data = [(reach, "") for reach in terrain_step_processor.valid_entities]
+    create_model_step_processor = GenericReachStepProcessor(
+        collection, valid_reach_data, "create_model_run_normal_depth"
+    )
     create_model_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
-    valid_reaches = [
-        (job_status[0], "")
-        for job_status in create_model_step_processor.job_statuses["succeeded"]
-        + create_model_step_processor.job_statuses["unknown"]
-    ]
-    nd_step_processor = GenericReachStepProcessor(collection, reach_data, "run_incremental_normal_depth")
+    valid_reach_data = [(reach, "") for reach in create_model_step_processor.valid_entities]
+    nd_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "run_incremental_normal_depth")
     nd_step_processor.execute_step(jobclient, database, timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
 
@@ -128,28 +114,17 @@ def process(collection_name):
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
     logging.info("Starting Final execute_kwse_step >>>>>>")
-    valid_reaches = [
-        (data[0], data[1])
-        for data in reaches
-        if data[1] is not None
-        and data[0]
-        in [
-            job_status[0]
-            for job_status in nd_step_processor.job_statuses["succeeded"] + nd_step_processor.job_statuses["unknown"]
-            # to do: also check if ind successful for downstream reach, and that ikwse was successful for this reach
-        ]
+    valid_reach_data = [
+        (data[0], data[1]) for data in reaches if data[1] is not None and data[0] in nd_step_processor.valid_entities
     ]
 
-    kwse_step_processor = KWSEStepProcessor(collection, valid_reaches)
+    kwse_step_processor = KWSEStepProcessor(collection, valid_reach_data)
     kwse_step_processor.execute_step(jobclient, database, timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
 
     logging.info("Starting Final create_rating_curves_db Step >>>>>>")
-    valid_reaches = [
-        job_status[0]
-        for job_status in kwse_step_processor.job_statuses["succeeded"] + kwse_step_processor.job_statuses["unknown"]
-    ]
-    rc_step_processor = GenericReachStepProcessor(collection, reach_data, "create_rating_curves_db")
+    valid_reach_data = [(reach, "") for reach in kwse_step_processeor.valid_entities]
+    rc_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_rating_curves_db")
     rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished Final create_rating_curves_db Step")
 
@@ -158,11 +133,8 @@ def process(collection_name):
     logging.info("<<<<< Finished Merge Rating Curves Step")
 
     logging.info("Starting create_fim_lib Step >>>>>>")
-    valid_reaches = [
-        job_status[0]
-        for job_status in nd_step_processor.job_statuses["succeeded"] + nd_step_processor.job_statuses["unknown"]
-    ]
-    fimlib_step_processor = GenericReachStepProcessor(collection, reach_data, "create_fim_lib")
+    valid_reach_data = [(reach, "") for reach in nd_step_processor.valid_entities]
+    fimlib_step_processor = GenericReachStepProcessor(collection, valid_reach_data, "create_fim_lib")
     fimlib_step_processor.execute_step(jobclient, database, timeout=150)
     logging.info("<<<<< Finished create_fim_lib Step")
 
