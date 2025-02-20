@@ -1,5 +1,5 @@
 ---
-  
+
 RIPPLE1D_VERSION: 0.7.0
 
 paths:
@@ -19,54 +19,97 @@ ripple_settings:
   SOURCE_NETWORK_VERSION:  &SOURCE_NETWORK_VERSION "2.1"
   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
 
-# payload_templates might be best in a seperate file
-payload_templates:
+processing_steps:
   conflate_model:
-    source_model_directory: "{source_model_directory}\\{model_id}"
-    # model_name: "{model_name}"
-    source_network:
-      file_name: *SOURCE_NETWORK
-      version: *SOURCE_NETWORK_VERSION
-      type: *SOURCE_NETWORK_TYPE
+    domain: "model"
+    api_process_name: "conflate_model"
+    payload_template:
+      source_model_directory: "{source_model_directory}\\{model_id}"
+      # model_name: "{model_name}"
+      source_network:
+        file_name: *SOURCE_NETWORK
+        version: *SOURCE_NETWORK_VERSION
+        type: *SOURCE_NETWORK_TYPE
+
   extract_submodel:
-    source_model_directory: "{source_model_directory}\\{model_id}"
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    nwm_id: "{nwm_reach_id}"
+    domain: "reach"
+    api_process_name: "extract_submodel"
+    payload_template:
+      source_model_directory: "{source_model_directory}\\{model_id}"
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      nwm_id: "{nwm_reach_id}"
+
   create_ras_terrain:
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    # resolution: *RESOLUTION
-    # resolution_units: *RESOLUTION_UNITS
-    terrain_source_url: *TERRAIN_SOURCE_URL
+    domain: "reach"
+    api_process_name: "create_ras_terrain"  # Different api_process_name
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      resolution: *RESOLUTION
+      resolution_units: *RESOLUTION_UNITS
+      terrain_source_url: *TERRAIN_SOURCE_URL
+
   create_model_run_normal_depth:
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    plan_suffix: "ind"
-    num_of_discharges_for_initial_normal_depth_runs: 15
-    ras_version: *RAS_VERSION
+    domain: "reach"
+    api_process_name: "create_model_run_normal_depth"
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      plan_suffix: "ind"
+      num_of_discharges_for_initial_normal_depth_runs: 5
+      ras_version: *RAS_VERSION
+
   run_incremental_normal_depth:
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    plan_suffix: "nd"
-    depth_increment: *US_DEPTH_INCREMENT
-    ras_version: *RAS_VERSION
-  run_known_wse: 
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    plan_suffix: "kwse"
-    min_elevation: -9999
-    max_elevation: -9999
-    depth_increment: *DS_DEPTH_INCREMENT
-    ras_version: *RAS_VERSION
-    write_depth_grids: True
-  create_rating_curves_db: 
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    plans: ["kwse"]
+    domain: "reach"
+    api_process_name: "run_incremental_normal_depth"
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      plan_suffix: "nd"
+      depth_increment: *US_DEPTH_INCREMENT
+      ras_version: *RAS_VERSION
+
+  nd_create_rating_curves_db:
+    domain: "reach"
+    api_process_name: "create_rating_curves_db"
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      plans: ["nd"]
+
+  run_iknown_wse:
+    domain: "reach"
+
+  ikwse_create_rating_curves_db:
+    domain: "reach"
+
+  run_known_wse:
+    domain: "reach"
+    api_process_name: "run_known_wse"
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      plan_suffix: "kwse"
+      min_elevation: -9999
+      max_elevation: -9999
+      depth_increment: *DS_DEPTH_INCREMENT
+      ras_version: *RAS_VERSION
+      write_depth_grids: True
+
+  kwse_create_rating_curves_db:
+    domain: "reach"
+    api_process_name: "create_rating_curves_db"
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      plans: ["kwse"]
+
   create_fim_lib:
-    submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-    plans:
-      - nd
-      - kwse
-    resolution: *RESOLUTION
-    resolution_units: *RESOLUTION_UNITS
-    library_directory: "{library_directory}"
-    cleanup: True
+    domain: "reach"
+    api_process_name: "create_fim_lib"
+    payload_template:
+      submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
+      plans:
+        - nd
+        - kwse
+      resolution: *RESOLUTION
+      resolution_units: *RESOLUTION_UNITS
+      library_directory: "{library_directory}"
+      cleanup: True
 
 flows2fim:
   FLOW_FILES_DIR: C:\reference_data\flow_files

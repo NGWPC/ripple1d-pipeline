@@ -19,13 +19,11 @@ class KWSEStepProcessor(BaseReachStepProcessor):
 
     def _execute_requests(self):
         """KWSE-specific request execution with elevation data"""
-        template = self.collection.config["payload_templates"][self.process_name]
-
         for reach in self.reaches:
-            job_record = self._execute_single_request(reach, template)
+            job_record = self._execute_single_request(reach)
             self._categorize_job_record(job_record)
 
-    def _execute_single_request(self, reach: Reach, template: Dict) -> Tuple:
+    def _execute_single_request(self, reach: Reach) -> Tuple:
         """KWSE-specific request implementation with elevation data"""
         submodels_dir = self.collection.submodels_dir
         min_elev, max_elev = get_min_max_elevation(reach.to_id, submodels_dir)
@@ -33,13 +31,13 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         if not min_elev or not max_elev:
             return (reach, "", "not_accepted")
 
+        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config["processing_steps"][self.process_name]["api_process_name"]}/execution"
+        template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id)
         payload.update({"min_elevation": min_elev, "max_elevation": max_elev})
 
         for attempt in range(5):
-            response = requests.post(
-                f"{self.collection.RIPPLE1D_API_URL}/processes/{self.process_name}/execution", json=payload
-            )
+            response = requests.post(url, json=payload)
             if response.status_code == 201:
                 return JobRecord(reach, response.json()["jobID"], "accepted")
             sleep(attempt * self.collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"])

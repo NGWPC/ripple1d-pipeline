@@ -18,15 +18,14 @@ class GenericReachStepProcessor(BaseReachStepProcessor):
 
     def _execute_requests(self):
         """Generic reach request execution"""
-        template = self.collection.config["payload_templates"][self.process_name]
-
         for reach in self.reaches:
-            job_record = self._execute_single_request(reach, template)
+            job_record = self._execute_single_request(reach)
             self._categorize_job_record(job_record)
 
-    def _execute_single_request(self, reach: Reach, template: Dict) -> Tuple:
+    def _execute_single_request(self, reach: Reach) -> Tuple:
         """Single request implementation"""
-        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.process_name}/execution"
+        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config["processing_steps"][self.process_name]["api_process_name"]}/execution"
+        template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id, reach.model_id)
 
         for attempt in range(5):
