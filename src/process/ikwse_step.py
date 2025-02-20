@@ -66,9 +66,8 @@ def process_reach(
     try:
         submodel_directory_path = os.path.join(submodels_directory, str(reach.id))
         headers = {"Content-Type": "application/json"}
-        valid_plans = ["nd"]
 
-        if reach.to_id:
+        if reach.to_id:  # and reach.to_id in nddb_reaches and reach.id in nddb_reaches:
             min_elevation, max_elevation = get_min_max_elevation(reach.to_id, submodels_directory)
             if min_elevation and max_elevation:
 
@@ -94,34 +93,36 @@ def process_reach(
                     with central_db_lock:
                         database.update_processing_table([(reach.id, job_id)], "run_iknown_wse", "failed")
                 else:
-                    valid_plans = valid_plans + ["ikwse"]
                     with central_db_lock:
                         database.update_processing_table([(reach.id, job_id)], "run_iknown_wse", "successful")
+
+                    rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
+                    rc_db_payload = json.dumps(
+                        {
+                            "submodel_directory": submodel_directory_path,
+                            "plans": ["ikwse"],
+                        }
+                    )
+
+                    # todo: try to launch job with retry
+                    response = requests.post(rc_db, headers=headers, data=rc_db_payload)
+                    rc_db_response_json = response.json()
+                    rc_db_job_id = rc_db_response_json.get("jobID")
+
+                    if not rc_db_job_id or not job_client.check_job_successful(
+                        rc_db_job_id, timeout_minutes=timeout_minutes
+                    ):
+                        with central_db_lock:
+                            database.update_processing_table(
+                                [(reach.id, rc_db_job_id)], "ikwse_create_rating_curves_db", "failed"
+                            )
+                    else:
+                        with central_db_lock:
+                            database.update_processing_table(
+                                [(reach.id, rc_db_job_id)], "ikwse_create_rating_curves_db", "successful"
+                            )
             else:
                 logging.info(f"Could not retrieve min/max elevation for reach_id: {reach.to_id}")
-
-        rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
-        rc_db_payload = json.dumps(
-            {
-                "submodel_directory": submodel_directory_path,
-                "plans": valid_plans,
-            }
-        )
-
-        response = requests.post(rc_db, headers=headers, data=rc_db_payload)
-        rc_db_response_json = response.json()
-        rc_db_job_id = rc_db_response_json.get("jobID")
-
-        if not rc_db_job_id or not job_client.check_job_successful(rc_db_job_id, timeout_minutes=timeout_minutes):
-            with central_db_lock:
-                database.update_processing_table([(reach.id, rc_db_job_id)], "create_irating_curves_db", "failed")
-
-            upstream_reaches = database.get_upstream_reaches(reach.id, central_db_lock)
-            for upstream_reach in upstream_reaches:
-                task_queue.put(Reach(upstream_reach, None, None))
-            return
-        with central_db_lock:
-            database.update_processing_table([(reach.id, rc_db_job_id)], "create_irating_curves_db", "successful")
 
         upstream_reaches = database.get_upstream_reaches(reach.id, central_db_lock)
         for upstream_reach in upstream_reaches:

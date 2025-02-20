@@ -102,6 +102,13 @@ def process(collection_name):
     nd_step_processor.execute_step(jobclient, database, timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
 
+    logging.info("Starting nd create_rating_curves_db Step >>>>>>")
+    nd_rc_step_processor = GenericReachStepProcessor(
+        collection, nd_step_processor.valid_entities, "nd_create_rating_curves_db"
+    )
+    nd_rc_step_processor.execute_step(jobclient, database, timeout=15)
+    logging.info("<<<<< Finished nd create_rating_curves_db Step")
+
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
     outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     execute_ikwse_for_network(
@@ -114,24 +121,24 @@ def process(collection_name):
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
     logging.info("Starting Final execute_kwse_step >>>>>>")
-    non_outlet_valid_reaches = [reach for reach in nd_step_processor.valid_entities if reach.to_id is not None]
+    non_outlet_valid_reaches = [reach for reach in nd_rc_step_processor.valid_entities if reach.to_id is not None]
     kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
     kwse_step_processor.execute_step(jobclient, database, timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
 
-    logging.info("Starting Final create_rating_curves_db Step >>>>>>")
-    rc_step_processor = GenericReachStepProcessor(
-        collection, kwse_step_processor.valid_entities, "create_rating_curves_db"
+    logging.info("Starting kwse create_rating_curves_db Step >>>>>>")
+    kwse_rc_step_processor = GenericReachStepProcessor(
+        collection, kwse_step_processor.valid_entities, "kwse_create_rating_curves_db"
     )
-    rc_step_processor.execute_step(jobclient, database, timeout=15)
-    logging.info("<<<<< Finished Final create_rating_curves_db Step")
+    kwse_rc_step_processor.execute_step(jobclient, database, timeout=15)
+    logging.info("<<<<< Finished kwse create_rating_curves_db Step")
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
     load_all_rating_curves(database)
     logging.info("<<<<< Finished Merge Rating Curves Step")
 
     logging.info("Starting create_fim_lib Step >>>>>>")
-    fimlib_step_processor = GenericReachStepProcessor(collection, nd_step_processor.valid_entities, "create_fim_lib")
+    fimlib_step_processor = GenericReachStepProcessor(collection, nd_rc_step_processor.valid_entities, "create_fim_lib")
     fimlib_step_processor.execute_step(jobclient, database, timeout=150)
     logging.info("<<<<< Finished create_fim_lib Step")
 
