@@ -14,6 +14,7 @@ import requests
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
 from .job_client import JobClient
+from .reach import Reach
 
 
 def get_min_max_elevation(
@@ -40,8 +41,7 @@ def get_min_max_elevation(
 
 
 def process_reach(
-    reach_id: int,
-    downstream_id: Optional[int],
+    reach: Reach,
     collection: Type[CollectionData],
     database: Type[Database],
     job_client: Type[JobClient],
@@ -64,12 +64,12 @@ def process_reach(
     submodels_directory = collection.submodels_dir
 
     try:
-        submodel_directory_path = os.path.join(submodels_directory, str(reach_id))
+        submodel_directory_path = os.path.join(submodels_directory, str(reach.id))
         headers = {"Content-Type": "application/json"}
         valid_plans = ["nd"]
 
-        if downstream_id:
-            min_elevation, max_elevation = get_min_max_elevation(downstream_id, submodels_directory)
+        if reach.to_id:
+            min_elevation, max_elevation = get_min_max_elevation(reach.to_id, submodels_directory)
             if min_elevation and max_elevation:
 
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
@@ -90,15 +90,15 @@ def process_reach(
                 response_json = response.json()
                 job_id = response_json.get("jobID")
                 if not job_id or not job_client.check_job_successful(job_id, timeout_minutes=timeout_minutes):
-                    logging.info(f"KWSE run failed for {reach_id}, API job ID: {job_id}")
+                    logging.info(f"KWSE run failed for {reach.id}, API job ID: {job_id}")
                     with central_db_lock:
-                        database.update_processing_table([(reach_id, job_id)], "run_iknown_wse", "failed")
+                        database.update_processing_table([(reach.id, job_id)], "run_iknown_wse", "failed")
                 else:
                     valid_plans = valid_plans + ["ikwse"]
                     with central_db_lock:
-                        database.update_processing_table([(reach_id, job_id)], "run_iknown_wse", "successful")
+                        database.update_processing_table([(reach.id, job_id)], "run_iknown_wse", "successful")
             else:
-                logging.info(f"Could not retrieve min/max elevation for reach_id: {downstream_id}")
+                logging.info(f"Could not retrieve min/max elevation for reach_id: {reach.to_id}")
 
         rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
         rc_db_payload = json.dumps(
@@ -114,26 +114,26 @@ def process_reach(
 
         if not rc_db_job_id or not job_client.check_job_successful(rc_db_job_id, timeout_minutes=timeout_minutes):
             with central_db_lock:
-                database.update_processing_table([(reach_id, rc_db_job_id)], "create_irating_curves_db", "failed")
+                database.update_processing_table([(reach.id, rc_db_job_id)], "create_irating_curves_db", "failed")
 
-            upstream_reaches = database.get_upstream_reaches(reach_id, central_db_lock)
+            upstream_reaches = database.get_upstream_reaches(reach.id, central_db_lock)
             for upstream_reach in upstream_reaches:
-                task_queue.put((upstream_reach, None))
+                task_queue.put(Reach(upstream_reach, None, None))
             return
         with central_db_lock:
-            database.update_processing_table([(reach_id, rc_db_job_id)], "create_irating_curves_db", "successful")
+            database.update_processing_table([(reach.id, rc_db_job_id)], "create_irating_curves_db", "successful")
 
-        upstream_reaches = database.get_upstream_reaches(reach_id, central_db_lock)
+        upstream_reaches = database.get_upstream_reaches(reach.id, central_db_lock)
         for upstream_reach in upstream_reaches:
-            task_queue.put((upstream_reach, reach_id))
+            task_queue.put(Reach(upstream_reach, reach.id, None))
 
     except Exception as e:
-        logging.info(f"Error processing reach {reach_id}: {str(e)}")
+        logging.info(f"Error processing reach {reach.id}: {str(e)}")
         traceback.print_exc()
 
 
 def execute_ikwse_for_network(
-    initial_reaches: List[Tuple[int, Optional[int]]],
+    initial_reaches: List[Reach],
     collection: Type[CollectionData],
     database: Type[Database],
     job_client: Type[JobClient],
@@ -146,19 +146,18 @@ def execute_ikwse_for_network(
 
     task_queue = Queue()
     db_lock = Lock()
-    for reach_pair in initial_reaches:
-        task_queue.put(reach_pair)
+    for reach in initial_reaches:
+        task_queue.put(reach)
 
     with ThreadPoolExecutor(max_workers=OPTIMUM_PARALLEL_PROCESS_COUNT) as executor:
         futures = []
         while not task_queue.empty() or futures:
             while not task_queue.empty():
-                reach_id, downstream_id = task_queue.get()
-                logging.info(f"Submitting task for reach {reach_id} with downstream {downstream_id}")
+                reach = task_queue.get()
+                logging.info(f"Submitting task for reach {reach.id} with downstream {reach.to_id}")
                 future = executor.submit(
                     process_reach,
-                    reach_id,
-                    downstream_id,
+                    reach,
                     collection,
                     database,
                     job_client,
