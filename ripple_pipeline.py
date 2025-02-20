@@ -166,32 +166,16 @@ def run_qc(collection_name):
 
     logging.info("Creating Excel Error Report >>>>>>>>")
     dfs = []
-    for process_name in ["conflate_model"]:
-        # Capture the final status of unknown status jobs
-        job_client.poll_and_update_job_status(database, process_name, "models")
-        _, _, failed_reaches = database.get_reach_status_by_process(process_name, "models")
+    for step_name in collection.config["processing_steps"].keys():
+        domain = collection.config["processing_steps"][step_name]["domain"]
+        # Lets not capture the final status to preserve the timedout status jobs
+        # job_client.poll_and_update_job_status(database, step_name, "models" if domain == "model" else "processing")
+        _, _, failed_reaches = database.get_reach_status_by_process(
+            step_name, "models" if domain == "model" else "processing"
+        )
         df = job_client.get_failed_jobs_df(failed_reaches)
         dfs.append(df)
-        write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
-
-    dfs = []
-    for process_name in [
-        "extract_submodel",
-        "create_ras_terrain",
-        "create_model_run_normal_depth",
-        "run_incremental_normal_depth",
-        "run_iknown_wse",
-        "create_irating_curves_db",
-        "run_known_wse",
-        "create_rating_curves_db",
-        "create_fim_lib",
-    ]:
-        # Capture the final status of unknown status jobs
-        job_client.poll_and_update_job_status(database, process_name)
-        _, _, failed_reaches = database.get_reach_status_by_process(process_name)
-        df = job_client.get_failed_jobs_df(failed_reaches)
-        dfs.append(df)
-        write_failed_jobs_df_to_excel(df, process_name, collection.error_report_path)
+        write_failed_jobs_df_to_excel(df, step_name, collection.error_report_path)
 
     logging.info("<<<<< Finished creating Excel error report")
 
@@ -214,7 +198,8 @@ def run_pipeline(collection: str):
 
     try:
         run_qc(collection)
-    except:
+    except Exception as e:
+        logging.error(e)
         logging.error("Error - qc workflow failed")
 
 

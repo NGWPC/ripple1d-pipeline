@@ -21,6 +21,7 @@ ripple_settings:
 
 processing_steps:
   conflate_model:
+    domain: "model"
     api_process_name: "conflate_model"
     payload_template:
       source_model_directory: "{source_model_directory}\\{model_id}"
@@ -31,6 +32,7 @@ processing_steps:
         type: *SOURCE_NETWORK_TYPE
 
   extract_submodel:
+    domain: "reach"
     api_process_name: "extract_submodel"
     payload_template:
       source_model_directory: "{source_model_directory}\\{model_id}"
@@ -38,6 +40,7 @@ processing_steps:
       nwm_id: "{nwm_reach_id}"
 
   create_ras_terrain:
+    domain: "reach"
     api_process_name: "create_ras_terrain"  # Different api_process_name
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
@@ -46,6 +49,7 @@ processing_steps:
       terrain_source_url: *TERRAIN_SOURCE_URL
 
   create_model_run_normal_depth:
+    domain: "reach"
     api_process_name: "create_model_run_normal_depth"
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
@@ -54,6 +58,7 @@ processing_steps:
       ras_version: *RAS_VERSION
 
   run_incremental_normal_depth:
+    domain: "reach"
     api_process_name: "run_incremental_normal_depth"
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
@@ -62,12 +67,20 @@ processing_steps:
       ras_version: *RAS_VERSION
 
   nd_create_rating_curves_db:
+    domain: "reach"
     api_process_name: "create_rating_curves_db"
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       plans: ["nd"]
 
+  run_iknown_wse:
+    domain: "reach"
+
+  ikwse_create_rating_curves_db:
+    domain: "reach"
+
   run_known_wse:
+    domain: "reach"
     api_process_name: "run_known_wse"
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
@@ -79,12 +92,14 @@ processing_steps:
       write_depth_grids: True
 
   kwse_create_rating_curves_db:
+    domain: "reach"
     api_process_name: "create_rating_curves_db"
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       plans: ["kwse"]
 
   create_fim_lib:
+    domain: "reach"
     api_process_name: "create_fim_lib"
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"

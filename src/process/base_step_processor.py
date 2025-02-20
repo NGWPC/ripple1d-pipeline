@@ -21,6 +21,9 @@ class BaseStepProcessor:
         self._update_database(database, "not_accepted")
         logging.info("Jobs submitted, waiting for jobs to finish")
         self._wait_for_jobs(job_client, timeout)
+        self._update_database(database, "succeeded")
+        self._update_database(database, "failed")
+        self._update_database(database, "unknown")
         self._log_results()
 
     @abstractmethod
