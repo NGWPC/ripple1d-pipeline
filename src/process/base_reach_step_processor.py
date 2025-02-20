@@ -30,5 +30,7 @@ class BaseReachStepProcessor(BaseStepProcessor):
     def _update_database(self, database: Database, status: str):
         """Common reach database update"""
         database.update_processing_table(
-            [(job_status[0].id, job_status[1]) for job_status in self.job_statuses[status]], self.process_name, status
+            [(job_record.entity.id, job_record.id) for job_record in self.job_records[status]],
+            self.process_name,
+            status,
         )

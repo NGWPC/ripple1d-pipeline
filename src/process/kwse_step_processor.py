@@ -6,6 +6,7 @@ import requests
 from ..setup.collection_data import CollectionData
 from .base_reach_step_processor import BaseReachStepProcessor
 from .ikwse_step import get_min_max_elevation
+from .job_client import JobRecord
 from .reach import Reach
 
 
@@ -21,8 +22,8 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         template = self.collection.config["payload_templates"][self.process_name]
 
         for reach in self.reaches:
-            result = self._execute_single_request(reach, template)
-            self._categorize_result(result)
+            job_record = self._execute_single_request(reach, template)
+            self._categorize_job_record(job_record)
 
     def _execute_single_request(self, reach: Reach, template: Dict) -> Tuple:
         """KWSE-specific request implementation with elevation data"""
@@ -40,7 +41,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
                 f"{self.collection.RIPPLE1D_API_URL}/processes/{self.process_name}/execution", json=payload
             )
             if response.status_code == 201:
-                return (reach, response.json()["jobID"], "accepted")
+                return JobRecord(reach, response.json()["jobID"], "accepted")
             sleep(attempt * self.collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"])
 
-        return (reach, "", "not_accepted")
+        return JobRecord(reach, "", "not_accepted")

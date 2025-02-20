@@ -314,7 +314,7 @@ class Database:
         finally:
             conn.close()
 
-    def update_models_table(self, model_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
+    def update_models_table(self, model_job_ids, process_name: str, job_status: str) -> None:
         update_query = f"""
                 UPDATE models
                 SET {process_name}_job_id = ?, {process_name}_status = '{job_status}'
