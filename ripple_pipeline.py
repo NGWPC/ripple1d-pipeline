@@ -72,6 +72,7 @@ def process(collection_name):
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
     reaches = [Reach(*row) for row in database.get_reaches_by_models(model_ids)]
+    logging.info(f"{len(reaches)} reaches returned")
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
     # Reach Steps

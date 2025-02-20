@@ -49,7 +49,7 @@ class Database:
             conn.close()
 
     # Execute SQL operation: SELECT
-    def execute_query(self, query: str, params: tuple = None, print_reaches: bool = False, lock=None):
+    def execute_select_query(self, query: str, params: tuple = None, lock=None):
         if lock is None:
             with self._get_connection() as conn:
                 cursor = conn.cursor()
@@ -58,8 +58,6 @@ class Database:
                 else:
                     cursor.execute(query, params)
                 result = cursor.fetchall()
-                if print_reaches:
-                    logging.info(f"{len(result)} reaches returned")
                 return result
         else:
             with self._get_locked_connection(lock) as conn:
@@ -72,7 +70,7 @@ class Database:
                 return result
 
     # Execute SQL operation: SELECT one
-    def execute_query_fetchone(
+    def execute_fetchone_query(
         self,
         query: str,
         params: tuple = None,
@@ -93,14 +91,14 @@ class Database:
                 return result
 
     # Execute SQL operations: INSERT, UPDATE, DELETE
-    def execute_non_query(self, query: str, params: tuple = None):
+    def execute_dml_query(self, query: str, params: tuple = None):
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(query, params)
             conn.commit()
 
     # Execute SQL operations: INSERT, UPDATE, DELETE
-    def executemany_non_query(self, query: str, params: tuple = None):
+    def executemany_dml_query(self, query: str, params: tuple = None):
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.executemany(query, params)
@@ -324,7 +322,7 @@ class Database:
                 """
         params = [(model_job_id[1], model_job_id[0]) for model_job_id in model_job_ids]
 
-        self.executemany_non_query(update_query, params)
+        self.executemany_dml_query(update_query, params)
 
     def update_processing_table(self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
         """
@@ -337,7 +335,7 @@ class Database:
                 """
         params = [(reach_job_id[1], reach_job_id[0]) for reach_job_id in reach_job_ids]
 
-        self.executemany_non_query(update_query, params)
+        self.executemany_dml_query(update_query, params)
 
     def update_model_id_and_eclipsed(self, data: Dict, model_id: str) -> None:
         """
@@ -352,7 +350,7 @@ class Database:
 
         for key, value in data["reaches"].items():
             eclipsed = value["eclipsed"] == True
-            self.execute_non_query(update_query, (model_id, eclipsed, key))
+            self.execute_dml_query(update_query, (model_id, eclipsed, key))
 
     def get_valid_reaches(self) -> List[Tuple[int, int]]:
         """
@@ -364,7 +362,7 @@ class Database:
                 JOIN processing p ON n.reach_id = p.reach_id
                 WHERE p.eclipsed IS FALSE
                 """
-        return self.execute_query(select_query)
+        return self.execute_select_query(select_query)
 
     def get_eclipsed_reaches(self) -> List[Tuple[int, int]]:
         """
@@ -376,7 +374,7 @@ class Database:
                 JOIN processing p ON n.reach_id = p.reach_id
                 WHERE p.eclipsed IS TRUE
                 """
-        return self.execute_query(select_query)
+        return self.execute_select_query(select_query)
 
     def update_to_id_batch(self, updates: List[Tuple[int, int]]) -> None:
         """
@@ -387,7 +385,7 @@ class Database:
                 SET updated_to_id = ?
                 WHERE reach_id = ?
                 """
-        self.executemany_non_query(update_query, updates)
+        self.executemany_dml_query(update_query, updates)
 
     def get_reaches_by_models(self, model_ids: List[str]) -> List[Tuple[int, int, str]]:
         """
@@ -400,7 +398,7 @@ class Database:
                 JOIN processing p ON n.reach_id = p.reach_id
                 WHERE p.eclipsed IS FALSE AND p.model_id IN ({','.join(['?'] * len(model_ids))})
             """
-        return self.execute_query(select_query, model_ids, True)
+        return self.execute_select_query(select_query, model_ids)
 
     def get_upstream_reaches(self, updated_to_id: int, db_lock: threading.Lock) -> List[int]:
         """
@@ -411,7 +409,7 @@ class Database:
                 FROM network
                 WHERE updated_to_id = ?
                 """
-        temp_result = self.execute_query(select_query, (updated_to_id,), lock=db_lock)
+        temp_result = self.execute_select_query(select_query, (updated_to_id,), lock=db_lock)
         result = [row[0] for row in temp_result]
         return result
 
@@ -424,7 +422,7 @@ class Database:
                 FROM processing
                 WHERE reach_id = ?
                 """
-        result = self.execute_query_fetchone(select_query, (reach_id,), lock=db_lock)
+        result = self.execute_fetchone_query(select_query, (reach_id,), lock=db_lock)
 
         if result is None:
             raise ValueError(f"No record found for reach_id {reach_id}")
@@ -462,7 +460,7 @@ class Database:
                 FROM {process_table}
                 WHERE {process_name}_job_id IS NOT NULL
             """
-        return self.execute_query(select_query)
+        return self.execute_select_query(select_query)
 
     def get_reach_status_by_process(
         self, process_name: str, process_table: str = "processing"
@@ -495,11 +493,11 @@ class Database:
         """
 
         # Retrieve accepted reaches
-        accepted = self.execute_query(accepted_query)
+        accepted = self.execute_select_query(accepted_query)
         # Retrieve successful reaches
-        successful = self.execute_query(successful_query)
+        successful = self.execute_select_query(successful_query)
         # Retrieve failed reaches
-        failed = self.execute_query(failed_query)
+        failed = self.execute_select_query(failed_query)
 
         return accepted, successful, failed
 
@@ -511,4 +509,4 @@ class Database:
             WHERE {"reach_id" if process_table == "processing" else "model_id"} = ?;
         """
         params = (job_status, entity)
-        self.execute_query(query, params)
+        self.execute_dml_query(query, params)
