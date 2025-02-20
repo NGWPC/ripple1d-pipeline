@@ -1,12 +1,21 @@
-import requests
 import logging
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
-import pandas as pd
+from typing import Any, List, Tuple, Type
 
-from typing import Tuple, Type, List
+import pandas as pd
+import requests
+
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
+
+
+@dataclass
+class JobRecord:
+    entity: Any
+    id: str
+    status: str
 
 
 class JobClient:
@@ -72,9 +81,7 @@ class JobClient:
                     return False
             time.sleep(self.DEFAULT_POLL_WAIT)
 
-    def wait_for_jobs(
-        self, reach_job_ids: List[Tuple[int, str]], timeout_minutes=90
-    ) -> Tuple[List[Tuple[int, str]], List[Tuple[int, str]]]:
+    def wait_for_jobs(self, job_records: List[JobRecord], timeout_minutes=90) -> Tuple[List[JobRecord]]:
         """
         Waits for jobs to finish and returns lists of successful, failed, and unknown status jobsjobs.
         """
@@ -82,23 +89,25 @@ class JobClient:
         failed = []
         unknown = []
 
-        i = 0
-        for i in range(len(reach_job_ids)):
+        for job_record in job_records:
             while True:
-                status = self.get_job_status(reach_job_ids[i][1])
+                status = self.get_job_status(job_record.id)
                 if status == "successful":
-                    succeeded.append((reach_job_ids[i][0], reach_job_ids[i][1], "successful"))
+                    job_record.status = "successful"
+                    succeeded.append(job_record)
                     break
                 elif status == "failed":
-                    failed.append((reach_job_ids[i][0], reach_job_ids[i][1], "failed"))
-                    logging.error(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}?tb=true job failed")
+                    job_record.status = "failed"
+                    failed.append(job_record)
+                    logging.error(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id}?tb=true job failed")
                     break
                 elif status == "running":
-                    updated_time = self.get_job_update_time(reach_job_ids[i][1])
+                    updated_time = self.get_job_update_time(job_record.id)
                     elapsed_time = time.time() - self.datetime_to_epoch_utc(updated_time)
                     if elapsed_time / 60 > timeout_minutes:
-                        logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{reach_job_ids[i][1]}", "client timeout")
-                        unknown.append((reach_job_ids[i][0], reach_job_ids[i][1], "unknown"))
+                        logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id}", "client timeout")
+                        job_record.status = "unknown"
+                        unknown.append(job_record)
                         break
                 time.sleep(self.DEFAULT_POLL_WAIT)
 

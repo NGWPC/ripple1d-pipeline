@@ -26,4 +26,6 @@ class BaseModelStepProcessor(BaseStepProcessor):
 
     def _update_database(self, database: Database, status: str):
         """Common model database update"""
-        database.update_models_table(self.job_statuses[status], self.process_name, status)
+        database.update_models_table(
+            [(job_record.entity, job_record.id) for job_record in self.job_records[status]], self.process_name, status
+        )
