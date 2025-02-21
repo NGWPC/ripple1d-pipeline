@@ -2,7 +2,7 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, List, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 
 import pandas as pd
 import requests
@@ -113,10 +113,45 @@ class JobClient:
 
         return succeeded, failed, unknown
 
+    def get_failed_job_err_and_tb(self, job_id) -> Tuple[str, str]:
+        headers = {"Content-Type": "application/json"}
+
+        url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true"
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            response_data = response.json()
+            if response_data and response_data["result"]:
+                err = response_data["result"].get("err", "No error message")
+                tb = response_data["result"].get("tb", "No traceback")
+            else:
+                err = "No error message"
+                tb = "No traceback"
+            return (err, tb)
+        else:
+            return (f"Failed to get job status. Status code: {response.status_code}", "")
+
+    def get_job_payload(self, job_id) -> Dict:
+        headers = {"Content-Type": "application/json"}
+
+        url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}/metadata"
+
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            response_data = response.json()
+            if response_data and response_data[job_id]:
+                payload = response_data[job_id].get("func_kwargs", {})
+                return payload
+            return {}
+        else:
+            return {"error": f"Failed to get job metadata. Status code: {response.status_code}"}
+
     def get_failed_jobs_df(self, failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
         """
         Sends a GET request to the API for each failed reach's job and returns a formatted table
-        with reach_id, error message (err), and traceback (tb).
+        with reach_id, error message (err), and traceback (tb), payload.
 
         Args:
             api_url: The base URL of the API (e.g., 'http://localhost:5000').
@@ -125,28 +160,15 @@ class JobClient:
         Returns:
             A pandas DataFrame containing the reach_id, error (err), and traceback (tb).
         """
-        headers = {"Content-Type": "application/json"}
         results = []
 
         for id, job_id, _ in failed_ids:
-            url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true"
-
-            response = requests.get(url, headers=headers)
-
-            if response.status_code == 200:
-                response_data = response.json()
-                if response_data and response_data["result"]:
-                    err = response_data["result"].get("err", "No error message")
-                    tb = response_data["result"].get("tb", "No traceback")
-                else:
-                    err = "No error message"
-                    tb = "No traceback"
-                results.append((id, err, tb))
-            else:
-                results.append((id, f"Failed to get job status. Status code: {response.status_code}", ""))
+            err, tb = self.get_failed_job_err_and_tb(job_id)
+            payload = self.get_job_payload(job_id)
+            results.append((id, err, tb, payload))
 
         # Convert results to a pandas DataFrame for formatted output
-        df = pd.DataFrame(results, columns=["id", "err", "tb"])
+        df = pd.DataFrame(results, columns=["id", "err", "tb", "payload"])
         return df
 
     def poll_and_update_job_status(
