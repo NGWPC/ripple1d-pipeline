@@ -1,7 +1,8 @@
-import geopandas as gpd
 import logging
-
 from typing import Type
+
+import geopandas as gpd
+
 from .collection_data import CollectionData
 
 
@@ -18,7 +19,7 @@ def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
     """
 
     nwm_flowlines_path = collection.config["paths"]["NWM_FLOWLINES_PATH"]
-    river_gpkg_path = collection.merged_gpkg_path
+    river_gpkg_path = collection.source_models_gpkg_path
     output_gpkg_path = collection.db_path
 
     # Load NWM Flowlines from Parquet file

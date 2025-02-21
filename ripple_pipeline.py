@@ -32,7 +32,7 @@ def setup(collection_name):
     models_data = stac_importer.models_data
     # models_data = {"Baxter": {"model_name": "Baxter"}}
 
-    combine_river_tables(models_data, collection)
+    create_src_models_gpkg(models_data, collection)
 
     logging.info("Filtering NWM reaches")
     filter_nwm_reaches(collection)
