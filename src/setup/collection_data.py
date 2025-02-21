@@ -41,7 +41,7 @@ class CollectionData:
         self.root_dir = os.path.join(self.config["paths"]["COLLECTIONS_ROOT_DIR"], str(self.stac_collection_id))
         self.db_path = os.path.join(self.root_dir, "ripple.gpkg")
         self.source_models_dir = os.path.join(self.root_dir, "source_models")
-        self.merged_gpkg_path = os.path.join(self.root_dir, "source_models", "all_rivers.gpkg")
+        self.source_models_gpkg_path = os.path.join(self.root_dir, "source_models", "source_models.gpkg")
         self.submodels_dir = os.path.join(self.root_dir, "submodels")
         self.library_dir = os.path.join(self.root_dir, "library")
         self.extent_library_dir = os.path.join(self.root_dir, "library_extent")
