@@ -16,6 +16,7 @@ Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
  - HEC-RAS (v6.3.1)
  - GDAL
  - [Flows2fim](https://github.com/ar-siddiqui/flows2fim) (if creating composite rasters)
+ - AWS profile in `~\.aws\config` which includes valid AWS credentials (access key id and secret access key).
 
 ## Getting Started
 
@@ -101,7 +102,7 @@ The easiest way is to download the [OSGeo4W network installer](https://download.
 
 ## **Configuration**
 ### Environment file
-An `.env` file is included within the root directory. You must have a valid AWS profile in `~\.aws\config` which includes AWS credentials (access key id and secret access key). The value of `AWS_PROFILE` must be the same as what is listed in your `~/.aws/config`. For example, if your config file reads`[profile <your_profile_name>]`, the `.env` file should read `AWS_PROFILE=your_profile_name`.
+An `example.env` file is included within the root directory. First, make a copy of `example.env`, naming it `.env`. Then, update the line `AWS_PROFILE=` to be the same as what is listed in your `~/.aws/config` file. For example, if your config file reads`[profile your_profile_name]`, the `.env` file should read `AWS_PROFILE=your_profile_name`.
 
 ### Configuration file 
 

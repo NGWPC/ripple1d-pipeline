@@ -11,7 +11,7 @@
 */__pycache__/*
 */__pycache__/*
 
-*.env
+.env
 *.lst
 
 # Virtual Environments

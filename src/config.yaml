@@ -129,6 +129,6 @@ database:
 
 execution:
   stop_on_error: False
-  OPTIMUM_PARALLEL_PROCESS_COUNT: 8  # Rule of thumb - use half the cores available.
+  OPTIMUM_PARALLEL_PROCESS_COUNT: 22  # Rule of thumb - use half the cores available.
 
 ...
