@@ -72,6 +72,7 @@ def process(collection_name):
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
     reaches = [Reach(*row) for row in database.get_reaches_by_models(model_ids)]
+    outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     logging.info(f"{len(reaches)} reaches returned")
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
@@ -111,7 +112,6 @@ def process(collection_name):
     logging.info("<<<<< Finished nd create_rating_curves_db Step")
 
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
-    outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     execute_ikwse_for_network(
         outlet_reaches,
         collection,

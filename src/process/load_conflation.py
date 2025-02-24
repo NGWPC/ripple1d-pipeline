@@ -30,8 +30,21 @@ def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
         else:
             logging.info("Does not exist", file_path)
 
-    # order matters because we want to overwrite model with least coverages when conflict
-    sorted_models_data = sorted(models_data.items(), key=lambda item: len(item[1]["reaches"]))
+    # Order by number of reaches (ascending) and total RAS length (ascending to place higher lengths last)
+    sorted_models_data = sorted(
+        models_data.items(),
+        key=lambda item: (
+            len(item[1]["reaches"]),
+            sum(
+                (
+                    0
+                    if reach.get("metrics", {}).get("lengths", {}).get("ras", 0) is None
+                    else reach.get("metrics", {}).get("lengths", {}).get("ras", 0)
+                )
+                for reach in item[1]["reaches"].values()
+            ),
+        ),
+    )
 
     for model_id, json_data in sorted_models_data:
         database.update_model_id_and_eclipsed(json_data, model_id)

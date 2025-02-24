@@ -54,7 +54,7 @@ processing_steps:
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       plan_suffix: "ind"
-      num_of_discharges_for_initial_normal_depth_runs: 5
+      num_of_discharges_for_initial_normal_depth_runs: 15
       ras_version: *RAS_VERSION
 
   run_incremental_normal_depth:
