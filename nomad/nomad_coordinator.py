@@ -51,12 +51,10 @@ class NomadCoordinator:
         since .hcl filed are "easily" ported to valid JSON for an API request"""
         # https://discuss.hashicorp.com/t/how-nomad-uses-curl-api-to-create-job-through-hcl-file/43988
         # TODO
-        # Potentially parse nomad.hcl file into json and read for payload to use HTTP request
+        # Potentially parse nomad.hcl file into json and read for payload to use HTTP request?
         #     jq -Rsc '{ JobHCL: ., Canonicalize: true }' job_file > payload.json
         try:
-            # Connect to Nomad
-            # nomad_client = nomad.Nomad(host=self.nomad_addr, token=None, timeout=5)
-            # Register the job
+            # Build CLI command
             register_job_cmd = ["nomad", "job", "run", job_file]
             # Execute register_job_cmd with no output redirection
             register = subprocess.run(register_job_cmd, check=True)
@@ -84,6 +82,7 @@ class NomadCoordinator:
         response.raise_for_status()
         return response.json()
 
+    #FIXME This function, and -m flag to this script are not working
     def monitor_job(self, job_prefix: str, max_retries: int = 5, retry_delay: int = 5):
         """Monitor job events using Nomad's event stream with automatic reconnection.
 
@@ -95,6 +94,7 @@ class NomadCoordinator:
         uri = f"{self.nomad_addr}/v1/event/stream"
 
         # Add topic filters for job-related events
+        # FIXME 'params' below does not work!!
         params = {
             "topic": [
                 f"job:{job_prefix}*",  # Job events for our job
