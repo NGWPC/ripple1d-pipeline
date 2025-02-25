@@ -71,7 +71,7 @@ class STACImporter:
         """
         # session = boto3.Session(profile_name=self.AWS_PROFILE)
         # s3_client = session.client("s3")
-        session = boto3.Session(profile_name=self.AWS_PROFILE, aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, region_name=self.aws_region)
+        session = boto3.Session(aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, region_name=self.aws_region)
         s3_client = session.client("s3")
 
         for id, data in self.models_data.items():
