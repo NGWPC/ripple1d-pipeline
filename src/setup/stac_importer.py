@@ -26,6 +26,10 @@ class STACImporter:
     def get_aws_profile(self):
         load_dotenv(".env", override=True)
         self.AWS_PROFILE = os.getenv("AWS_PROFILE")
+        self.aws_access_key_id = os.getenv("aws_access_key_id") 
+        self.aws_secret_access_key = os.getenv("aws_secret_access_key")
+        self.aws_region = os.getenv("aws_region")
+        self.aws_session_token = os.getenv("aws_session_token") 
 
     def get_models_from_stac(self) -> None:
         """
