@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# import nomad
 import json
 import requests
 import argparse
@@ -14,14 +15,18 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 
-import logging
+import subprocess
 
 
 class NomadCoordinator:
     def __init__(self):
         self.load_dotenv("./.env")
-        self.headers = {"Content-Type": "application/json", "X-Nomad-Token" : self.NOMAD_TOKEN}
+        self.headers = {
+            "Content-Type": "application/json",
+            "X-Nomad-Token": self.NOMAD_TOKEN,
+        }
         self.console = Console()
+        self.error_console = Console(stderr=True, style="bold red")
 
     def load_dotenv(self, dotenv_file):
         # Construct path to .env in grandparent directory
@@ -32,33 +37,45 @@ class NomadCoordinator:
                 load_dotenv(dotenv_path, override=True)
                 self.NOMAD_TOKEN = os.getenv("NOMAD_TOKEN")
                 self.nomad_addr = os.getenv("NOMAD_ADDR")
+                #Remove after new AMI
+                self.gitlab_un =  os.getenv("GITLAB_USERNAME")
+                self.gitlab_pat =  os.getenv("GITLAB_PAT")
+                
             except:
                 raise ValueError("Invalid .env configuration")
         else:
             raise ValueError("Invalid .env configuration")
 
-    def load_job_file(self, job_file):
-        pass
-
     def register_job(self, job_file):
-        """Submit a parameterized job to Nomad."""
+        """Register a job to Nomad. The nomad CLI is used
+        since .hcl filed are "easily" ported to valid JSON for an API request"""
+        # https://discuss.hashicorp.com/t/how-nomad-uses-curl-api-to-create-job-through-hcl-file/43988
+        # TODO
+        # Potentially parse nomad.hcl file into json and read for payload to use HTTP request
+        #     jq -Rsc '{ JobHCL: ., Canonicalize: true }' job_file > payload.json
+        try:
+            # Connect to Nomad
+            # nomad_client = nomad.Nomad(host=self.nomad_addr, token=None, timeout=5)
+            # Register the job
+            register_job_cmd = ["nomad", "job", "run", job_file]
+            # Execute register_job_cmd with no output redirection
+            register = subprocess.run(register_job_cmd, check=True)
 
+        except subprocess.CalledProcessError as e:
+            self.error_console.print(f"Error Registering job: {e} ")
+            exit(1)
+        except Exception as e:
+            self.error_console.print(f"Unexpected error occurred: {e}")
+            self.error_console.print(f" Error registering job: {register}")
+            exit(1)
 
-        # nomad job run job_file
+        # If job submission successful, exit script
+        self.console.print("Submitted job for registration")
+        exit(0)
 
-        url = f"{self.nomad_addr}/v1/jobs"
-        dispatch_payload = {"Meta": job_metadata}
-        self.console.print(
-            f"Submitting job with metadata:\n{json.dumps(job_metadata, indent=2)}"
-        )
-        response = requests.post(url, json=dispatch_payload, headers=self.headers)
-        response.raise_for_status()
-        return response.json()
-
-    def submit_job(self, job_name, job_metadata: Dict[str, Any]) -> Dict[str, Any]:
+    def dispatch_job(self, job_name, job_metadata: Dict[str, Any]) -> Dict[str, Any]:
         """Submit a parameterized job to Nomad."""
         url = f"{self.nomad_addr}/v1/job/{job_name}/dispatch"
-        ## Update to include job name from job file 
         dispatch_payload = {"Meta": job_metadata}
         self.console.print(
             f"Submitting job with metadata:\n{json.dumps(job_metadata, indent=2)}"
@@ -80,7 +97,7 @@ class NomadCoordinator:
         # Add topic filters for job-related events
         params = {
             "topic": [
-                f"Job:{job_prefix}*",  # Job events for our job
+                f"job:{job_prefix}*",  # Job events for our job
                 "Evaluation",  # Evaluation events
                 "Allocation",  # Allocation events
                 "Deployment",  # Deployment events
@@ -134,7 +151,7 @@ class NomadCoordinator:
                 self.console.print(f"[red]Error in event stream: {e}")
 
                 if max_retries != -1 and retry_count >= max_retries:
-                    self.console.print("[red]Max retry attempts reached. Exiting.")
+                    self.console.print("[bold red]Max retry attempts reached. Exiting.")
                     break
 
                 retry_count += 1
@@ -205,13 +222,12 @@ class NomadCoordinator:
             Panel(table, title=f"[bold blue]Event {event.get('Index', 'N/A')}")
         )
 
-
     def read_input(self, collection_list: str) -> List:
         """
         Takes absolute or relative path to a .csv or .lst file, reads each line, and returns a List of collections
         """
         parent_dir = Path(__file__).parent
-        relative_collection_list = parent_dir / collection_list 
+        relative_collection_list = parent_dir / collection_list
 
         collections = []
         if os.path.isfile(relative_collection_list):
@@ -242,70 +258,83 @@ class NomadCoordinator:
         # Strips single or double quotes
         collection = collection.strip().replace('"', "")
         collection = collection.replace("'", "")
+        collection = collection.replace(",", "")
         return collection
+
 
 def main(
     collection_list: str,
     job_name: str,
     job_file: str,
-    monitor
+    monitor,
+    register_job,
 ):
 
     coordinator = NomadCoordinator()
 
-    # exit()
+    if register_job:
+        coordinator.register_job(job_file)
 
     collections = coordinator.read_input(collection_list)
 
     print(f"Collections to submit as parameterized jobs : {collections}")
 
-
     # Submit parameterized jobs for collection
     for collection in collections:
 
         metadata = {
-            "job_id": collection
-            # "collection" : collection
+            # "job_id": collection
+            "collection": collection,
+            "gitlab_pat": coordinator.gitlab_pat,
+            "gitlab_un" : coordinator.gitlab_un
         }
 
         try:
-            result = coordinator.submit_job(job_name, metadata)
+            result = coordinator.dispatch_job(job_name, metadata)
             coordinator.console.print(
                 f"[green]Submitted job for collection {collection}: {result}"
                 # f"[green]Submitted job for collection {collection}: {result['EvalID']}"
             )
         except requests.exceptions.RequestException as e:
             coordinator.console.print(
-                f"[red]Failed to submit job for catchment {collection}: {e}"
+                f"[red]Failed to submit job for collection {collection}: {e}"
             )
 
     # If monitoring is enabled, start the event stream with job prefix
     if monitor:
         coordinator.console.print("\n[yellow]Starting event stream monitor...")
-        coordinator.monitor_job("inundation-processor")
+        coordinator.monitor_job(job_name)
 
 
 if __name__ == "__main__":
     """
-    Example:
-        python3 dispatch_nomad_jobs.py -l "collections.csv" -n "hostname-uploader"
+    Test Example:
+        python3 nomad_coordinator.py -r --job_file "batch-test-windows.nomad.hcl"
+
+        python3 nomad_coordinator.py -l "test.csv" -n "batch-test-windows" -m
+
+
+    Ripple Example:
+        python3 nomad_coordinator.py -r -j "ripple_batch_pipeline.nomad.hcl"
+
+        python3 nomad_coordinator.py -l "collections.csv" -n "ripple_batch_pipeline" -m
+
     """
-    
+
     parser = argparse.ArgumentParser(
         description="Coordinate Nomad ripple pipeline processing jobs"
     )
     parser.add_argument(
         "-l",
         "--collection_list",
-        required=True,
+        # required=True,
         help="A filepath (.txt or .lst) containaing a new line separated list of valid collections or a space separated string of collections",
     )
     parser.add_argument(
         "-n",
         "--job_name",
-        # TODO Change below
-        default="hostname-uploader",
-        help="Nomad Job name to submit parameterized jobs",
+        default="test",
+        help="Nomad Job name to register job and/or submit parameterized jobs",
     )
     parser.add_argument(
         "-j",
@@ -314,7 +343,16 @@ if __name__ == "__main__":
         help="Nomad Job filename to register (must be in current directory (/nomad))",
     )
     parser.add_argument(
-        "--monitor", action="store_true", help="Monitor job events after submission"
+        "-m",
+        "--monitor",
+        action="store_true",
+        help="Monitor job events after submission",
+    )
+    parser.add_argument(
+        "-r",
+        "--register_job",
+        action="store_true",
+        help="Register job file in the current directory with the NOMAD scheduler. ",
     )
 
     args = vars(parser.parse_args())
