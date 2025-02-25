@@ -37,6 +37,10 @@ class NomadCoordinator:
                 load_dotenv(dotenv_path, override=True)
                 self.NOMAD_TOKEN = os.getenv("NOMAD_TOKEN")
                 self.nomad_addr = os.getenv("NOMAD_ADDR")
+                self.AWS_PROFILE = os.getenv("AWS_PROFILE")
+                self.aws_access_key_id = os.getenv("aws_access_key_id")
+                self.aws_secret_access_key = os.getenv("aws_secret_access_key")
+                self.aws_region = os.getenv("aws_region")                
                 #Remove after new AMI
                 self.gitlab_un =  os.getenv("GITLAB_USERNAME")
                 self.gitlab_pat =  os.getenv("GITLAB_PAT")
@@ -286,7 +290,11 @@ def main(
             # "job_id": collection
             "collection": collection,
             "gitlab_pat": coordinator.gitlab_pat,
-            "gitlab_un" : coordinator.gitlab_un
+            "gitlab_un" : coordinator.gitlab_un,
+            "AWS_PROFILE" : coordinator.AWS_PROFILE,
+            "aws_access_key_id" : coordinator.aws_access_key_id,
+            "aws_secret_access_key" : coordinator.aws_secret_access_key,
+            "aws_region" : coordinator.aws_region            
         }
 
         try:
