@@ -28,7 +28,9 @@ class STACImporter:
         self.AWS_PROFILE = os.getenv("AWS_PROFILE")
         self.aws_access_key_id = os.getenv("aws_access_key_id") 
         self.aws_secret_access_key = os.getenv("aws_secret_access_key")
+        self.aws_session_token = os.getenv("aws_session_token")
         self.aws_region = os.getenv("aws_region") 
+        
 
     def get_models_from_stac(self) -> None:
         """
@@ -71,7 +73,7 @@ class STACImporter:
         """
         # session = boto3.Session(profile_name=self.AWS_PROFILE)
         # s3_client = session.client("s3")
-        session = boto3.Session(aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, region_name=self.aws_region)
+        session = boto3.Session(profile_name=self.AWS_PROFILE, aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, aws_session_token=self.aws_session_token, region_name=self.aws_region)
         s3_client = session.client("s3")
 
         for id, data in self.models_data.items():
