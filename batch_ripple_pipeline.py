@@ -93,10 +93,15 @@ def batch_pipeline(collection_list):
             f.flush()
 
             try:
-                # Using shell=True to call this subprocess within the venv context
-                # stdout is only being flushed at the end, not sure why
-                process = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
-
+                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                for line in process.stdout:
+                    print(line.decode().strip())
+                    f.write(line.decode())
+                for line in process.stderr:
+                    print(line.decode().strip())
+                    f.write(line.decode())
+                process.wait()
+                
                 if process.returncode != 0:
                     raise subprocess.CalledProcessError(process.returncode, cmd)
 
