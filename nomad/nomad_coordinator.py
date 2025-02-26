@@ -72,7 +72,6 @@ class NomadCoordinator:
             exit(1)
 
         # If job submission successful, exit script
-        self.console.print("Submitted job for registration")
         exit(0)
 
     def dispatch_job(self, job_name, job_metadata: Dict[str, Any]) -> Dict[str, Any]:
@@ -80,7 +79,7 @@ class NomadCoordinator:
         url = f"{self.nomad_addr}/v1/job/{job_name}/dispatch"
         dispatch_payload = {"Meta": job_metadata}
         self.console.print(
-            f"Submitting job with metadata:\n{json.dumps(job_metadata, indent=2)}"
+            f"[yellow]Submitting job with metadata:\n{json.dumps(job_metadata, indent=2)}"
         )
         response = requests.post(url, json=dispatch_payload, headers=self.headers)
         response.raise_for_status()
@@ -287,21 +286,20 @@ def main(
     for collection in collections:
 
         metadata = {
-            # "job_id": collection
-            "collection": collection,
-            "gitlab_pat": coordinator.gitlab_pat,
-            "gitlab_un": coordinator.gitlab_un,
-            "AWS_PROFILE": coordinator.AWS_PROFILE,
-            "aws_access_key_id": coordinator.aws_access_key_id,
-            "aws_secret_access_key": coordinator.aws_secret_access_key,
-            "aws_region": coordinator.aws_region,
+            "job_id": collection
+            # "collection": collection,
+            # "gitlab_pat": coordinator.gitlab_pat,
+            # "gitlab_un": coordinator.gitlab_un,
+            # "AWS_PROFILE": coordinator.AWS_PROFILE,
+            # "aws_access_key_id": coordinator.aws_access_key_id,
+            # "aws_secret_access_key": coordinator.aws_secret_access_key,
+            # "aws_region": coordinator.aws_region,
         }
 
         try:
             result = coordinator.dispatch_job(job_name, metadata)
             coordinator.console.print(
-                f"[green]Submitted job for collection {collection}: {result}"
-                # f"[green]Submitted job for collection {collection}: {result['EvalID']}"
+                f"[green]Submitted job for collection {collection}: {result['EvalID']}"
             )
         except requests.exceptions.RequestException as e:
             coordinator.console.print(
