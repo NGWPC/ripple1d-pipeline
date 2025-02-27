@@ -4,6 +4,7 @@ import os
 from typing import Dict, List, Type
 
 from ..setup.database import Database
+from .model import Model
 
 
 def load_json(file_path: str) -> Dict:
@@ -15,18 +16,18 @@ def load_json(file_path: str) -> Dict:
     return data
 
 
-def load_conflation(model_ids: List[str], database: Type[Database]) -> None:
+def load_conflation(models: List[Model], database: Type[Database]) -> None:
     """
     Loads conflation data into the processing table from the specified model keys and source models directory.
     """
     source_models_directory = database.source_models_dir
     models_data = {}
 
-    for model_id in model_ids:
-        file_path = f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json"
+    for model in models:
+        file_path = f"{source_models_directory}\\{model.id}\\{model.name}.conflation.json"
         if os.path.exists(file_path):
-            json_data = load_json(f"{source_models_directory}\\{model_id}\\{model_id}.conflation.json")
-            models_data[model_id] = json_data
+            json_data = load_json(f"{source_models_directory}\\{model.id}\\{model.name}.conflation.json")
+            models_data[model.id] = json_data
         else:
             logging.info("Does not exist", file_path)
 

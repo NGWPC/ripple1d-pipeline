@@ -1,6 +1,6 @@
 ---
 
-RIPPLE1D_VERSION: 0.7.0
+RIPPLE1D_VERSION: 0.10.0
 
 paths:
   COLLECTIONS_ROOT_DIR: C:\collections
@@ -25,7 +25,7 @@ processing_steps:
     api_process_name: "conflate_model"
     payload_template:
       source_model_directory: "{source_model_directory}\\{model_id}"
-      # model_name: "{model_name}"
+      model_name: "{model_name}"
       source_network:
         file_name: *SOURCE_NETWORK
         version: *SOURCE_NETWORK_VERSION

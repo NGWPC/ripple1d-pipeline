@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import yaml
 from dotenv import load_dotenv
@@ -57,19 +57,40 @@ class CollectionData:
 
         logging.info(f"Folders created successfully inside {self.root_dir}")
 
-    def get_models(self) -> List:
+    def get_models(self) -> List[Tuple[str, str]]:
+        """Discover models and their associated .gpkg files in source models directory.
+
+        Returns:
+            List of tuples (model_dir_name, gpkg_base_name)
+        """
         models = []
-        path = Path(self.source_models_dir)
+        base_path = Path(self.source_models_dir)
+
         try:
-            for model in os.listdir(path):
-                model_path = os.path.join(path, model)
-                if os.path.isdir(model_path):
-                    # Add all models pulled from the STAC Catalog
-                    models.append(model)
+            if not base_path.exists():
+                logging.error(f"Source models directory not found: {base_path}")
+                return []
+
+            for model_path in base_path.iterdir():
+                if model_path.is_dir():
+                    gpkg_files = list(model_path.glob("*.gpkg"))
+
+                    # Handle .gpkg file validation
+                    if len(gpkg_files) == 1:
+                        gpkg_name = gpkg_files[0].stem
+                        models.append((model_path.name, gpkg_name))
+                    elif len(gpkg_files) > 1:
+                        logging.error(f"Multiple .gpkg files in {model_path.name}, using first")
+                    else:
+                        logging.error(f"No .gpkg file found in {model_path.name}")
+
+                    continue
+
+            if not models:
+                logging.warning(f"No valid model directories found in {base_path}")
+
             return models
 
         except Exception as e:
-            logging.error(f"An error occurred: {e}.")
-            logging.error(f"No models are available.")
-            return []
+            logging.error(f"Model discovery failed: {str(e)}", exc_info=True)
             return []
