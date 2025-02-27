@@ -286,8 +286,8 @@ def main(
     for collection in collections:
 
         metadata = {
-            "job_id": collection
-            # "collection": collection,
+            # "job_id": collection
+            "collection": collection,
             # "gitlab_pat": coordinator.gitlab_pat,
             # "gitlab_un": coordinator.gitlab_un,
             # "AWS_PROFILE": coordinator.AWS_PROFILE,
