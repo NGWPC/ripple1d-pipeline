@@ -52,12 +52,12 @@ def process(collection_name):
     database = Database(collection)
     jobclient = JobClient(collection)
 
-    model_ids = collection.get_models()
-    logging.info(f"{len(model_ids)} unique models identified")
+    models = [Model(*model) for model in collection.get_models()]
+    logging.info(f"{len(models)} models available in source models folder")
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
-    conflate_step_processor = ConflateModelStepProcessor(collection, model_ids)
+    conflate_step_processor = ConflateModelStepProcessor(collection, models)
     conflate_step_processor.execute_step(jobclient, database, timeout=5)
     logging.info("<<<<<<Finished Conflate Model Step")
 
@@ -71,7 +71,7 @@ def process(collection_name):
     logging.info("<<<<<< Finished Update Network Step")
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
-    reaches = [Reach(*row) for row in database.get_reaches_by_models(model_ids)]
+    reaches = [Reach(*row) for row in database.get_reaches_by_models([model.id for model in valid_models])]
     outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     logging.info(f"{len(reaches)} reaches returned")
     logging.info("<<<<<< Finished Get Reaches by Models Step")
@@ -87,7 +87,7 @@ def process(collection_name):
     terrain_step_processor = GenericReachStepProcessor(
         collection, submodel_step_processor.valid_entities, "create_ras_terrain"
     )
-    terrain_step_processor.execute_step(jobclient, database, timeout=3)
+    terrain_step_processor.execute_step(jobclient, database, timeout=5)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
