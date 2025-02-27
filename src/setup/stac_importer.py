@@ -21,11 +21,7 @@ class STACImporter:
         self.source_models_dir = collectiondata.source_models_dir
         self.models_data = None
         self.model_ids = None
-        self.get_aws_profile()
-
-    def get_aws_profile(self):
         load_dotenv(".env", override=True)
-        self.AWS_PROFILE = os.getenv("AWS_PROFILE")
 
     def get_models_from_stac(self) -> None:
         """
@@ -66,7 +62,12 @@ class STACImporter:
         - self.models_data (dict): Dictionary containing model IDs and their file URLs.
         - self.source_models_dir (str): The local directory to store the downloaded models.
         """
-        session = boto3.Session(profile_name=self.AWS_PROFILE)
+        session = boto3.Session(
+            aws_access_key_id=os.environ.get("RP_STAC_AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("RP_STAC_AWS_SECRET_ACCESS_KEY"),
+            aws_region_name=os.environ.get("RP_STAC_AWS_REGION", "us-east-1"),
+        )
+
         s3_client = session.client("s3")
 
         for id, data in self.models_data.items():
@@ -109,11 +110,10 @@ class STACImporter:
             logging.info(f"{item.id} skipping because it has non English Units")
             return True
         # If there are no steady flow files, skip the model (Ripple1d cannot process unsteady flow files)
-        flows = item.properties['flows']
-        any_flows_start_with_f = any(value.startswith('f') or value.startswith('F') for value in flows.values())
+        flows = item.properties["flows"]
+        any_flows_start_with_f = any(value.startswith("f") or value.startswith("F") for value in flows.values())
         if any_flows_start_with_f == False:
             logging.info(f"{item.id} skipping because it has no valid steady flow files")
             return True
         else:
             return False
-
