@@ -65,7 +65,7 @@ class STACImporter:
         session = boto3.Session(
             aws_access_key_id=os.environ.get("RP_STAC_AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("RP_STAC_AWS_SECRET_ACCESS_KEY"),
-            aws_region_name=os.environ.get("RP_STAC_AWS_REGION", "us-east-1"),
+            region_name=os.environ.get("RP_STAC_AWS_REGION", "us-east-1"),
         )
 
         s3_client = session.client("s3")
