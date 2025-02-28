@@ -117,12 +117,18 @@ def process(collection_name):
         collection,
         database,
         jobclient,
+        nd_rc_step_processor.valid_entities,
         timeout=20,
     )
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
     logging.info("Starting Final execute_kwse_step >>>>>>")
-    non_outlet_valid_reaches = [reach for reach in nd_rc_step_processor.valid_entities if reach.to_id is not None]
+    non_outlet_valid_reaches = [
+        reach
+        for reach in nd_rc_step_processor.valid_entities
+        if reach.to_id is not None
+        and reach.to_id in [valid_reach.id for valid_reach in nd_rc_step_processor.valid_entities]
+    ]
     kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
     kwse_step_processor.execute_step(jobclient, database, timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
