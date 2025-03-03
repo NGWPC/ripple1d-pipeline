@@ -58,7 +58,7 @@ def process(collection_name):
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
     conflate_step_processor = ConflateModelStepProcessor(collection, models)
-    conflate_step_processor.execute_step(jobclient, database, timeout=5)
+    conflate_step_processor.execute_step(jobclient, database, timeout=20)
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
@@ -80,21 +80,21 @@ def process(collection_name):
 
     logging.info("Starting Extract Submodel Step >>>>>>")
     submodel_step_processor = GenericReachStepProcessor(collection, reaches, "extract_submodel")
-    submodel_step_processor.execute_step(jobclient, database, timeout=5)
+    submodel_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finihsed Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
     terrain_step_processor = GenericReachStepProcessor(
         collection, submodel_step_processor.valid_entities, "create_ras_terrain"
     )
-    terrain_step_processor.execute_step(jobclient, database, timeout=5)
+    terrain_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
     create_model_step_processor = GenericReachStepProcessor(
         collection, terrain_step_processor.valid_entities, "create_model_run_normal_depth"
     )
-    create_model_step_processor.execute_step(jobclient, database, timeout=10)
+    create_model_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
