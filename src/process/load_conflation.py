@@ -29,7 +29,7 @@ def load_conflation(models: List[Model], database: Type[Database]) -> None:
             json_data = load_json(f"{source_models_directory}\\{model.id}\\{model.name}.conflation.json")
             models_data[model.id] = json_data
         else:
-            logging.info("Does not exist", file_path)
+            logging.info(f"Does not exist {file_path}")
 
     # Order by number of reaches (ascending) and total RAS length (ascending to place higher lengths last)
     sorted_models_data = sorted(
