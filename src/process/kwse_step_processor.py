@@ -23,13 +23,13 @@ class KWSEStepProcessor(BaseReachStepProcessor):
             job_record = self._execute_single_request(reach)
             self._categorize_job_record(job_record)
 
-    def _execute_single_request(self, reach: Reach) -> Tuple:
+    def _execute_single_request(self, reach: Reach) -> JobRecord:
         """KWSE-specific request implementation with elevation data"""
         submodels_dir = self.collection.submodels_dir
         min_elev, max_elev = get_min_max_elevation(reach.to_id, submodels_dir)
 
         if not min_elev or not max_elev:
-            return (reach, "", "not_accepted")
+            return JobRecord(reach, "", "not_accepted")
 
         url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config["processing_steps"][self.process_name]["api_process_name"]}/execution"
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]

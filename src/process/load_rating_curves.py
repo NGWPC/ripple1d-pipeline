@@ -17,12 +17,12 @@ def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> No
         reach_cursor = reach_conn.cursor()
         reach_cursor.execute(
             """
-            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, xs_overtopped
             FROM rating_curves
             WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS TRUE
             """
         )
-        rows = reach_cursor.fetchall()
+        reach_db_rcs = reach_cursor.fetchall()
 
         cursor = library_conn.cursor()
         cursor.executemany(
@@ -32,12 +32,40 @@ def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> No
             )
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            rows,
+            [rc[:7] for rc in reach_db_rcs],
+        )
+
+        placeholders = ", ".join(["(?, ?, ?, ?)"] * len(reach_db_rcs))
+
+        # Get mapping
+        cursor.execute(
+            f"""
+            SELECT reach_id, us_flow, ds_wse, boundary_condition, id
+            FROM rating_curves
+            WHERE (reach_id, us_flow, ds_wse, boundary_condition) IN (
+                VALUES {placeholders}
+            )
+        """,
+            [param for rc in reach_db_rcs for param in (rc[0], rc[1], rc[5], rc[6])],
+        )
+
+        rc_id_map = {(row[0], row[1], row[2], row[3]): row[4] for row in cursor.fetchall()}
+
+        # Prepare metrics data using mapped IDs
+        metrics_data = [(rc_id_map[(rc[0], rc[1], rc[5], rc[6])], rc[7]) for rc in reach_db_rcs if rc[7] is not None]
+
+        # Bulk insert metrics
+        cursor.executemany(
+            """
+            INSERT OR REPLACE INTO rating_curves_metrics
+            (rc_id, xs_overtopped) VALUES (?, ?)
+        """,
+            metrics_data,
         )
 
         reach_cursor.execute(
             """
-            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, xs_overtopped
             FROM rating_curves
             WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS FALSE
             """
@@ -47,9 +75,9 @@ def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> No
         cursor.executemany(
             """
             INSERT OR IGNORE INTO rating_curves_no_map (
-                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+                reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, xs_overtopped
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             rows,
         )

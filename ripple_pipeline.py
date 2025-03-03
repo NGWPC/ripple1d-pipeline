@@ -52,13 +52,13 @@ def process(collection_name):
     database = Database(collection)
     jobclient = JobClient(collection)
 
-    model_ids = collection.get_models()
-    logging.info(f"{len(model_ids)} unique models identified")
+    models = [Model(*model) for model in collection.get_models()]
+    logging.info(f"{len(models)} models available in source models folder")
 
     # TODO - Create a @dataclass for model_job_status & reach_job_status
     logging.info("Starting Conflate Model Step >>>>>>")
-    conflate_step_processor = ConflateModelStepProcessor(collection, model_ids)
-    conflate_step_processor.execute_step(jobclient, database, timeout=5)
+    conflate_step_processor = ConflateModelStepProcessor(collection, models)
+    conflate_step_processor.execute_step(jobclient, database, timeout=20)
     logging.info("<<<<<<Finished Conflate Model Step")
 
     logging.info("Starting Load Conflation Step >>>>>>")
@@ -71,7 +71,8 @@ def process(collection_name):
     logging.info("<<<<<< Finished Update Network Step")
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
-    reaches = [Reach(*row) for row in database.get_reaches_by_models(model_ids)]
+    reaches = [Reach(*row) for row in database.get_reaches_by_models([model.id for model in valid_models])]
+    outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     logging.info(f"{len(reaches)} reaches returned")
     logging.info("<<<<<< Finished Get Reaches by Models Step")
 
@@ -79,21 +80,21 @@ def process(collection_name):
 
     logging.info("Starting Extract Submodel Step >>>>>>")
     submodel_step_processor = GenericReachStepProcessor(collection, reaches, "extract_submodel")
-    submodel_step_processor.execute_step(jobclient, database, timeout=5)
+    submodel_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finihsed Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
     terrain_step_processor = GenericReachStepProcessor(
         collection, submodel_step_processor.valid_entities, "create_ras_terrain"
     )
-    terrain_step_processor.execute_step(jobclient, database, timeout=3)
+    terrain_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
     create_model_step_processor = GenericReachStepProcessor(
         collection, terrain_step_processor.valid_entities, "create_model_run_normal_depth"
     )
-    create_model_step_processor.execute_step(jobclient, database, timeout=10)
+    create_model_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
@@ -111,18 +112,23 @@ def process(collection_name):
     logging.info("<<<<< Finished nd create_rating_curves_db Step")
 
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
-    outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     execute_ikwse_for_network(
         outlet_reaches,
         collection,
         database,
         jobclient,
+        nd_rc_step_processor.valid_entities,
         timeout=20,
     )
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
     logging.info("Starting Final execute_kwse_step >>>>>>")
-    non_outlet_valid_reaches = [reach for reach in nd_rc_step_processor.valid_entities if reach.to_id is not None]
+    non_outlet_valid_reaches = [
+        reach
+        for reach in nd_rc_step_processor.valid_entities
+        if reach.to_id is not None
+        and reach.to_id in [valid_reach.id for valid_reach in nd_rc_step_processor.valid_entities]
+    ]
     kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
     kwse_step_processor.execute_step(jobclient, database, timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
