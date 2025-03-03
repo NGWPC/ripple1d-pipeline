@@ -17,7 +17,6 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
-logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
 
 def load_config(config_file):
     try:
@@ -102,10 +101,10 @@ def batch_pipeline(collection_list):
                 
                 process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 for line in process.stdout:
-                    print(line.decode().strip())
+                    logging.info(line.decode().strip())
                     f.write(line.decode())
                 for line in process.stderr:
-                    print(line.decode().strip())
+                    logging.info(line.decode().strip())
                     f.write(line.decode())
                 process.wait()
 
