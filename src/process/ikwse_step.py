@@ -45,6 +45,7 @@ def process_reach(
     collection: Type[CollectionData],
     database: Type[Database],
     job_client: Type[JobClient],
+    valid_reaches: List[Reach],
     task_queue: Queue,
     central_db_lock: Lock,
     timeout_minutes: int = 30,
@@ -67,7 +68,11 @@ def process_reach(
         submodel_directory_path = os.path.join(submodels_directory, str(reach.id))
         headers = {"Content-Type": "application/json"}
 
-        if reach.to_id:  # and reach.to_id in nddb_reaches and reach.id in nddb_reaches:
+        if (
+            reach.to_id
+            and reach.id in [valid_reach.id for valid_reach in valid_reaches]
+            and reach.to_id in [valid_reach.id for valid_reach in valid_reaches]
+        ):
             min_elevation, max_elevation = get_min_max_elevation(reach.to_id, submodels_directory)
             if min_elevation and max_elevation:
 
@@ -138,6 +143,7 @@ def execute_ikwse_for_network(
     collection: Type[CollectionData],
     database: Type[Database],
     job_client: Type[JobClient],
+    valid_reaches: List[Reach],
     timeout: int = 30,
 ) -> None:
     """
@@ -162,6 +168,7 @@ def execute_ikwse_for_network(
                     collection,
                     database,
                     job_client,
+                    valid_reaches,
                     task_queue,
                     db_lock,
                     timeout,

@@ -76,8 +76,7 @@ class STACImporter:
                 os.makedirs(model_dir, exist_ok=True)
 
                 # Download GeoPackage
-                # local_gpkg_path = os.path.join(model_dir, f"{data["model_name"]}.gpkg") # 0.7.0
-                local_gpkg_path = os.path.join(model_dir, f"{id}.gpkg")
+                local_gpkg_path = os.path.join(model_dir, f"{data["model_name"]}.gpkg")
 
                 gpkg_url = data["gpkg"]
                 bucket_name, key = gpkg_url.replace("s3://", "").split("/", 1)

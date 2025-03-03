@@ -105,7 +105,7 @@ class JobClient:
                     updated_time = self.get_job_update_time(job_record.id)
                     elapsed_time = time.time() - self.datetime_to_epoch_utc(updated_time)
                     if elapsed_time / 60 > timeout_minutes:
-                        logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id}", "client timeout")
+                        logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id} client timeout")
                         job_record.status = "unknown"
                         unknown.append(job_record)
                         break
