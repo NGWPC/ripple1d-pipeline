@@ -52,7 +52,16 @@ def process_tif(tif_path, gpkg_path, tmp_dir, dest_dir):
     ]
 
     # Execute gdal_calc with output redirection
-    subprocess.run(gdal_calc_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = subprocess.run(gdal_calc_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logging.debug(f"gdal_calc stdout: {result.stdout}")
+        logging.error(f"gdal_calc stderr: {result.stderr}")
+        logging.debug(" ".join(gdal_calc_cmd))
+        raise RuntimeError(f"gdal_calc failed for {tif_path}")
+
+    if not os.path.exists(tmp_tif):
+        logging.error(f"Temporary file {tmp_tif} not created!")
+        raise FileNotFoundError(f"{tmp_tif} not created")
 
     # Step 2: gdalwarp to crop based on the geopackage
     gdalwarp_cmd = [
@@ -72,10 +81,16 @@ def process_tif(tif_path, gpkg_path, tmp_dir, dest_dir):
     ]
 
     # Execute gdalwarp with output redirection
-    subprocess.run(gdalwarp_cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = subprocess.run(gdalwarp_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logging.debug(f"gdal_warp stdout: {result.stdout}")
+        logging.error(f"gdal_warp stderr: {result.stderr}")
+        logging.debug(" ".join(gdal_calc_cmd))
+        logging.debug(" ".join(gdalwarp_cmd))
 
-    if os.path.exists(tmp_tif):  # clean up
-        os.remove(tmp_tif)
+        if os.path.exists(dest_tif):  # clean up
+            os.remove(dest_tif)
+        raise RuntimeError(f"gdalwarp failed for {tif_path}")
 
 
 def find_gpkg(tif_path, submodels_dir):
