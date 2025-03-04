@@ -89,6 +89,8 @@ def process_reach(
                     }
                 )
 
+                logging.info(f"Submitting task for reach {reach.id} with downstream {reach.to_id}")
+
                 # to do: launch job with retry
                 response = requests.post(url, headers=headers, data=payload)
                 response_json = response.json()
@@ -161,7 +163,6 @@ def execute_ikwse_for_network(
         while not task_queue.empty() or futures:
             while not task_queue.empty():
                 reach = task_queue.get()
-                logging.info(f"Submitting task for reach {reach.id} with downstream {reach.to_id}")
                 future = executor.submit(
                     process_reach,
                     reach,
