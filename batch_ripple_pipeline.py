@@ -12,11 +12,6 @@ from datetime import datetime
 from ripple_pipeline import *
 from src.setup import *
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 
 def load_config(config_file):
     try:
@@ -92,22 +87,25 @@ def batch_pipeline(collection_list):
         os.makedirs(log_dir, exist_ok=True)
         log_file = os.path.join(log_dir, f"{collection}.log")
 
-        with open(log_file, "a") as f:
-            f.write("************************************************************************")
-            f.write(f"\n--- Starting processing for collection: {collection} ---\n")
-            f.flush()
+        with open(log_file, 'w', encoding='utf-8') as lf:
+            lf.write("************************************************************************")
+            lf.write(f"\n--- Starting processing for collection: {collection} ---\n")
+            # f.flush()
 
             try:
-                
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                for line in process.stdout:
-                    logging.info(line.decode().strip())
-                    f.write(line.decode())
-                for line in process.stderr:
-                    logging.info(line.decode().strip())
-                    f.write(line.decode())
-                process.wait()
 
+                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True, bufsize=1)
+
+                for line in iter(process.stdout.readline, ''):
+                    time = datetime.now()
+                    timestring = time.strftime("%Y_%m_%d - %H:%M:%S \t")
+                    lf.write(timestring)
+                    lf.write(line)
+                    sys.stdout.write(timestring)
+                    sys.stdout.write(line)
+                    sys.stdout.flush()
+
+                process.wait()
 
                 if process.returncode != 0:
                     raise subprocess.CalledProcessError(process.returncode, cmd)
