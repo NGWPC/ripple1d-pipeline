@@ -24,7 +24,13 @@ def load_config(config_file):
     
     return config
 
-def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_version:str = None, failed: bool = False):
+def s3_move(
+    s3_upload_prefix: str, 
+    collection: str, 
+    col_root_dir: str, 
+    ripple1d_version:str = None, 
+    failed: bool = False
+):
 
 
     if failed:
@@ -56,7 +62,8 @@ def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_
 
 def batch_pipeline(collection_list):
     """
-    Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, and qc steps for each collection.
+    Iterate over each collection in a list of collections, and execute all Ripple1D setup, processing, 
+    and qc steps for each collection.
 
     Inputs:
         collection_list: A filepath to line separated list of collections.
@@ -94,7 +101,14 @@ def batch_pipeline(collection_list):
 
             try:
 
-                process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,universal_newlines=True, bufsize=1)
+                process = subprocess.Popen(
+                    cmd, 
+                    shell=True, 
+                    stdout=subprocess.PIPE, 
+                    stderr=subprocess.STDOUT,
+                    universal_newlines=True, 
+                    bufsize=1
+                )
 
                 for line in iter(process.stdout.readline, ''):
                     time = datetime.now()
