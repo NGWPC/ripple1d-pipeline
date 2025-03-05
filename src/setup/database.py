@@ -404,9 +404,10 @@ class Database:
         where the model keys match and the reach is not eclipsed.
         """
         select_query = f"""
-                SELECT n.reach_id, n.updated_to_id, p.model_id
+                SELECT n.reach_id, n.updated_to_id, p.model_id, m.model_name
                 FROM network n
                 JOIN processing p ON n.reach_id = p.reach_id
+                JOIN models m ON p.model_id = m.model_id
                 WHERE p.eclipsed IS FALSE AND p.model_id IN ({','.join(['?'] * len(model_ids))})
             """
         return self.execute_select_query(select_query, model_ids)
