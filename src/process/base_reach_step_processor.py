@@ -14,11 +14,14 @@ class BaseReachStepProcessor(BaseStepProcessor):
         self.reaches = reaches
         self.db_table = "processing"
 
-    def _format_reach_payload(self, template: Dict, reach_id: int, model_id: Optional[str] = None) -> Dict:
+    def _format_reach_payload(
+        self, template: Dict, reach_id: int, model_id: Optional[str] = None, model_name: Optional[str] = None
+    ) -> Dict:
         """Common reach payload formatting"""
         replacements = {
             "nwm_reach_id": reach_id,
             "model_id": model_id or "",
+            "model_name": model_name or "",
             "submodels_directory": self.collection.submodels_dir,
             "library_directory": self.collection.library_dir,
             "source_model_directory": self.collection.source_models_dir,

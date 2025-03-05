@@ -71,7 +71,10 @@ def process(collection_name):
     logging.info("<<<<<< Finished Update Network Step")
 
     logging.info("Starting Get Reaches by Models Step >>>>>>")
-    reaches = [Reach(*row) for row in database.get_reaches_by_models([model.id for model in valid_models])]
+    reaches = [
+        Reach(row[0], row[1], Model(row[2], row[3]))
+        for row in database.get_reaches_by_models([model.id for model in valid_models])
+    ]
     outlet_reaches = [reach for reach in reaches if reach.to_id is None]
     logging.info(f"{len(reaches)} reaches returned")
     logging.info("<<<<<< Finished Get Reaches by Models Step")

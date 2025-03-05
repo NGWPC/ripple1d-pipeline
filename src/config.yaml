@@ -1,6 +1,6 @@
 ---
 
-RIPPLE1D_VERSION: 0.10.0
+RIPPLE1D_VERSION: 0.10.1
 
 paths:
   COLLECTIONS_ROOT_DIR: C:\collections
@@ -14,7 +14,7 @@ ripple_settings:
   DS_DEPTH_INCREMENT: &DS_DEPTH_INCREMENT 1
   RESOLUTION: &RESOLUTION 3.0
   RESOLUTION_UNITS: &RESOLUTION_UNITS "Meters"
-  TERRAIN_SOURCE_URL: &TERRAIN_SOURCE_URL C:\reference_data\seamless_3dep_dem_3m_5070.vrt
+  TERRAIN_SOURCE_URL: &TERRAIN_SOURCE_URL C:\reference_data\dem\seamless_3dep_dem_3m_5070.vrt
   SOURCE_NETWORK: &SOURCE_NETWORK C:\reference_data\nwm_flowlines_with_bbox.parquet
   SOURCE_NETWORK_VERSION:  &SOURCE_NETWORK_VERSION "2.1"
   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
@@ -36,6 +36,7 @@ processing_steps:
     api_process_name: "extract_submodel"
     payload_template:
       source_model_directory: "{source_model_directory}\\{model_id}"
+      model_name: "{model_name}"
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       nwm_id: "{nwm_reach_id}"
 
@@ -47,6 +48,7 @@ processing_steps:
       resolution: *RESOLUTION
       resolution_units: *RESOLUTION_UNITS
       terrain_source_url: *TERRAIN_SOURCE_URL
+      terrain_agreement_ignore_error: True
 
   create_model_run_normal_depth:
     domain: "reach"
