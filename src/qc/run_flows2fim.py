@@ -82,7 +82,13 @@ def run_flows2fim(
             else:
                 raise (ValueError("one of start_file or start_reaches must be provided"))
 
-            subprocess.run(cmd_controls, shell=True, check=True)
+            process = subprocess.run(cmd_controls, shell=True, check=True)
+
+            if process.returncode != 0:
+                logging.debug(f"flows2fim fim stdout: {process.stdout}")
+                logging.error(f"flows2fim fim stderr: {process.stderr}")
+                logging.debug(" ".join(cmd_controls))
+                raise RuntimeError(f"flows2fim controls failed!")
 
             # Generate FIM output
             cmd_fim = [
@@ -97,7 +103,14 @@ def run_flows2fim(
                 "-fmt",
                 fim_format,
             ]
-            subprocess.run(cmd_fim, shell=True, check=True)
+            
+            result = subprocess.run(cmd_fim, shell=True, check=True)
+
+            if result.returncode != 0:
+                logging.debug(f"flows2fim fim stdout: {result.stdout}")
+                logging.error(f"flows2fim fim stderr: {result.stderr}")
+                logging.debug(" ".join(cmd_fim))
+                raise RuntimeError(f"flows2fim fim failed!")
 
             logging.info(f"{basename} have been processed.")
 

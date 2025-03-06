@@ -5,8 +5,8 @@ RIPPLE1D_VERSION: 0.10.1
 paths:
   COLLECTIONS_ROOT_DIR: C:\collections
   NWM_FLOWLINES_PATH: C:\reference_data\nwm_flowlines.parquet
-  S3_UPLOAD_PREFIX: "s3://fimc-data/ripple/test/FIM60" # Exclude trailing slash of S3 Bucket
-  S3_UPLOAD_FAILED_PREFIX: "s3://fimc-data/ripple/test/FIM60_failed_collections" # Exclude trailing slash of S3 Bucket
+  S3_UPLOAD_PREFIX: "" # Exclude trailing slash of S3 Bucket
+  S3_UPLOAD_FAILED_PREFIX: "" # Exclude trailing slash of S3 Bucket
 
 ripple_settings:
   RAS_VERSION: &RAS_VERSION "631"
