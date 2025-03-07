@@ -54,10 +54,17 @@ def s3_move(
             "--recursive",
         ]
 
-    subprocess.Popen(
-        s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-    )
-    logging.info(f"Submitted S3 mv command on collection: {collection} ...")
+    logging.info(f"Submitting S3 mv command on collection: {collection} ...")
+    
+    result = subprocess.run(s3_mv_command, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        logging.debug(f"s3move stdout: {result.stdout}")
+        logging.error(f"s3move stderr: {result.stderr}")
+        logging.debug(" ".join(s3_mv_command))
+        raise RuntimeError("s3_mv_command failed.")
+
+    logging.info(f"Completed S3 mv command on collection: {collection} ...") 
 
 
 def batch_pipeline(collection_list):
