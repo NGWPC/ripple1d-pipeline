@@ -133,9 +133,13 @@ def batch_pipeline(collection_list):
 
                 logging.info(f"Collection {collection} processed successfully.")
 
+                lf.close()
+
                 s3_move(S3_UPLOAD_PREFIX, collection, COLLECTIONS_ROOT_DIR)
 
             except subprocess.CalledProcessError as e:
+
+                lf.close()
 
                 s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
@@ -144,6 +148,8 @@ def batch_pipeline(collection_list):
 
             except Exception as e:
 
+                lf.close()
+                
                 s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
                 logging.error(f"Unexpected error occurred: {e}")
