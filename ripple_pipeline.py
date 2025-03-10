@@ -167,51 +167,48 @@ def process(collection_name):
         logging.error("Error - unable to create f2f start file")
 
 
-def run_qc(collection_name):
+def run_qc(collection_name, run_flows2fim=False):
     """Perform quality control."""
     logging.info("Starting QC")
     collection = CollectionData(collection_name)
     database = Database(collection)
     job_client = JobClient(collection)
 
-    logging.info("Creating Excel Error Report >>>>>>>>")
-    dfs = []
-    for step_name in collection.config["processing_steps"].keys():
-        domain = collection.config["processing_steps"][step_name]["domain"]
-        # Lets not capture the final status to preserve the timedout status jobs
-        # job_client.poll_and_update_job_status(database, step_name, "models" if domain == "model" else "processing")
-        _, _, failed_reaches = database.get_reach_status_by_process(
-            step_name, "models" if domain == "model" else "processing"
-        )
-        df = job_client.get_failed_jobs_df(failed_reaches)
-        dfs.append(df)
-        write_failed_jobs_df_to_excel(df, step_name, collection.error_report_path)
+    logging.info("Creating Failed Job Report >>>>>>>>")
+    create_failed_jobs_report(collection, database, job_client)
+    logging.info("<<<<< Finished Creating Failed Job Report")
 
-    logging.info("<<<<< Finished creating Excel error report")
+    logging.info("Creating TimedOut Job Report >>>>>>>>")
+    create_timedout_jobs_report(collection, database, job_client)
+    logging.info("<<<<< Finished Creating TimedOut Job Report")
 
-    logging.info("Running copy_qc_map step >>>>>")
-    copy_qc_map(collection)
-    logging.info("<<<<< Finished copy_qc_map step")
+    if run_flows2fim:
+        logging.info("Running copy_qc_map step >>>>>")
+        copy_qc_map(collection)
+        logging.info("<<<<< Finished copy_qc_map step")
 
-    logging.info("Starting run_flows2fim step >>>>>>")
-    run_flows2fim(collection)
-    logging.info("<<<<< Finished run_flows2fim step")
+        logging.info("Starting run_flows2fim step >>>>>>")
+        run_flows2fim(collection)
+        logging.info("<<<<< Finished run_flows2fim step")
 
 
 def run_pipeline(collection: str):
-    """
-    Automate the execution of all steps previously in setup.ipynb, process.ipynb, and qc.ipynb.
-    """
-
-    setup(collection)
-    process(collection)
+    """Automate execution of all pipeline steps with conditional QC"""
+    run_flows2fim = False
 
     try:
-        run_qc(collection)
+        setup(collection)
+        process(collection)
+        run_flows2fim = True
     except Exception as e:
-        logging.error(e)
-        logging.error("Error - qc workflow failed")
+        logging.error(f"Main workflow failed: {str(e)}")
+        raise e
 
+    finally:
+        try:
+            run_qc(collection, run_flows2fim)
+        except Exception as qc_error:
+            logging.error(f"QC failed: {str(qc_error)}")
 
 if __name__ == "__main__":
     """
