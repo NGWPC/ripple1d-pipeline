@@ -1,3 +1,4 @@
+import logging
 from time import sleep
 from typing import Dict, List, Tuple
 
@@ -32,6 +33,7 @@ class GenericReachStepProcessor(BaseReachStepProcessor):
             response = requests.post(url, json=payload)
             if response.status_code == 201:
                 return JobRecord(reach, response.json()["jobID"], "accepted")
+            logging.info(f"Attempt {attempt + 1} failed for model {reach.id}: {response.text}")
             sleep(attempt * self.collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"])
 
         return JobRecord(reach, "", "not_accepted")
