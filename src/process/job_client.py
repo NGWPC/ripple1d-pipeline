@@ -210,3 +210,21 @@ class JobClient:
                         )
                 except requests.RequestException as e:
                     logging.info(f"Error polling job {job_id} for reach {entity}: {e}")
+
+    def dismiss_jobs(self, job_records: List[JobRecord]) -> None:
+        """Silently dismiss multiple jobs with error logging"""
+        for job in job_records:
+            if not job.id:
+                continue
+
+            try:
+                response = requests.delete(f"{self.RIPPLE1D_API_URL}/jobs/{job.id}")
+                if response.status_code == 200:
+                    logging.info(f"Dismissed job {job.id}")
+                else:
+                    logging.error(
+                        f"Failed to dismiss {job.id} - Status {response.status_code}"
+                    )
+            except requests.RequestException as e:
+                logging.error(f"Error dismissing {job.id}: {str(e)}")
+                continue

@@ -60,6 +60,7 @@ def process(collection_name):
     conflate_step_processor = ConflateModelStepProcessor(collection, models)
     conflate_step_processor.execute_step(jobclient, database, timeout=20)
     logging.info("<<<<<<Finished Conflate Model Step")
+    conflate_step_processor.dismiss_timedout_jobs(jobclient) # dismiss stale jobs so they don't occupy API
 
     logging.info("Starting Load Conflation Step >>>>>>")
     valid_models = conflate_step_processor.valid_entities
@@ -92,6 +93,7 @@ def process(collection_name):
     )
     terrain_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
+    submodel_step_processor.dismiss_timedout_jobs(jobclient) # by dismissing jobs one step later, we give previous step more time, when possible
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
     create_model_step_processor = GenericReachStepProcessor(
@@ -99,6 +101,7 @@ def process(collection_name):
     )
     create_model_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
+    terrain_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
     nd_step_processor = GenericReachStepProcessor(
@@ -106,6 +109,8 @@ def process(collection_name):
     )
     nd_step_processor.execute_step(jobclient, database, timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
+    create_model_step_processor.dismiss_timedout_jobs(jobclient)
+    nd_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting nd create_rating_curves_db Step >>>>>>")
     nd_rc_step_processor = GenericReachStepProcessor(
@@ -113,6 +118,7 @@ def process(collection_name):
     )
     nd_rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished nd create_rating_curves_db Step")
+    nd_rc_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
     execute_ikwse_for_network(
@@ -135,6 +141,7 @@ def process(collection_name):
     kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
     kwse_step_processor.execute_step(jobclient, database, timeout=180)
     logging.info("<<<<< Finished Final execute_kwse_step")
+    kwse_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting kwse create_rating_curves_db Step >>>>>>")
     kwse_rc_step_processor = GenericReachStepProcessor(
@@ -142,6 +149,7 @@ def process(collection_name):
     )
     kwse_rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished kwse create_rating_curves_db Step")
+    kwse_rc_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
     load_all_rating_curves(database)
@@ -151,6 +159,7 @@ def process(collection_name):
     fimlib_step_processor = GenericReachStepProcessor(collection, nd_rc_step_processor.valid_entities, "create_fim_lib")
     fimlib_step_processor.execute_step(jobclient, database, timeout=150)
     logging.info("<<<<< Finished create_fim_lib Step")
+    fimlib_step_processor.dismiss_timedout_jobs(jobclient)
 
     try:
         logging.info("Starting create extent library Step >>>>>>")
