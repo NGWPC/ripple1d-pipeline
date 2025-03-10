@@ -24,6 +24,9 @@ def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> No
         )
         reach_db_rcs = reach_cursor.fetchall()
 
+        if not reach_db_rcs:
+            return
+
         cursor = library_conn.cursor()
         cursor.executemany(
             """
