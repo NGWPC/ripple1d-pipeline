@@ -118,9 +118,9 @@ class JobClient:
 
         url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true"
 
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
             response_data = response.json()
             if response_data and response_data["result"]:
                 err = response_data["result"].get("err", "No error message")
@@ -129,24 +129,70 @@ class JobClient:
                 err = "No error message"
                 tb = "No traceback"
             return (err, tb)
-        else:
-            return (f"Failed to get job status. Status code: {response.status_code}", "")
+        except Exception as e:
+            return (f"Failed to get job status. Error: {str(e)}", "")
 
     def get_job_payload(self, job_id) -> Dict:
         headers = {"Content-Type": "application/json"}
 
         url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}/metadata"
 
-        response = requests.get(url, headers=headers)
-
-        if response.status_code == 200:
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
             response_data = response.json()
             if response_data and response_data[job_id]:
                 payload = response_data[job_id].get("func_kwargs", {})
                 return payload
             return {}
-        else:
-            return {"error": f"Failed to get job metadata. Status code: {response.status_code}"}
+        except Exception as e:
+            return {"error": f"Failed to get job metadata. Error: {str(e)}"}
+
+    def get_jobs_metadata_df(self, job_records: List[Tuple[int, str, str]]) -> pd.DataFrame:
+        """
+        Fetches metadata for provided jobs and returns a formatted DataFrame.
+
+        Args:
+            job_records: List of tuples (entity_id, job_id, status)
+
+        Returns:
+            DataFrame with columns: id, job_id, accept_time, dismiss_time,
+            finish_duration, func_name, status, start_time, status_time,
+            func_args, metadata
+        """
+        results = []
+
+        for entity_id, job_id, _ in job_records:
+            if not job_id:
+                continue
+
+            headers = {"Content-Type": "application/json"}
+            url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}/metadata"
+            try:
+                response = requests.get(url, headers=headers)
+                response.raise_for_status()
+                metadata = response.json().get(job_id, {})
+
+                row = {
+                    'id': entity_id,
+                    'accept_time': metadata.get('accept_time'),
+                    'dismiss_time': metadata.get('dismiss_time'),
+                    'finish_duration': metadata.get('finish_duration_minutes'),
+                    'status': metadata.get('ogc_status'),
+                    'start_time': metadata.get('start_time'),
+                    'status_time': metadata.get('status_time'),
+                    'payload': metadata.get('func_kwargs'),
+                }
+                results.append(row)
+
+            except Exception as e:
+                logging.error(f"Failed to get job metadata. Error: {str(e)}")
+                results.append({
+                    'id': entity_id,
+                    'msg': f"Failed to get job metadata. Error: {str(e)}"
+                })
+
+        return pd.DataFrame(results, columns=["id", "status", "accept_time", "start_time", "dismiss_time", "finish_duration", "status_time", "payload", "msg"])
 
     def get_failed_jobs_df(self, failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
         """
@@ -210,3 +256,21 @@ class JobClient:
                         )
                 except requests.RequestException as e:
                     logging.info(f"Error polling job {job_id} for reach {entity}: {e}")
+
+    def dismiss_jobs(self, job_records: List[JobRecord]) -> None:
+        """Silently dismiss multiple jobs with error logging"""
+        for job in job_records:
+            if not job.id:
+                continue
+
+            try:
+                response = requests.delete(f"{self.RIPPLE1D_API_URL}/jobs/{job.id}")
+                if response.status_code == 200:
+                    logging.info(f"Dismissed job {job.id}")
+                else:
+                    logging.error(
+                        f"Failed to dismiss {job.id} - Status {response.status_code}"
+                    )
+            except requests.RequestException as e:
+                logging.error(f"Error dismissing {job.id}: {str(e)}")
+                continue
