@@ -139,7 +139,7 @@ def process(collection_name):
         and reach.to_id in [valid_reach.id for valid_reach in nd_rc_step_processor.valid_entities]
     ]
     kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
-    kwse_step_processor.execute_step(jobclient, database, timeout=180)
+    kwse_step_processor.execute_step(jobclient, database, timeout=240)
     logging.info("<<<<< Finished Final execute_kwse_step")
     kwse_step_processor.dismiss_timedout_jobs(jobclient)
 
@@ -176,7 +176,7 @@ def process(collection_name):
         logging.error("Error - unable to create f2f start file")
 
 
-def run_qc(collection_name, run_flows2fim=False):
+def run_qc(collection_name, execute_flows2fim=False):
     """Perform quality control."""
     logging.info("Starting QC")
     collection = CollectionData(collection_name)
@@ -191,7 +191,7 @@ def run_qc(collection_name, run_flows2fim=False):
     create_timedout_jobs_report(collection, database, job_client)
     logging.info("<<<<< Finished Creating TimedOut Job Report")
 
-    if run_flows2fim:
+    if execute_flows2fim:
         logging.info("Running copy_qc_map step >>>>>")
         copy_qc_map(collection)
         logging.info("<<<<< Finished copy_qc_map step")
@@ -203,19 +203,19 @@ def run_qc(collection_name, run_flows2fim=False):
 
 def run_pipeline(collection: str):
     """Automate execution of all pipeline steps with conditional QC"""
-    run_flows2fim = False
+    execute_flows2fim = False
 
     try:
         setup(collection)
         process(collection)
-        run_flows2fim = True
+        execute_flows2fim = True
     except Exception as e:
         logging.error(f"Main workflow failed: {str(e)}")
         raise e
 
     finally:
         try:
-            run_qc(collection, run_flows2fim)
+            run_qc(collection, execute_flows2fim)
         except Exception as qc_error:
             logging.error(f"QC failed: {str(qc_error)}")
 
