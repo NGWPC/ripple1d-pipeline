@@ -60,6 +60,7 @@ def process(collection_name):
     conflate_step_processor = ConflateModelStepProcessor(collection, models)
     conflate_step_processor.execute_step(jobclient, database, timeout=20)
     logging.info("<<<<<<Finished Conflate Model Step")
+    conflate_step_processor.dismiss_timedout_jobs(jobclient) # dismiss stale jobs so they don't occupy API
 
     logging.info("Starting Load Conflation Step >>>>>>")
     valid_models = conflate_step_processor.valid_entities
@@ -92,6 +93,7 @@ def process(collection_name):
     )
     terrain_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
+    submodel_step_processor.dismiss_timedout_jobs(jobclient) # by dismissing jobs one step later, we give previous step more time, when possible
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
     create_model_step_processor = GenericReachStepProcessor(
@@ -99,6 +101,7 @@ def process(collection_name):
     )
     create_model_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
+    terrain_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
     nd_step_processor = GenericReachStepProcessor(
@@ -106,6 +109,8 @@ def process(collection_name):
     )
     nd_step_processor.execute_step(jobclient, database, timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
+    create_model_step_processor.dismiss_timedout_jobs(jobclient)
+    nd_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting nd create_rating_curves_db Step >>>>>>")
     nd_rc_step_processor = GenericReachStepProcessor(
@@ -113,6 +118,7 @@ def process(collection_name):
     )
     nd_rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished nd create_rating_curves_db Step")
+    nd_rc_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
     execute_ikwse_for_network(
@@ -133,8 +139,9 @@ def process(collection_name):
         and reach.to_id in [valid_reach.id for valid_reach in nd_rc_step_processor.valid_entities]
     ]
     kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
-    kwse_step_processor.execute_step(jobclient, database, timeout=180)
+    kwse_step_processor.execute_step(jobclient, database, timeout=240)
     logging.info("<<<<< Finished Final execute_kwse_step")
+    kwse_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting kwse create_rating_curves_db Step >>>>>>")
     kwse_rc_step_processor = GenericReachStepProcessor(
@@ -142,6 +149,7 @@ def process(collection_name):
     )
     kwse_rc_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<< Finished kwse create_rating_curves_db Step")
+    kwse_rc_step_processor.dismiss_timedout_jobs(jobclient)
 
     logging.info("Starting Merge Rating Curves Step >>>>>>")
     load_all_rating_curves(database)
@@ -151,6 +159,7 @@ def process(collection_name):
     fimlib_step_processor = GenericReachStepProcessor(collection, nd_rc_step_processor.valid_entities, "create_fim_lib")
     fimlib_step_processor.execute_step(jobclient, database, timeout=150)
     logging.info("<<<<< Finished create_fim_lib Step")
+    fimlib_step_processor.dismiss_timedout_jobs(jobclient)
 
     try:
         logging.info("Starting create extent library Step >>>>>>")
@@ -167,51 +176,48 @@ def process(collection_name):
         logging.error("Error - unable to create f2f start file")
 
 
-def run_qc(collection_name):
+def run_qc(collection_name, execute_flows2fim=False):
     """Perform quality control."""
     logging.info("Starting QC")
     collection = CollectionData(collection_name)
     database = Database(collection)
     job_client = JobClient(collection)
 
-    logging.info("Creating Excel Error Report >>>>>>>>")
-    dfs = []
-    for step_name in collection.config["processing_steps"].keys():
-        domain = collection.config["processing_steps"][step_name]["domain"]
-        # Lets not capture the final status to preserve the timedout status jobs
-        # job_client.poll_and_update_job_status(database, step_name, "models" if domain == "model" else "processing")
-        _, _, failed_reaches = database.get_reach_status_by_process(
-            step_name, "models" if domain == "model" else "processing"
-        )
-        df = job_client.get_failed_jobs_df(failed_reaches)
-        dfs.append(df)
-        write_failed_jobs_df_to_excel(df, step_name, collection.error_report_path)
+    logging.info("Creating Failed Job Report >>>>>>>>")
+    create_failed_jobs_report(collection, database, job_client)
+    logging.info("<<<<< Finished Creating Failed Job Report")
 
-    logging.info("<<<<< Finished creating Excel error report")
+    logging.info("Creating TimedOut Job Report >>>>>>>>")
+    create_timedout_jobs_report(collection, database, job_client)
+    logging.info("<<<<< Finished Creating TimedOut Job Report")
 
-    logging.info("Running copy_qc_map step >>>>>")
-    copy_qc_map(collection)
-    logging.info("<<<<< Finished copy_qc_map step")
+    if execute_flows2fim:
+        logging.info("Running copy_qc_map step >>>>>")
+        copy_qc_map(collection)
+        logging.info("<<<<< Finished copy_qc_map step")
 
-    logging.info("Starting run_flows2fim step >>>>>>")
-    run_flows2fim(collection)
-    logging.info("<<<<< Finished run_flows2fim step")
+        logging.info("Starting run_flows2fim step >>>>>>")
+        run_flows2fim(collection)
+        logging.info("<<<<< Finished run_flows2fim step")
 
 
 def run_pipeline(collection: str):
-    """
-    Automate the execution of all steps previously in setup.ipynb, process.ipynb, and qc.ipynb.
-    """
-
-    setup(collection)
-    process(collection)
+    """Automate execution of all pipeline steps with conditional QC"""
+    execute_flows2fim = False
 
     try:
-        run_qc(collection)
+        setup(collection)
+        process(collection)
+        execute_flows2fim = True
     except Exception as e:
-        logging.error(e)
-        logging.error("Error - qc workflow failed")
+        logging.error(f"Main workflow failed: {str(e)}")
+        raise e
 
+    finally:
+        try:
+            run_qc(collection, execute_flows2fim)
+        except Exception as qc_error:
+            logging.error(f"QC failed: {str(qc_error)}")
 
 if __name__ == "__main__":
     """

@@ -474,44 +474,22 @@ class Database:
             """
         return self.execute_select_query(select_query)
 
-    def get_reach_status_by_process(
-        self, process_name: str, process_table: str = "processing"
-    ) -> Tuple[List[Tuple[int, str, str]], List[Tuple[int, str, str]], List[Tuple[int, str, str]]]:
+    def get_entities_by_process_and_status(
+        self, process_name: str, status: str, process_table: str = "processing",
+    ) -> List[Tuple[int, str, str]]:
         """
-        Retrieves successful, accepted, and failed reaches for a given process name
-        by reading statuses from the processing table.
+        Retrieves entities for a given process and status.
 
         Returns:
-            successful: List of tuples (reach_id, job_id, status) for successful reaches.
-            failed: List of tuples (reach_id, job_id, status) for failed reaches.
-            accepted: List of tuples (reach_id, job_id, status) for accepted reaches.
+            List of tuples (reach_id, job_id, status)
         """
 
-        # Build dynamic SQL queries for retrieving status and job IDs
-        accepted_query = f"""
+        query = f"""
             SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
             FROM {process_table}
-            WHERE {process_name}_status = 'accepted'
+            WHERE {process_name}_status = '{status}'
         """
-        successful_query = f"""
-            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
-            FROM {process_table}
-            WHERE {process_name}_status = 'successful'
-        """
-        failed_query = f"""
-            SELECT {"reach_id" if process_table == "processing" else "model_id"}, {process_name}_job_id, {process_name}_status
-            FROM {process_table}
-            WHERE {process_name}_status = 'failed'
-        """
-
-        # Retrieve accepted reaches
-        accepted = self.execute_select_query(accepted_query)
-        # Retrieve successful reaches
-        successful = self.execute_select_query(successful_query)
-        # Retrieve failed reaches
-        failed = self.execute_select_query(failed_query)
-
-        return accepted, successful, failed
+        return self.execute_select_query(query)
 
     def update_table_with_job_status(self, process_table: str, process_name: str, job_status, entity):
 

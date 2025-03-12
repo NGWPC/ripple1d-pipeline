@@ -60,6 +60,10 @@ class BaseStepProcessor:
         logging.info(f"Not Accepted: {len(self.job_records['not_accepted'])}")
         logging.info(f"Unknown: {len(self.job_records['unknown'])}")
 
+    def dismiss_timedout_jobs(self, job_client: JobClient):
+        """Dismiss all unknown jobs"""
+        job_client.dismiss_jobs(self.job_records["unknown"])
+
     @property
     def valid_entities(self):
         """Returns all entities that were succeeded or timedout(unknown)"""
