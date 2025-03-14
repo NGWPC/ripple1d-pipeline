@@ -36,13 +36,9 @@ class NomadCoordinator:
                 load_dotenv(dotenv_path, override=True)
                 self.NOMAD_TOKEN = os.getenv("NOMAD_TOKEN")
                 self.nomad_addr = os.getenv("NOMAD_ADDR")
-                # self.AWS_PROFILE = os.getenv("AWS_PROFILE")
-                # self.aws_access_key_id = os.getenv("aws_access_key_id")
-                # self.aws_secret_access_key = os.getenv("aws_secret_access_key")
-                # self.aws_region = os.getenv("aws_region")
                 # Remove after new AMI
-                self.gitlab_un = os.getenv("GITLAB_USERNAME")
-                self.gitlab_pat = os.getenv("GITLAB_PAT")
+                # self.gitlab_un = os.getenv("GITLAB_USERNAME")
+                # self.gitlab_pat = os.getenv("GITLAB_PAT")
 
             except:
                 raise ValueError("Invalid .env configuration")
@@ -286,14 +282,15 @@ def main(
 
         metadata = {
             "collection": collection,
-            "gitlab_pat": coordinator.gitlab_pat,
-            "gitlab_un": coordinator.gitlab_un,
+            # "gitlab_pat": coordinator.gitlab_pat,
+            # "gitlab_un": coordinator.gitlab_un,
         }
 
         try:
             result = coordinator.dispatch_job(job_name, metadata)
             coordinator.console.print(
-                f"[green]Submitted job for collection {collection}: {result['EvalID']}"
+                f"[green]Submitted job for collection {collection}.",
+                f"EvalID:  {result['EvalID']}",
             )
         except requests.exceptions.RequestException as e:
             coordinator.console.print(
@@ -308,12 +305,6 @@ def main(
 
 if __name__ == "__main__":
     """
-    Test Example:
-        python3 nomad_coordinator.py -r --job_file "batch-test-windows.nomad.hcl"
-
-        python3 nomad_coordinator.py -l "test.csv" -n "batch-test-windows" -m
-
-
     Ripple Example:
         python3 nomad_coordinator.py -r -j "ripple_batch_pipeline.nomad.hcl"
 
@@ -327,7 +318,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--collection_list",
-        # required=True,
         help="A filepath (.txt or .lst) containaing a new line separated list of valid collections or a space separated string of collections",
     )
     parser.add_argument(
