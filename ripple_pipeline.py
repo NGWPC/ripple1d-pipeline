@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import time
 
 # Import necessary modules
 from src.process import *
@@ -205,17 +206,20 @@ def run_pipeline(collection: str):
     """Automate execution of all pipeline steps with conditional QC"""
     execute_flows2fim = False
 
+
     try:
-        setup(collection)
-        process(collection)
-        execute_flows2fim = True
+        # setup(collection)
+        # process(collection)
+        # execute_flows2fim = True
+        time.sleep(3)
     except Exception as e:
         logging.error(f"Main workflow failed: {str(e)}")
         raise e
 
     finally:
         try:
-            run_qc(collection, execute_flows2fim)
+            # run_qc(collection, execute_flows2fim)
+            time.sleep(3)
         except Exception as qc_error:
             logging.error(f"QC failed: {str(qc_error)}")
 

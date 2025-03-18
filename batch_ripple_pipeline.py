@@ -6,11 +6,14 @@ import os
 import pathlib
 import subprocess
 import yaml
+import socket
 from pathlib import Path
 from datetime import datetime
+from contextlib import contextmanager
 
 from ripple_pipeline import *
 from src.setup import *
+from monitoring import *
 
 
 def load_config(config_file):
@@ -53,6 +56,12 @@ def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_
     )
     logging.info(f"Submitted S3 mv command on collection: {collection} ...")
 
+@contextmanager
+def exception_handler(table):
+    try:
+        yield
+    except Exception as e:
+        logging.error(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
 
 def batch_pipeline(collection_list):
     """
@@ -70,9 +79,39 @@ def batch_pipeline(collection_list):
     S3_UPLOAD_FAILED_PREFIX = config['paths']['S3_UPLOAD_FAILED_PREFIX']
     RIPPLE1D_VERSION = config['RIPPLE1D_VERSION']
 
+    # Get list of collections
     collections = read_input(collection_list)
 
+
+    # Identify hostname, used to get IP Address
+    hostname = f"{socket.gethostname()}"
+
+    # Instantiate MonitoringDatabase class
+    monitoring_database = MonitoringDatabase(hostname)
+
+    monitoring_database.create_tables()
+
+    # Set default values for monitoring database
+    total_collections_submitted = len(collections)
+    total_collections_processed = 0
+    total_successful_collections = 0
+    last_collection_finish_time = None
+    last_collection_status = None
+    
+    # Update instances table in monitoring database
+    with exception_handler("INSTANCES"):
+        monitoring_database.update_instances_table(
+            datetime.now(), 
+            None, 
+            last_collection_status, 
+            last_collection_finish_time, 
+            total_collections_processed, 
+            total_successful_collections, 
+            total_collections_submitted
+        )
+
     for collection in collections:
+        
         logging.info(f"Starting processing for collection: {collection} ...")
         # Construct the command to execute ripple_pipeline.py
         cmd = [
@@ -93,31 +132,77 @@ def batch_pipeline(collection_list):
             f.flush()
 
             try:
-                # Using shell=True to call this subprocess within the venv context
-                # stdout is only being flushed at the end, not sure why
+                # Update instances table in monitoring database
+                with exception_handler("INSTANCES"):
+                    monitoring_database.update_instances_table(
+                        datetime.now(), 
+                        collection, 
+                        last_collection_status, 
+                        last_collection_finish_time, 
+                        total_collections_processed, 
+                        total_successful_collections, 
+                        total_collections_submitted
+                    )
+
+                # Reset values for monitoring database
+                last_collection_status = None
+
+                # Use subprocess to execute ripple_pipeline.py and send stdout & stderr to log file 
                 process = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
 
-                if process.returncode != 0:
-                    raise subprocess.CalledProcessError(process.returncode, cmd)
+                # Get timestamp after processing is finished
+                last_collection_finish_time = datetime.now()
+                # Increment counter for total collections processed
+                total_collections_processed += 1
 
+                if process.returncode != 0:
+                    last_collection_status = "Unsuccessful"
+                    
+                    raise subprocess.CalledProcessError(process.returncode, cmd)
+            
+                # Logic for successfully processed collections
                 logging.info(f"Collection {collection} processed successfully.")
 
-                s3_move(S3_UPLOAD_PREFIX, collection, COLLECTIONS_ROOT_DIR)
+                total_successful_collections += 1 if last_collection_status != "Unsuccessful"
+                last_collection_status = "Successful" if last_collection_status == None
+
+                # Update instances table in monitoring database
+                with exception_handler("INSTANCES"):
+                    monitoring_database.update_instances_table(
+                        datetime.now(), 
+                        collection, 
+                        last_collection_status, 
+                        last_collection_finish_time, 
+                        total_collections_processed, 
+                        total_successful_collections, 
+                        total_collections_submitted
+                    )
+
+                # s3_move(S3_UPLOAD_PREFIX, collection, COLLECTIONS_ROOT_DIR)
 
             except subprocess.CalledProcessError as e:
-
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
                 logging.error(f"Error processing collection {collection}: {e} ")
                 logging.info(f"See {log_file} for more details.")
 
-            except Exception as e:
+                # Update errors table in monitoring database
+                with exception_handler("ERRORS"): 
+                    monitoring_database.update_errors_table(collection, e)
 
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
+                # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
+
+
+            except Exception as e:
 
                 logging.error(f"Unexpected error occurred: {e}")
                 logging.error(f"Executing run_pipeline on collection: {collection}")
                 logging.info(f"See {log_file} for more details.")
+
+                # Update errors table in monitoring database
+                with exception_handler("ERRORS"):
+                    monitoring_database.update_errors_table(collection, e)
+                
+                # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
 
 def read_input(collection_list):
