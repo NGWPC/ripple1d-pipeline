@@ -12,9 +12,7 @@ from pathlib import Path
 
 import yaml
 
-from monitoring import *
-from ripple_pipeline import *
-from src.setup import *
+from monitoring_database import MonitoringDatabase
 
 
 def load_config(config_file):
