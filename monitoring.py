@@ -1,9 +1,7 @@
 from datetime import datetime
 import sqlite3
-import threading
+import logging
 import socket
-from contextlib import contextmanager
-from typing import Dict, List, Tuple, Type
 
 dateime_obj = datetime.now()
 timestamp = dateime_obj.strftime("%m-%d-%Y_%H_%M")
@@ -15,24 +13,9 @@ class MonitoringDatabase:
 
     def __init__(self, hostname: str):
         self.ripple1d_version = "0.10.1"
-        self.db_path = "Z:\shared\monitoring.db"
+        self.db_path = "Z:\\shared\\monitoring.sqlite"
         self.ip_address = socket.gethostbyname(hostname)
         self.timeout = 60
-
-    @contextmanager
-    def _get_connection(self):
-        conn = sqlite3.connect(self.db_path, timeout=self.timeout)
-        try:
-            yield conn
-        finally:
-            conn.close()
-
-    # Execute SQL operations: INSERT, UPDATE, DELETE
-    def execute_dml_query(self, query: str, params: tuple = None):
-        with self._get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            conn.commit()
 
     def create_tables(self) -> None:
         """
@@ -63,7 +46,7 @@ class MonitoringDatabase:
                 INSERT INTO metadata
                 VALUES (?, ?);
                 """,
-                (RIPPLE1D_VERSION = self.ripple1d_version, current_time),
+                (self.ripple1d_version, current_time),
             )
 
             # Create monitoring table to aggregate collection and machine level statuses
@@ -78,7 +61,7 @@ class MonitoringDatabase:
                     total_collections_processed INTEGER,
                     total_successful_collections INTEGER,
                     total_collections_submitted INTEGER,
-                    PRIMARY KEY (ip_address)
+                    PRIMARY KEY (ip_address, current_collection_id)
                 );
             """
             )
@@ -96,14 +79,22 @@ class MonitoringDatabase:
             )
 
             connection.commit()
-            logging.info(f"Database initialized successfully at {db_path}")
+            logging.info(f"Database initialized successfully at {self.db_path}")
         except Exception as e:
             logging.info(e)
             connection.rollback()
         finally:
             connection.close()
 
-    def update_instances_table(self, status_update_time, current_collection_id, last_collection_status, last_collection_finish_time, total_collections_processed, total_successful_collections, total_collections_submitted) -> None:
+    def update_instances_table(
+            self, 
+            status_update_time, 
+            current_collection_id, 
+            last_collection_status, 
+            last_collection_finish_time, 
+            total_collections_processed, 
+            total_successful_collections, 
+            total_collections_submitted) -> None:
         """ 
         Enter record to instances table in monitoring database.
         """
@@ -140,7 +131,7 @@ class MonitoringDatabase:
                 ),
             )
             conn.commit()
-            logging.info(f"Instances record inserted at {db_path}")
+            logging.info(f"Instances Table record inserted in {self.db_path}")
         
         finally:
             conn.close()
@@ -165,7 +156,7 @@ class MonitoringDatabase:
                 (ip_address, collection_id, error_message),
             )
             conn.commit()
-            logging.info(f"Errors record inserted at {db_path}")
+            logging.info(f"Errors Table record inserted in {self.db_path}")
         finally:
             conn.close()
 

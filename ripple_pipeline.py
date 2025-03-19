@@ -208,18 +208,16 @@ def run_pipeline(collection: str):
 
 
     try:
-        # setup(collection)
-        # process(collection)
-        # execute_flows2fim = True
-        time.sleep(3)
+        setup(collection)
+        process(collection)
+        execute_flows2fim = True
     except Exception as e:
         logging.error(f"Main workflow failed: {str(e)}")
         raise e
 
     finally:
         try:
-            # run_qc(collection, execute_flows2fim)
-            time.sleep(3)
+            run_qc(collection, execute_flows2fim)
         except Exception as qc_error:
             logging.error(f"QC failed: {str(qc_error)}")
 

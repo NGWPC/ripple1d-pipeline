@@ -101,7 +101,7 @@ def batch_pipeline(collection_list):
     # Update instances table in monitoring database
     with exception_handler("INSTANCES"):
         monitoring_database.update_instances_table(
-            datetime.now(), 
+            f"{datetime.now()}", 
             None, 
             last_collection_status, 
             last_collection_finish_time, 
@@ -135,7 +135,7 @@ def batch_pipeline(collection_list):
                 # Update instances table in monitoring database
                 with exception_handler("INSTANCES"):
                     monitoring_database.update_instances_table(
-                        datetime.now(), 
+                        f"{datetime.now()}", 
                         collection, 
                         last_collection_status, 
                         last_collection_finish_time, 
@@ -152,6 +152,7 @@ def batch_pipeline(collection_list):
 
                 # Get timestamp after processing is finished
                 last_collection_finish_time = datetime.now()
+
                 # Increment counter for total collections processed
                 total_collections_processed += 1
 
@@ -163,13 +164,19 @@ def batch_pipeline(collection_list):
                 # Logic for successfully processed collections
                 logging.info(f"Collection {collection} processed successfully.")
 
-                total_successful_collections += 1 if last_collection_status != "Unsuccessful"
-                last_collection_status = "Successful" if last_collection_status == None
+                if last_collection_status != "Unsuccessful":
+                    total_successful_collections += 1 
+                else:
+                    total_successful_collections
+                if last_collection_status == None:
+                    last_collection_status = "Successful" 
+                else:
+                    last_collection_status
 
                 # Update instances table in monitoring database
                 with exception_handler("INSTANCES"):
                     monitoring_database.update_instances_table(
-                        datetime.now(), 
+                        f"{datetime.now()}", 
                         collection, 
                         last_collection_status, 
                         last_collection_finish_time, 
@@ -187,7 +194,7 @@ def batch_pipeline(collection_list):
 
                 # Update errors table in monitoring database
                 with exception_handler("ERRORS"): 
-                    monitoring_database.update_errors_table(collection, e)
+                    monitoring_database.update_errors_table(collection, str(e))
 
                 # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
@@ -200,7 +207,7 @@ def batch_pipeline(collection_list):
 
                 # Update errors table in monitoring database
                 with exception_handler("ERRORS"):
-                    monitoring_database.update_errors_table(collection, e)
+                    monitoring_database.update_errors_table(collection, str(e))
                 
                 # s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
