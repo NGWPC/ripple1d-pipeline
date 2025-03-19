@@ -1,12 +1,13 @@
 ---
 
-RIPPLE1D_VERSION: 0.10.1
+RIPPLE1D_VERSION: 0.10.2
 
 paths:
   COLLECTIONS_ROOT_DIR: C:\collections
   NWM_FLOWLINES_PATH: C:\reference_data\nwm_flowlines.parquet
   S3_UPLOAD_PREFIX: "" # Exclude trailing slash of S3 Bucket
   S3_UPLOAD_FAILED_PREFIX: "" # Exclude trailing slash of S3 Bucket
+  MONITORING_DB_PATH: Z:\shared\monitoring_2.sqlite
 
 ripple_settings:
   RAS_VERSION: &RAS_VERSION "631"

@@ -1,5 +1,4 @@
 import logging
-import socket
 import sqlite3
 from datetime import datetime
 
@@ -12,11 +11,11 @@ class MonitoringDatabase:
     Monitoring database class to monitor collection processing at scale.
     """
 
-    def __init__(self, hostname: str):
-        self.ripple1d_version = "0.10.1"
-        self.db_path = "Z:\\shared\\monitoring.sqlite"
-        self.ip_address = socket.gethostbyname(hostname)
-        self.timeout = 60
+    def __init__(self, ip_address: str, db_path: str, ripple1d_version: str, timeout=60) -> None:
+        self.ripple1d_version = ripple1d_version
+        self.db_path = db_path
+        self.ip_address = ip_address
+        self.timeout = timeout
 
     def create_tables(self) -> None:
         """
@@ -106,16 +105,15 @@ class MonitoringDatabase:
 
         try:
             cursor = conn.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL;")
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO instances (
-                    ip_address, 
-                    status_update_time, 
-                    current_collection_id,  
-                    last_collection_status,  
-                    total_collections_processed, 
-                    total_successful_collections, 
+                    ip_address,
+                    status_update_time,
+                    current_collection_id,
+                    last_collection_status,
+                    total_collections_processed,
+                    total_successful_collections,
                     total_collections_submitted
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -153,11 +151,10 @@ class MonitoringDatabase:
 
         try:
             cursor = conn.cursor()
-            cursor.execute("PRAGMA journal_mode=WAL;")
             cursor.execute(
                 """
                 INSERT OR REPLACE INTO collections (
-                    ip_address, 
+                    ip_address,
                     collection_id,
                     collection_start_time,
                     collection_finish_time,
@@ -176,6 +173,6 @@ class MonitoringDatabase:
                 ),
             )
             conn.commit()
-            logging.info(f"Errors Table record inserted in {self.db_path}")
+            logging.info(f"Collections Table record inserted in {self.db_path}")
         finally:
             conn.close()
