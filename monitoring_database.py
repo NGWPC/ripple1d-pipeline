@@ -2,15 +2,17 @@ import logging
 import sqlite3
 from datetime import datetime
 
+
 class MonitoringDatabase:
     """
     Monitoring database class to monitor collection processing at scale.
     """
 
-    def __init__(self, ip_address: str, db_path: str, ripple1d_version: str, timeout=60) -> None:
+    def __init__(self, ip_address: str, maintainer: str, db_path: str, ripple1d_version: str, timeout=60) -> None:
         self.ripple1d_version = ripple1d_version
         self.db_path = db_path
         self.ip_address = ip_address
+        self.maintainer = maintainer
         self.timeout = timeout
 
     def create_tables(self) -> None:
@@ -49,6 +51,7 @@ class MonitoringDatabase:
                 """
                 CREATE TABLE IF NOT EXISTS instances (
                     ip_address TEXT,
+                    maintainer TEXT,
                     status_update_time TIMESTAMP,
                     current_collection_id TEXT,
                     last_collection_status TEXT,
@@ -95,7 +98,6 @@ class MonitoringDatabase:
         """
         Enter record to instances table in monitoring database.
         """
-        ip_address = self.ip_address
 
         conn = sqlite3.connect(self.db_path, timeout=self.timeout)
 
@@ -105,6 +107,7 @@ class MonitoringDatabase:
                 """
                 INSERT OR REPLACE INTO instances (
                     ip_address,
+                    maintainer,
                     status_update_time,
                     current_collection_id,
                     last_collection_status,
@@ -112,10 +115,11 @@ class MonitoringDatabase:
                     total_successful_collections,
                     total_collections_submitted
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    ip_address,
+                    self.ip_address,
+                    self.maintainer,
                     status_update_time,
                     current_collection_id,
                     last_collection_status,
@@ -141,7 +145,6 @@ class MonitoringDatabase:
         """
         Enter record to collections table in monitoring database.
         """
-        ip_address = self.ip_address
 
         conn = sqlite3.connect(self.db_path, timeout=self.timeout)
 
@@ -160,7 +163,7 @@ class MonitoringDatabase:
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    ip_address,
+                    self.ip_address,
                     collection_id,
                     collection_start_time,
                     collection_finish_time,

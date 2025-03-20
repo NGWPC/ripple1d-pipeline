@@ -20,6 +20,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 
+
 def load_config(config_file):
     try:
         with open(str(Path.cwd() / "src" / config_file), "r") as file:
@@ -97,10 +98,10 @@ def batch_pipeline(collection_list):
     # Identify hostname, used to get IP Address
     hostname = f"{socket.gethostname()}"
     ip_address = socket.gethostbyname(hostname)
+    username = os.getlogin()
 
     # Instantiate MonitoringDatabase class
-    monitoring_database = MonitoringDatabase(ip_address, MONITORING_DB_PATH, RIPPLE1D_VERSION)
-
+    monitoring_database = MonitoringDatabase(ip_address, username, MONITORING_DB_PATH, RIPPLE1D_VERSION)
     monitoring_database.create_tables()
 
     # Set default values for monitoring database
@@ -174,9 +175,8 @@ def batch_pipeline(collection_list):
                         None,
                     )
 
-                ##### Use subprocess to execute ripple_pipeline.py and send stdout & stderr to log file
+                # Use subprocess to execute ripple_pipeline.py and send stdout & stderr to log file
                 process = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
-                #####
 
                 # Get timestamp after processing is finished
                 collection_finish_time = datetime.now()
