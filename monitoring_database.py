@@ -2,10 +2,6 @@ import logging
 import sqlite3
 from datetime import datetime
 
-dateime_obj = datetime.now()
-timestamp = dateime_obj.strftime("%m-%d-%Y_%H_%M")
-
-
 class MonitoringDatabase:
     """
     Monitoring database class to monitor collection processing at scale.

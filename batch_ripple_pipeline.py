@@ -14,6 +14,11 @@ import yaml
 
 from monitoring_database import MonitoringDatabase
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 def load_config(config_file):
     try:
@@ -95,6 +100,8 @@ def batch_pipeline(collection_list):
 
     # Instantiate MonitoringDatabase class
     monitoring_database = MonitoringDatabase(ip_address, MONITORING_DB_PATH, RIPPLE1D_VERSION)
+
+    monitoring_database.create_tables()
 
     # Set default values for monitoring database
     total_collections_submitted = len(collections)
@@ -229,6 +236,9 @@ def batch_pipeline(collection_list):
                     config,
                     collection_status == "failed",
                 )
+
+                # Set last collection status
+                last_collection_status = collection_status
 
 
 def read_input(collection_list):
