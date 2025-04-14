@@ -4,28 +4,45 @@ import argparse
 import logging
 import os
 import pathlib
+import socket
 import subprocess
-import yaml
-from pathlib import Path
+from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 
-from ripple_pipeline import *
-from src.setup import *
+import yaml
+
+from monitoring_database import MonitoringDatabase
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def load_config(config_file):
     try:
-        with open(str(Path.cwd() / "src" / config_file), 'r') as file:
+        with open(str(Path.cwd() / "src" / config_file), "r") as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
         raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
     except yaml.YAMLError:
         raise ValueError("Invalid YAML configuration")
-    
+
     return config
 
-def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_version:str = None, failed: bool = False):
 
+def s3_move(
+    collection: str,
+    config: dict,
+    failed: bool = False,
+):
+
+    COLLECTIONS_ROOT_DIR = config["paths"]["COLLECTIONS_ROOT_DIR"]
+    S3_UPLOAD_PREFIX = config["paths"]["S3_UPLOAD_PREFIX"]
+    S3_UPLOAD_FAILED_PREFIX = config["paths"]["S3_UPLOAD_FAILED_PREFIX"]
+    RIPPLE1D_VERSION = config["RIPPLE1D_VERSION"]
 
     if failed:
         dateime_obj = datetime.now()
@@ -34,8 +51,8 @@ def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_
             "aws",
             "s3",
             "mv",
-            f"{col_root_dir}/{collection}",
-            f"{s3_upload_prefix}/{collection}_{ripple1d_version}_{timestamp}",
+            f"{COLLECTIONS_ROOT_DIR}/{collection}",
+            f"{S3_UPLOAD_FAILED_PREFIX}/{collection}_{RIPPLE1D_VERSION}_{timestamp}",
             "--recursive",
         ]
     else:
@@ -43,15 +60,21 @@ def s3_move(s3_upload_prefix: str, collection: str, col_root_dir: str, ripple1d_
             "aws",
             "s3",
             "mv",
-            f"{col_root_dir}/{collection}",
-            f"{s3_upload_prefix}/{collection}",
+            f"{COLLECTIONS_ROOT_DIR}/{collection}",
+            f"{S3_UPLOAD_PREFIX}/{collection}",
             "--recursive",
         ]
 
-    subprocess.Popen(
-        s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL
-    )
+    subprocess.Popen(s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
     logging.info(f"Submitted S3 mv command on collection: {collection} ...")
+
+
+@contextmanager
+def exception_handler(table):
+    try:
+        yield
+    except Exception as e:
+        logging.error(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
 
 
 def batch_pipeline(collection_list):
@@ -65,14 +88,41 @@ def batch_pipeline(collection_list):
 
     config = load_config("config.yaml")
 
-    COLLECTIONS_ROOT_DIR = config['paths']['COLLECTIONS_ROOT_DIR']
-    S3_UPLOAD_PREFIX = config['paths']['S3_UPLOAD_PREFIX']
-    S3_UPLOAD_FAILED_PREFIX = config['paths']['S3_UPLOAD_FAILED_PREFIX']
-    RIPPLE1D_VERSION = config['RIPPLE1D_VERSION']
+    COLLECTIONS_ROOT_DIR = config["paths"]["COLLECTIONS_ROOT_DIR"]
+    RIPPLE1D_VERSION = config["RIPPLE1D_VERSION"]
+    MONITORING_DB_PATH = config["paths"]["MONITORING_DB_PATH"]
 
+    # Get list of collections
     collections = read_input(collection_list)
 
+    # Identify hostname, used to get IP Address
+    hostname = f"{socket.gethostname()}"
+    ip_address = socket.gethostbyname(hostname)
+    username = os.getlogin()
+
+    # Instantiate MonitoringDatabase class
+    monitoring_database = MonitoringDatabase(ip_address, username, MONITORING_DB_PATH, RIPPLE1D_VERSION)
+    monitoring_database.create_tables()
+
+    # Set default values for monitoring database
+    total_collections_submitted = len(collections)
+    total_collections_processed = 0
+    total_collections_succeeded = 0
+    last_collection_status = None
+
+    # Update instances table in monitoring database
+    with exception_handler("INSTANCES"):
+        monitoring_database.update_instances_table(
+            f"{datetime.now()}",
+            None,
+            last_collection_status,
+            total_collections_processed,
+            total_collections_succeeded,
+            total_collections_submitted,
+        )
+
     for collection in collections:
+
         logging.info(f"Starting processing for collection: {collection} ...")
         # Construct the command to execute ripple_pipeline.py
         cmd = [
@@ -92,32 +142,103 @@ def batch_pipeline(collection_list):
             f.write(f"\n--- Starting processing for collection: {collection} ---\n")
             f.flush()
 
+            # Get timestamp for collection start time
+            collection_start_time = datetime.now()
+
+            # Reset collection status before next collection starts processing
+            collection_status = None
+            error_message = None
+            collection_finish_time = None
+
             try:
-                # Using shell=True to call this subprocess within the venv context
-                # stdout is only being flushed at the end, not sure why
+
+                # Get timestamp for collection start time
+                collection_start_time = datetime.now()
+
+                # Update instances table in monitoring database before processing
+                with exception_handler("INSTANCES"):
+                    monitoring_database.update_instances_table(
+                        f"{datetime.now()}",
+                        collection,
+                        last_collection_status,
+                        total_collections_processed,
+                        total_collections_succeeded,
+                        total_collections_submitted,
+                    )
+                # Update collections table in monitoring database
+                with exception_handler("COLLECTIONS"):
+                    monitoring_database.update_collections_table(
+                        collection,
+                        collection_start_time,
+                        None,
+                        "running",
+                        None,
+                    )
+
+                # Use subprocess to execute ripple_pipeline.py and send stdout & stderr to log file
                 process = subprocess.run(cmd, shell=True, stdout=f, stderr=f)
+
+                # Get timestamp after processing is finished
+                collection_finish_time = datetime.now()
+
+                # Increment counter for total collections processed
+                total_collections_processed += 1
 
                 if process.returncode != 0:
                     raise subprocess.CalledProcessError(process.returncode, cmd)
 
+                # Logic for successfully processed collections
                 logging.info(f"Collection {collection} processed successfully.")
-
-                s3_move(S3_UPLOAD_PREFIX, collection, COLLECTIONS_ROOT_DIR)
+                collection_status = "successful"
+                total_collections_succeeded += 1
 
             except subprocess.CalledProcessError as e:
 
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
-
                 logging.error(f"Error processing collection {collection}: {e} ")
                 logging.info(f"See {log_file} for more details.")
+                collection_status = "failed"
+                error_message = str(e)
 
             except Exception as e:
-
-                s3_move(S3_UPLOAD_FAILED_PREFIX, collection, COLLECTIONS_ROOT_DIR, RIPPLE1D_VERSION, True)
 
                 logging.error(f"Unexpected error occurred: {e}")
                 logging.error(f"Executing run_pipeline on collection: {collection}")
                 logging.info(f"See {log_file} for more details.")
+                collection_status = "failed"
+                error_message = str(e)
+
+            finally:
+
+                # Update collections table in monitoring database
+                with exception_handler("COLLECTIONS"):
+                    monitoring_database.update_collections_table(
+                        collection,
+                        collection_start_time,
+                        collection_finish_time,
+                        collection_status,
+                        error_message,
+                    )
+
+                # Update instances table in monitoring database
+                with exception_handler("INSTANCES"):
+                    monitoring_database.update_instances_table(
+                        f"{datetime.now()}",
+                        None,  # reset current_collection_id
+                        collection_status,
+                        total_collections_processed,
+                        total_collections_succeeded,
+                        total_collections_submitted,
+                    )
+
+                # Move collection to S3 bucket
+                s3_move(
+                    collection,
+                    config,
+                    collection_status == "failed",
+                )
+
+                # Set last collection status
+                last_collection_status = collection_status
 
 
 def read_input(collection_list):
@@ -164,7 +285,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--collection_list",
-        help=f"A filepath (.txt or .lst) containaing a new line separated list of valid collections or a space separated string of collections",
+        help=f"A filepath (.txt or .lst) containing a new line separated list of valid collections or a space separated string of collections",
         required=True,
     )
 

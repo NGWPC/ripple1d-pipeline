@@ -1,7 +1,7 @@
 # Ripple1D Pipeline
  
 Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/Dewberry/ripple1d) to generate FIMs and rating curves. 
-Compatible with ripple1d==0.7.0. Use repository tags to get older versions.
+Compatible with ripple1d==0.10.3. Use repository tags to get older versions.
 
 ## Contents
 - [Initialization/Pre Processing source code](src/setup)

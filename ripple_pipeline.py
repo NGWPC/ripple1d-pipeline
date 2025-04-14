@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+import time
 
 # Import necessary modules
 from src.process import *
@@ -204,6 +205,7 @@ def run_qc(collection_name, execute_flows2fim=False):
 def run_pipeline(collection: str):
     """Automate execution of all pipeline steps with conditional QC"""
     execute_flows2fim = False
+
 
     try:
         setup(collection)
