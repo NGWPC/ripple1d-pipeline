@@ -105,7 +105,6 @@ def create_domain_tif(tif_path, tmp_dir, gpkg_path, dest_dir) -> None:
         tmp_tif,
         '--calc="0*A"',
         "--type=Byte",
-        "--hideNoData",
     ]
 
     result = subprocess.run(gdal_calc_cmd, capture_output=True, text=True)
@@ -224,9 +223,7 @@ def create_extent_lib(collection: Type[CollectionData], print_progress=False):
     processed_files = 0
 
     with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
-        for _ in pool.imap_unordered(
-            fim_worker, [(path, library_dir, extent_library_dir, submodels_dir) for path in tif_paths]
-        ):
+        for _ in pool.imap_unordered(fim_worker, [(path, library_dir, extent_library_dir) for path in tif_paths]):
             processed_files += 1
             if print_progress:
                 update_progress()
@@ -234,7 +231,7 @@ def create_extent_lib(collection: Type[CollectionData], print_progress=False):
         sys.stdout.write("\n")
 
     # create domains
-    reachid_tif_map = get_reachid_tif_map(library_dir)
+    reachid_tif_map = get_reachid_tif_map(tif_paths)
     total_files = len(reachid_tif_map)
     processed_files = 0
 
