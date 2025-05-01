@@ -1,4 +1,8 @@
-"""Create Extent library from Depth library using GDAL operations."""
+"""
+Create Extent library from Depth library using GDAL operations.
+After profiling, it is found that the optimum parallel process count is same number as CPU cores.
+This script is compute intensive and not memory intensive.
+"""
 
 import logging
 import multiprocessing
@@ -50,7 +54,7 @@ def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
         tif_path,
         "--outfile",
         tmp_tif,
-        '--calc="1*A"',
+        '--calc="1*(A>0)"',
         "--type=Byte",
     ]
 
@@ -127,7 +131,7 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
         raise FileNotFoundError(f"{tmp_tif} not created")
 
     # burn xs_concave_hull
-    gdal_rasterize_cmd = ["gdal_rasterize", "-l", "XS_concave_hull", "-burn", 0, gpkg_path, tmp_tif]
+    gdal_rasterize_cmd = ["gdal_rasterize", "-l", "XS_concave_hull", "-burn", "0", gpkg_path, tmp_tif]
 
     result = subprocess.run(gdal_rasterize_cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -165,9 +169,11 @@ def fim_worker(args: tuple) -> None:
     Args:
         args: Tuple containing (tif_path, library_dir, library_extent_dir)
     """
-    tif_path, library_dir, library_extent_dir = (Path(p) for p in args)
+    tif_path, library_dir, library_extent_dir = args
     try:
-        dest_dir = Path(tif_path.replace(library_dir, library_extent_dir)).parent
+        relative_path = tif_path.relative_to(library_dir)
+        dest_path = library_extent_dir / relative_path
+        dest_dir = dest_path.parent
         dest_dir.mkdir(parents=True, exist_ok=True)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -247,8 +253,10 @@ def create_extent_lib(collection: Type[CollectionData], print_progress: bool = F
             pool.imap_unordered(fim_worker, [(p, library_dir, extent_library_dir) for p in tif_paths]), 1
         ):
             if print_progress:
-                sys.stdout.write(f"\rProcessing FIM: {i}/{len(tif_paths)}")
+                sys.stdout.write(f"\rProcessing FIMs: {i}/{len(tif_paths)}")
                 sys.stdout.flush()
+    if print_progress:
+        sys.stdout.write("\n")
 
     # Process domain files
     reach_map = get_reachid_tif_map(tif_paths)
@@ -264,4 +272,4 @@ def create_extent_lib(collection: Type[CollectionData], print_progress: bool = F
                 sys.stdout.flush()
 
     if print_progress:
-        print("\nProcessing complete")
+        sys.stdout.write("\n")
