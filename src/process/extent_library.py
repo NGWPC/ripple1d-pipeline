@@ -1,3 +1,5 @@
+"""Create Extent library from Depth library"""
+
 import logging
 import multiprocessing
 import os
@@ -34,24 +36,25 @@ def create_mirrored_structure(src_dir, dest_dir):
                 os.makedirs(dest_path)
 
 
-def process_tif(tif_path, gpkg_path, tmp_dir, dest_dir):
+def create_extent_tif(tif_path, tmp_dir, dest_dir) -> None:
     tif_stem = Path(tif_path).stem
     tmp_tif = os.path.join(tmp_dir, f"tmp_{tif_stem}.tif")
     dest_tif = os.path.join(dest_dir, f"{tif_stem}.tif")
 
-    # Step 1: gdal_calc to create the binary mask
+    if os.path.exists(dest_tif):
+        logging.debug(f"Destination file {dest_tif} already exists. Skipping processing.")
+        return
+
     gdal_calc_cmd = [
         "gdal_calc",
         "-A",
         tif_path,
         "--outfile",
         tmp_tif,
-        "--calc=1*(A>0) + 0*(A<=0)",
+        '--calc="1*A"',
         "--type=Byte",
-        "--hideNoData",
     ]
 
-    # Execute gdal_calc with output redirection
     result = subprocess.run(gdal_calc_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         logging.debug(f"gdal_calc stdout: {result.stdout}")
@@ -63,58 +66,122 @@ def process_tif(tif_path, gpkg_path, tmp_dir, dest_dir):
         logging.error(f"Temporary file {tmp_tif} not created!")
         raise FileNotFoundError(f"{tmp_tif} not created")
 
-    # Step 2: gdalwarp to crop based on the geopackage
-    gdalwarp_cmd = [
-        "gdalwarp",
-        "-overwrite",
-        "-cutline",
-        gpkg_path,
-        "-cl",
-        "XS_concave_hull",
-        "-crop_to_cutline",
-        "-dstnodata",
-        "255.0",
-        "-co",
-        "COMPRESS=DEFLATE",
+    # Translate to COG, COG format can't be created with gdal_calc
+    gdal_translate_cmd = [
+        "gdal_translate",
+        "-of",
+        "COG",
         tmp_tif,
         dest_tif,
     ]
 
     # Execute gdalwarp with output redirection
-    result = subprocess.run(gdalwarp_cmd, capture_output=True, text=True)
+    result = subprocess.run(gdal_translate_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"gdal_warp stdout: {result.stdout}")
-        logging.error(f"gdal_warp stderr: {result.stderr}")
+        logging.debug(f"gdal_translate stdout: {result.stdout}")
+        logging.error(f"gdal_translate stderr: {result.stderr}")
         logging.debug(" ".join(gdal_calc_cmd))
-        logging.debug(" ".join(gdalwarp_cmd))
+        logging.debug(" ".join(gdal_translate_cmd))
 
         if os.path.exists(dest_tif):  # clean up
             os.remove(dest_tif)
-        raise RuntimeError(f"gdalwarp failed for {tif_path}")
+        raise RuntimeError(f"gdal_translate failed for {tif_path}")
 
 
-def find_gpkg(tif_path, submodels_dir):
-    submodel_name = Path(tif_path).parts[-3]
-    gpkg_path = os.path.join(submodels_dir, submodel_name, f"{submodel_name}.gpkg")
-    return gpkg_path if os.path.exists(gpkg_path) else None
+def create_domain_tif(tif_path, tmp_dir, gpkg_path, dest_dir) -> None:
+    tmp_tif = os.path.join(tmp_dir, "tmp_domain.tif")
+    dest_tif = os.path.join(dest_dir, "domain.tif")
+
+    if os.path.exists(dest_tif):
+        logging.debug(f"Destination file {dest_tif} already exists. Skipping processing.")
+        return
+
+    # create a temporary raster with same extents as all other to burn xs_concave_hull
+    gdal_calc_cmd = [
+        "gdal_calc",
+        "-A",
+        tif_path,
+        "--outfile",
+        tmp_tif,
+        '--calc="0*A"',
+        "--type=Byte",
+        "--hideNoData",
+    ]
+
+    result = subprocess.run(gdal_calc_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logging.debug(f"gdal_calc stdout: {result.stdout}")
+        logging.error(f"gdal_calc stderr: {result.stderr}")
+        logging.debug(" ".join(gdal_calc_cmd))
+        raise RuntimeError(f"gdal_calc failed for domain from {tif_path}")
+
+    if not os.path.exists(tmp_tif):
+        logging.error(f"Temporary file {tmp_tif} not created!")
+        raise FileNotFoundError(f"{tmp_tif} not created")
+
+    # burn xs_concave_hull
+    gdal_rasterize_cmd = ["gdal_rasterize", "-l", "XS_concave_hull", "-burn", 0, gpkg_path, tmp_tif]
+
+    result = subprocess.run(gdal_rasterize_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logging.debug(f"gdal_rasterize stdout: {result.stdout}")
+        logging.error(f"gdal_rasterize stderr: {result.stderr}")
+        logging.debug(" ".join(gdal_rasterize_cmd))
+        raise RuntimeError(f"gdal_rasterize failed for domain {tmp_tif}")
+
+    # Translate to COG, COG format can't be created with gdal_calc, or burn value into
+    gdal_translate_cmd = [
+        "gdal_translate",
+        "-of",
+        "COG",
+        tmp_tif,
+        dest_tif,
+    ]
+
+    result = subprocess.run(gdal_translate_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        logging.debug(f"gdal_translate stdout: {result.stdout}")
+        logging.error(f"gdal_translate stderr: {result.stderr}")
+        logging.debug(" ".join(gdal_calc_cmd))
+        logging.debug(" ".join(gdal_rasterize_cmd))
+        logging.debug(" ".join(gdal_translate_cmd))
+
+        if os.path.exists(dest_tif):  # clean up
+            os.remove(dest_tif)
+        raise RuntimeError(f"gdal_translate failed for {dest_tif}")
 
 
-def worker(args):
-    tif_path, library_dir, library_extent_dir, submodels_dir = args
+def fim_worker(args):
+    tif_path, library_dir, library_extent_dir = args
     try:
-        gpkg_path = find_gpkg(tif_path, submodels_dir)
+        dest_dir = Path(tif_path.replace(library_dir, library_extent_dir)).parent
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
 
-        if gpkg_path:
-            dest_dir = Path(tif_path.replace(library_dir, library_extent_dir)).parent
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            create_extent_tif(tif_path, tmp_dir, dest_dir)
+    except Exception as e:
+        logging.error(f"Error processing {tif_path}: {str(e)}")
+
+
+def domain_worker(args):
+    reach_id, tif_path, library_extent_dir, submodels_dir = args
+    try:
+
+        gpkg_path = os.path.join(submodels_dir, reach_id, f"{reach_id}.gpkg")
+
+        if os.path.exists(gpkg_path):
+            dest_dir = os.path.join(library_extent_dir, reach_id)
             if not os.path.exists(dest_dir):
                 os.makedirs(dest_dir)
 
             with tempfile.TemporaryDirectory() as tmp_dir:
-                process_tif(tif_path, gpkg_path, tmp_dir, dest_dir)
+                create_domain_tif(tif_path, tmp_dir, gpkg_path, dest_dir)
         else:
             logging.error(f"No corresponding geopackage found for {tif_path}")
+
     except Exception as e:
-        logging.error(f"Error processing {tif_path}: {str(e)}")
+        logging.error(f"Error processing domain: {str(e)}")
 
 
 def get_all_tif_paths(src_dir):
@@ -124,6 +191,16 @@ def get_all_tif_paths(src_dir):
             if file.endswith(".tif"):
                 tif_paths.append(os.path.join(root, file))
     return tif_paths
+
+
+def get_reachid_tif_map(tif_paths):
+    results = {}
+    for tif_path in tif_paths:
+        # Extract the reach ID from the file name
+        reach_id = Path(tif_path).parents[1].name
+        if reach_id not in results:
+            results[reach_id] = tif_path
+    return results
 
 
 def create_extent_lib(collection: Type[CollectionData], print_progress=False):
@@ -136,19 +213,35 @@ def create_extent_lib(collection: Type[CollectionData], print_progress=False):
     setup_gdal_environment(collection)
     create_mirrored_structure(library_dir, extent_library_dir)
 
-    tif_paths = get_all_tif_paths(library_dir)
-
-    total_files = len(tif_paths)
-    processed_files = 0
-
     def update_progress():
         progress = int((processed_files / total_files) * 100)
         sys.stdout.write(f"\rProgress: [{ '#' * progress + '-' * (100 - progress)}] {progress}%")
         sys.stdout.flush()
 
+    # create fims
+    tif_paths = get_all_tif_paths(library_dir)
+    total_files = len(tif_paths)
+    processed_files = 0
+
     with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
         for _ in pool.imap_unordered(
-            worker, [(path, library_dir, extent_library_dir, submodels_dir) for path in tif_paths]
+            fim_worker, [(path, library_dir, extent_library_dir, submodels_dir) for path in tif_paths]
+        ):
+            processed_files += 1
+            if print_progress:
+                update_progress()
+    if print_progress:
+        sys.stdout.write("\n")
+
+    # create domains
+    reachid_tif_map = get_reachid_tif_map(library_dir)
+    total_files = len(reachid_tif_map)
+    processed_files = 0
+
+    with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
+        for _ in pool.imap_unordered(
+            domain_worker,
+            [(reach_id, tif_path, extent_library_dir, submodels_dir) for reach_id, tif_path in reachid_tif_map.items()],
         ):
             processed_files += 1
             if print_progress:
