@@ -1,4 +1,4 @@
-"""Create Extent library from Depth library"""
+"""Create Extent library from Depth library using GDAL operations."""
 
 import logging
 import multiprocessing
@@ -7,42 +7,41 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Type
+from typing import Dict, List, Type
 
 from ..setup.collection_data import CollectionData
 
 
-def setup_gdal_environment(collection):
+def setup_gdal_environment(collection: CollectionData) -> None:
     """
-    Add GDAL binaries to the system PATH
+    Configure GDAL environment paths from collection settings.
+
+    Args:
+        collection: CollectionData object containing configuration settings
     """
-    GDAL_BINS_PATH = collection.config["flows2fim"]["GDAL_BINS_PATH"]
-    GDAL_SCRIPTS_PATH = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
+    gdal_bins = collection.config["flows2fim"]["GDAL_BINS_PATH"]
+    gdal_scripts = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
 
-    if GDAL_BINS_PATH:
-        # Add GDAL path to the system PATH
-        os.environ["PATH"] = GDAL_BINS_PATH + os.pathsep + os.environ["PATH"]
-
-    if GDAL_SCRIPTS_PATH:
-        os.environ["PATH"] = GDAL_SCRIPTS_PATH + os.pathsep + os.environ["PATH"]
+    if gdal_bins:
+        os.environ["PATH"] = str(gdal_bins) + os.pathsep + os.environ["PATH"]
+    if gdal_scripts:
+        os.environ["PATH"] = str(gdal_scripts) + os.pathsep + os.environ["PATH"]
 
 
-def create_mirrored_structure(src_dir, dest_dir):
-    for root, dirs, files in os.walk(src_dir):
-        for folder in dirs:
-            src_path = os.path.join(root, folder)
-            dest_path = src_path.replace(src_dir, dest_dir)
-            if not os.path.exists(dest_path):
-                os.makedirs(dest_path)
+def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
+    """
+    Create extent TIFF from depth TIFF using GDAL operations.
 
+    Args:
+        tif_path: Path to input TIFF file
+        tmp_dir: Temporary directory for processing
+        dest_dir: Destination directory for output file
+    """
+    tmp_tif = tmp_dir / f"tmp_{tif_path.stem}.tif"
+    dest_tif = dest_dir / f"{tif_path.stem}.tif"
 
-def create_extent_tif(tif_path, tmp_dir, dest_dir) -> None:
-    tif_stem = Path(tif_path).stem
-    tmp_tif = os.path.join(tmp_dir, f"tmp_{tif_stem}.tif")
-    dest_tif = os.path.join(dest_dir, f"{tif_stem}.tif")
-
-    if os.path.exists(dest_tif):
-        logging.debug(f"Destination file {dest_tif} already exists. Skipping processing.")
+    if dest_tif.exists():
+        logging.debug(f"Destination file {dest_tif} exists. Skipping processing.")
         return
 
     gdal_calc_cmd = [
@@ -88,12 +87,21 @@ def create_extent_tif(tif_path, tmp_dir, dest_dir) -> None:
         raise RuntimeError(f"gdal_translate failed for {tif_path}")
 
 
-def create_domain_tif(tif_path, tmp_dir, gpkg_path, dest_dir) -> None:
-    tmp_tif = os.path.join(tmp_dir, "tmp_domain.tif")
-    dest_tif = os.path.join(dest_dir, "domain.tif")
+def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: Path) -> None:
+    """
+    Create domain TIFF from geopackage using GDAL operations.
 
-    if os.path.exists(dest_tif):
-        logging.debug(f"Destination file {dest_tif} already exists. Skipping processing.")
+    Args:
+        tif_path: Path to reference TIFF file
+        tmp_dir: Temporary directory for processing
+        gpkg_path: Path to input geopackage file
+        dest_dir: Destination directory for output file
+    """
+    tmp_tif = tmp_dir / "tmp_domain.tif"
+    dest_tif = dest_dir / "domain.tif"
+
+    if dest_tif.exists():
+        logging.debug(f"Domain file {dest_tif} exists. Skipping processing.")
         return
 
     # create a temporary raster with same extents as all other to burn xs_concave_hull
@@ -150,98 +158,110 @@ def create_domain_tif(tif_path, tmp_dir, gpkg_path, dest_dir) -> None:
         raise RuntimeError(f"gdal_translate failed for {dest_tif}")
 
 
-def fim_worker(args):
-    tif_path, library_dir, library_extent_dir = args
+def fim_worker(args: tuple) -> None:
+    """
+    Worker function for processing FIM extent files.
+
+    Args:
+        args: Tuple containing (tif_path, library_dir, library_extent_dir)
+    """
+    tif_path, library_dir, library_extent_dir = (Path(p) for p in args)
     try:
         dest_dir = Path(tif_path.replace(library_dir, library_extent_dir)).parent
-        if not os.path.exists(dest_dir):
-            os.makedirs(dest_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
 
         with tempfile.TemporaryDirectory() as tmp_dir:
-            create_extent_tif(tif_path, tmp_dir, dest_dir)
+            create_extent_tif(tif_path, Path(tmp_dir), dest_dir)
     except Exception as e:
         logging.error(f"Error processing {tif_path}: {str(e)}")
 
 
-def domain_worker(args):
+def domain_worker(args: tuple) -> None:
+    """
+    Worker function for processing model domain files.
+
+    Args:
+        args: Tuple containing (reach_id, tif_path, library_extent_dir, submodels_dir)
+    """
     reach_id, tif_path, library_extent_dir, submodels_dir = args
     try:
+        tif_path = Path(tif_path)
+        gpkg_path = Path(submodels_dir) / reach_id / f"{reach_id}.gpkg"
+        dest_dir = Path(library_extent_dir) / reach_id
 
-        gpkg_path = os.path.join(submodels_dir, reach_id, f"{reach_id}.gpkg")
-
-        if os.path.exists(gpkg_path):
-            dest_dir = os.path.join(library_extent_dir, reach_id)
-            if not os.path.exists(dest_dir):
-                os.makedirs(dest_dir)
-
+        if gpkg_path.exists():
+            dest_dir.mkdir(parents=True, exist_ok=True)
             with tempfile.TemporaryDirectory() as tmp_dir:
-                create_domain_tif(tif_path, tmp_dir, gpkg_path, dest_dir)
+                create_domain_tif(tif_path, Path(tmp_dir), gpkg_path, dest_dir)
         else:
-            logging.error(f"No corresponding geopackage found for {tif_path}")
-
+            logging.error(f"Missing geopackage for reach {reach_id}: {gpkg_path}")
     except Exception as e:
-        logging.error(f"Error processing domain: {str(e)}")
+        logging.error(f"Error processing domain {reach_id}: {str(e)}", exc_info=True)
 
 
-def get_all_tif_paths(src_dir):
-    tif_paths = []
-    for root, _, files in os.walk(src_dir):
-        for file in files:
-            if file.endswith(".tif"):
-                tif_paths.append(os.path.join(root, file))
-    return tif_paths
+def get_all_tif_paths(src_dir: Path) -> List[Path]:
+    """
+    Get all TIFF file paths recursively from source directory.
+
+    Args:
+        src_dir: Root directory to search
+
+    Returns:
+        List of Path objects for found TIFF files
+    """
+    return list(src_dir.rglob("*.tif"))
 
 
-def get_reachid_tif_map(tif_paths):
-    results = {}
-    for tif_path in tif_paths:
-        # Extract the reach ID from the file name
-        reach_id = Path(tif_path).parents[1].name
-        if reach_id not in results:
-            results[reach_id] = tif_path
-    return results
+def get_reachid_tif_map(tif_paths: List[Path]) -> Dict[str, Path]:
+    """
+    Create mapping of reach IDs to representative TIFF paths.
+
+    Args:
+        tif_paths: List of TIFF file paths
+
+    Returns:
+        Dictionary mapping reach IDs to TIFF paths
+    """
+    return {str(path.parent.parent.name): path for path in tif_paths}
 
 
-def create_extent_lib(collection: Type[CollectionData], print_progress=False):
-    # Assign local variables from CollectionData Object
-    library_dir = collection.library_dir
-    extent_library_dir = collection.extent_library_dir
-    submodels_dir = collection.submodels_dir
-    OPTIMUM_PARALLEL_PROCESS_COUNT = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+def create_extent_lib(collection: Type[CollectionData], print_progress: bool = False) -> None:
+    """
+    Main function to create extent library from depth library.
+
+    Args:
+        collection: CollectionData object with configuration
+        print_progress: Whether to display progress bar
+    """
+    library_dir = Path(collection.library_dir)
+    extent_library_dir = Path(collection.extent_library_dir)
+    submodels_dir = Path(collection.submodels_dir)
+    process_count = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
 
     setup_gdal_environment(collection)
-    create_mirrored_structure(library_dir, extent_library_dir)
 
-    def update_progress():
-        progress = int((processed_files / total_files) * 100)
-        sys.stdout.write(f"\rProgress: [{ '#' * progress + '-' * (100 - progress)}] {progress}%")
-        sys.stdout.flush()
-
-    # create fims
+    # Process FIM extent files
     tif_paths = get_all_tif_paths(library_dir)
-    total_files = len(tif_paths)
-    processed_files = 0
-
-    with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
-        for _ in pool.imap_unordered(fim_worker, [(path, library_dir, extent_library_dir) for path in tif_paths]):
-            processed_files += 1
-            if print_progress:
-                update_progress()
-    if print_progress:
-        sys.stdout.write("\n")
-
-    # create domains
-    reachid_tif_map = get_reachid_tif_map(tif_paths)
-    total_files = len(reachid_tif_map)
-    processed_files = 0
-
-    with multiprocessing.Pool(OPTIMUM_PARALLEL_PROCESS_COUNT) as pool:
-        for _ in pool.imap_unordered(
-            domain_worker,
-            [(reach_id, tif_path, extent_library_dir, submodels_dir) for reach_id, tif_path in reachid_tif_map.items()],
+    with multiprocessing.Pool(process_count) as pool:
+        for i, _ in enumerate(
+            pool.imap_unordered(fim_worker, [(p, library_dir, extent_library_dir) for p in tif_paths]), 1
         ):
-            processed_files += 1
             if print_progress:
-                update_progress()
+                sys.stdout.write(f"\rProcessing FIM: {i}/{len(tif_paths)}")
+                sys.stdout.flush()
+
+    # Process domain files
+    reach_map = get_reachid_tif_map(tif_paths)
+    with multiprocessing.Pool(process_count) as pool:
+        for i, _ in enumerate(
+            pool.imap_unordered(
+                domain_worker, [(rid, p, extent_library_dir, submodels_dir) for rid, p in reach_map.items()]
+            ),
+            1,
+        ):
+            if print_progress:
+                sys.stdout.write(f"\rProcessing domains: {i}/{len(reach_map)}")
+                sys.stdout.flush()
+
     if print_progress:
-        sys.stdout.write("\n")
+        print("\nProcessing complete")
