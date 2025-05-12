@@ -1,7 +1,10 @@
 """
 Create Extent library from Depth library using GDAL operations.
 After profiling, it is found that the optimum parallel process count is same number as CPU cores.
+But the performance max out at 16 cores.
 This script is compute intensive and not memory intensive.
+Todo: On windows when working with VSI, update the script to use .as_posix().
+On windows max cpu count can be 61
 """
 
 import argparse
@@ -54,7 +57,7 @@ def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
         logging.error(f"Temporary file {tmp_tif} not created!")
         raise FileNotFoundError(f"{tmp_tif} not created")
 
-    # Translate to COG, COG format can't be created with gdal_calc
+    # Translate to COG, COG format can't be created with gdal_calc dircetly
     gdal_translate_cmd = [
         "gdal_translate",
         "-of",
