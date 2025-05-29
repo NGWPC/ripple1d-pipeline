@@ -16,3 +16,4 @@
 
 # Virtual Environments
 *.venv
+.vscode/settings.json
