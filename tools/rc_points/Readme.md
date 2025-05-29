@@ -1,4 +1,4 @@
-### Desing Notes
+### Design Notes
 1. We are taking upstream XS because it is least affected by constant Normal slope being used, also it is always on the reach per Ripple design
 1. Doing one by one because the code is simpler and crs can be different
 1. If we encounter multiple points we are taking first point for simplicity
