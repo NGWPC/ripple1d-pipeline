@@ -193,13 +193,13 @@ def run_qc(collection_name, execute_flows2fim=False):
     logging.info("<<<<< Finished Creating TimedOut Job Report")
 
     if execute_flows2fim:
-        logging.info("Running copy_qc_map step >>>>>")
-        copy_qc_map(collection)
-        logging.info("<<<<< Finished copy_qc_map step")
-
         logging.info("Starting run_flows2fim step >>>>>>")
         run_flows2fim(collection)
         logging.info("<<<<< Finished run_flows2fim step")
+
+        logging.info("Running copy_qc_map step >>>>>")
+        copy_qc_map(collection)
+        logging.info("<<<<< Finished copy_qc_map step")
 
 
 def run_pipeline(collection: str):
