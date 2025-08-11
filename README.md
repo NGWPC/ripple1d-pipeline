@@ -52,7 +52,7 @@ Compatible with ripple1d==0.10.4. Use repository tags to get older versions.
    - Use your terminal to navigate to the root folder of the repository:
    - **Windows:**
      ```Powershell
-     cd d\ <path\to\your\repo from step 1>
+     cd /d <path\to\your\repo from step 1>
      ```
    - **Linux:**
      ```bash
@@ -69,7 +69,7 @@ Compatible with ripple1d==0.10.4. Use repository tags to get older versions.
 The Ripple1d server must be installed and ran on a windows machine, with HEC-Ras installed.   
    - Create ripple1d virtual environment, activate, install ripple1d, start ripple1d.
       ```Powershell
-      cd d\ C:\venvs
+      cd /d C:\venvs
       python3 -m venv ripple1d_<ripple1d version>
       cd ripple1d_<ripple1d version>
       .\Scripts\activate
