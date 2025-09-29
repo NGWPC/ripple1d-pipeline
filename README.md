@@ -1,7 +1,7 @@
 # Ripple1D Pipeline
  
 Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/Dewberry/ripple1d) to generate FIMs and rating curves. 
-Compatible with ripple1d==0.10.3. Use repository tags to get older versions.
+Compatible with ripple1d==0.10.4. Use repository tags to get older versions.
 
 ## Contents
 - [Initialization/Pre Processing source code](src/setup)
@@ -52,7 +52,7 @@ Compatible with ripple1d==0.10.3. Use repository tags to get older versions.
    - Use your terminal to navigate to the root folder of the repository:
    - **Windows:**
      ```Powershell
-     cd d\ <path\to\your\repo from step 1>
+     cd /d <path\to\your\repo from step 1>
      ```
    - **Linux:**
      ```bash
@@ -69,7 +69,7 @@ Compatible with ripple1d==0.10.3. Use repository tags to get older versions.
 The Ripple1d server must be installed and ran on a windows machine, with HEC-Ras installed.   
    - Create ripple1d virtual environment, activate, install ripple1d, start ripple1d.
       ```Powershell
-      cd d\ C:\venvs
+      cd /d C:\venvs
       python3 -m venv ripple1d_<ripple1d version>
       cd ripple1d_<ripple1d version>
       .\Scripts\activate
@@ -102,7 +102,7 @@ The easiest way is to download the [OSGeo4W network installer](https://download.
 
 ## **Configuration**
 ### Environment file
-An `example.env` file is included within the root directory. First, make a copy of `example.env`, naming it `.env`. Then, update the line `AWS_PROFILE=` to be the same as what is listed in your `~/.aws/config` file. For example, if your config file reads`[profile your_profile_name]`, the `.env` file should read `AWS_PROFILE=your_profile_name`.
+An `example.env` file is included within the root directory. First, make a copy of `example.env`, naming it `.env`. Then, update the values in the `.env` file.
 
 ### Configuration file 
 
