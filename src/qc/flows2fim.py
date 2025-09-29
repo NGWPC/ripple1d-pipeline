@@ -24,7 +24,7 @@ def run_flows2fim(
     collection: Type[CollectionData],
     output_subfolder: str = "qc",
     start_reaches: List = [],
-    fim_format: str = "tif",
+    fim_format: str = "COG",
 ) -> None:
     """
     Create control CSVs and FIM outputs for each flow file in the flow_files_dir.
@@ -38,7 +38,7 @@ def run_flows2fim(
             # start_file (str): Name of flows to fim start file.
         output_subfolder (str): Subfolder where outputs will be placed.
         start_reaches (List): List of reaches to start.
-        fim_format (str): Output format for FIM files ('tif' or 'vrt').
+        fim_format (str): Output format for FIM files ('GTiff' or 'VRT' or 'COG').
     """
     output_dir = collection.root_dir
     library_path = collection.library_dir
@@ -58,7 +58,7 @@ def run_flows2fim(
             flow_file_path = os.path.join(flow_files_dir, flow_file)
             basename = os.path.splitext(flow_file)[0]
             control_csv = os.path.join(output_subfolder_path, f"{basename.replace('flows', 'controls')}.csv")
-            fim_output = os.path.join(output_subfolder_path, f"{basename.replace('flows', 'fim')}.{fim_format}")
+            fim_output = os.path.join(output_subfolder_path, f"{basename.replace('flows', 'fim')}.{"vrt" if fim_format == "VRT" else "tif"}")
 
             # Generate control CSV
             cmd_controls = [

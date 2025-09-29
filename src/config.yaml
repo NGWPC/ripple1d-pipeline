@@ -1,6 +1,6 @@
 ---
 
-RIPPLE1D_VERSION: 0.10.3
+RIPPLE1D_VERSION: 0.10.4
 
 paths:
   COLLECTIONS_ROOT_DIR: C:\collections
@@ -31,6 +31,8 @@ processing_steps:
         file_name: *SOURCE_NETWORK
         version: *SOURCE_NETWORK_VERSION
         type: *SOURCE_NETWORK_TYPE
+      min_flow_multiplier: 0.9
+      max_flow_multiplier: 1.5
 
   extract_submodel:
     domain: "reach"
@@ -40,6 +42,8 @@ processing_steps:
       model_name: "{model_name}"
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       nwm_id: "{nwm_reach_id}"
+      min_flow_multiplier_ras: 1
+      max_flow_multiplier_ras: 1.2
 
   create_ras_terrain:
     domain: "reach"
@@ -113,6 +117,7 @@ processing_steps:
       resolution_units: *RESOLUTION_UNITS
       library_directory: "{library_directory}"
       cleanup: True
+      cog: True
 
 flows2fim:
   FLOW_FILES_DIR: C:\reference_data\flow_files
