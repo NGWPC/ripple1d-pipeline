@@ -8,6 +8,7 @@ paths:
   S3_UPLOAD_PREFIX: "" # Exclude trailing slash of S3 Bucket
   S3_UPLOAD_FAILED_PREFIX: "" # Exclude trailing slash of S3 Bucket
   MONITORING_DB_PATH: Z:\shared\monitoring.sqlite
+  BRIDGE_TILE_INDEX_PATH: s3://fimc-data/benchmark/stac-bench-cat/assets/bridge_index.parquet
 
 ripple_settings:
   RAS_VERSION: &RAS_VERSION "631"

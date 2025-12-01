@@ -26,7 +26,7 @@ class ConflateModelStepProcessor(BaseModelStepProcessor):
 
     def _execute_single_request(self, model: Model) -> JobRecord:
         """Single request implementation with retries"""
-        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config["processing_steps"][self.process_name]["api_process_name"]}/execution"
+        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config['processing_steps'][self.process_name]['api_process_name']}/execution"
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_model_payload(template, model.id, model.name)
 
