@@ -25,7 +25,7 @@ class GenericReachStepProcessor(BaseReachStepProcessor):
 
     def _execute_single_request(self, reach: Reach) -> Tuple:
         """Single request implementation"""
-        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config["processing_steps"][self.process_name]["api_process_name"]}/execution"
+        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config['processing_steps'][self.process_name]['api_process_name']}/execution"
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id, reach.model.id, reach.model.name)
 

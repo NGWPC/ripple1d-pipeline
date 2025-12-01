@@ -48,7 +48,7 @@ class CollectionData:
         self.f2f_start_file = os.path.join(self.root_dir, "start_reaches.csv")
         self.failed_jobs_report_path = os.path.join(self.root_dir, "failed_jobs_report.xlsx")
         self.timedout_jobs_report_path = os.path.join(self.root_dir, "timedout_jobs_report.xlsx")
-
+        self.bridge_tile_index_path = self.config["paths"].get("BRIDGE_TILE_INDEX_PATH", "")
 
     def create_folders(self):
         """Create folders for source models, submodels, and library."""
