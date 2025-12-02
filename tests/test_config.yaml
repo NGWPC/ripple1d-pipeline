@@ -2,7 +2,7 @@ RIPPLE1D_VERSION: 0.10.4
 database:
   DB_CONN_TIMEOUT: 30
 execution:
-  OPTIMUM_PARALLEL_PROCESS_COUNT: 22
+  OPTIMUM_PARALLEL_PROCESS_COUNT: 7
   stop_on_error: false
 flows2fim:
   FLOWS2FIM_BIN_PATH: C:\OSGeo4W\bin\flows2fim.exe

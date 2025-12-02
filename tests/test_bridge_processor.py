@@ -17,7 +17,7 @@ from src.setup.collection_data import CollectionData
 # === Configuration ===
 MOCK_DATA_DIR = Path(__file__).parent.parent / "data" / "mock"
 S3_PROFILE = "fimbucket"
-S3_COLLECTION = "s3://fimc-data/ripple/fim_100_domain/collections/mip_18070202"
+S3_COLLECTION = "s3://fimc-data/ripple/fim_100_domain/collections/mip_18060013"
 S3_BRIDGE_INDEX = "s3://fimc-data/benchmark/stac-bench-cat/assets/bridge_index.parquet"
 
 
@@ -144,17 +144,18 @@ def test_bridge_processor():
     print("=" * 50)
     result = process_bridges(collection, print_progress=True)
 
-    # Display files that had bridges masked
+    # Display files that had actual depth values modified
     print("\n" + "-" * 50)
-    print(f"Files with bridges masked: {len(result['with_bridges'])}")
+    print(f"Files with depth values modified: {len(result['modified'])}")
     print("-" * 50)
-    if result["with_bridges"]:
-        for f in result["with_bridges"]:
+    if result["modified"]:
+        for f in result["modified"]:
             print(f"  {f}")
     else:
         print("  (none)")
 
-    print(f"\nFiles without bridges: {len(result['without_bridges'])}")
+    print(f"\nFiles with bridge intersections: {len(result['with_bridges'])}")
+    print(f"Files without bridge intersections: {len(result['without_bridges'])}")
 
     print("\n" + "=" * 50)
     print("Step 2: Running extent library creation...")

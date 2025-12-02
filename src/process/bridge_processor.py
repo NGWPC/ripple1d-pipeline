@@ -9,10 +9,11 @@ Processing Steps:
 1. Query bridge tile index for intersecting bridges
 2. If intersection: load depth, DEM, and bridge rasters
 3. Align all rasters to depth grid
-4. Calculate WSE = DEM_elevation + depth
-5. Adjust depth based on bridge comparison:
-   - If bridge > WSE (dry): set depth = 0
-   - If bridge < WSE (submerged): set depth = WSE - bridge_elevation
+4. Convert bridge elevations from meters to feet (DEM/depth are in feet)
+5. Calculate WSE = DEM_elevation + depth (only for valid depth pixels, nodata=-9999)
+6. Adjust depth based on bridge comparison:
+   - If bridge > WSE (above water): set depth = nodata (no flooding under bridge)
+   - If bridge <= WSE (submerged): set depth = WSE - bridge_elevation (water above deck)
 """
 
 import logging
@@ -164,7 +165,7 @@ def align_raster_to_reference(
 
 def process_depth_with_bridges(
     depth_path: Path, dem_path: Path, bridge_paths: List[str], output_path: Path, temp_dir: Path
-) -> bool:
+) -> Tuple[bool, int]:
     """
     Process a single depth TIF with bridge masking.
 
@@ -176,14 +177,14 @@ def process_depth_with_bridges(
         temp_dir: Temporary directory for intermediate files
 
     Returns:
-        True if successful
+        Tuple of (success, pixels_modified)
     """
     try:
         # Open depth raster as reference
         depth_ds = gdal.Open(str(depth_path))
         if depth_ds is None:
             logging.error(f"Failed to open depth raster: {depth_path}")
-            return False
+            return (False, 0)
 
         # Read depth data
         depth_band = depth_ds.GetRasterBand(1)
@@ -194,7 +195,7 @@ def process_depth_with_bridges(
         aligned_dem_path = str(temp_dir / "aligned_dem.tif")
         if not align_raster_to_reference(str(dem_path), depth_ds, aligned_dem_path):
             depth_ds = None
-            return False
+            return (False, 0)
 
         dem_ds = gdal.Open(aligned_dem_path)
         dem_data = dem_ds.GetRasterBand(1).ReadAsArray().astype(np.float32)
@@ -219,6 +220,12 @@ def process_depth_with_bridges(
             bridge_nodata = bridge_band.GetNoDataValue()
             bridge_ds = None
 
+            # Convert bridge elevations from meters to feet
+            METERS_TO_FEET = 3.28084
+            bridge_data = bridge_data * METERS_TO_FEET
+            if bridge_nodata is not None:
+                bridge_nodata = bridge_nodata * METERS_TO_FEET
+
             # Create mask for valid bridge pixels
             if bridge_nodata is not None:
                 valid_bridge = ~np.isclose(bridge_data, bridge_nodata)
@@ -230,14 +237,16 @@ def process_depth_with_bridges(
             np.copyto(combined_bridge_elev, bridge_data, where=valid_bridge)
 
         # Apply bridge masking algorithm
+        pixels_modified = 0
         if np.any(combined_bridge_mask):
-            # Calculate WSE where we have depth
-            has_depth = depth_data > 0
+            # Calculate WSE where we have valid depth (nodata is -9999, not 0)
             if depth_nodata is not None:
-                has_depth &= ~np.isclose(depth_data, depth_nodata)
+                has_valid_depth = ~np.isclose(depth_data, depth_nodata)
+            else:
+                has_valid_depth = ~np.isnan(depth_data)
 
-            # Only process pixels that have both bridge and depth
-            process_mask = combined_bridge_mask & has_depth
+            # Only process pixels that have both bridge and valid depth
+            process_mask = combined_bridge_mask & has_valid_depth
 
             if np.any(process_mask):
                 # Calculate Water Surface Elevation
@@ -247,12 +256,18 @@ def process_depth_with_bridges(
                 delta = wse - combined_bridge_elev
 
                 # Apply masking rules:
-                # - If bridge > WSE (delta < 0): bridge is dry, set depth = 0
-                # - If bridge < WSE (delta > 0): bridge submerged, depth = delta
-                bridge_dry = process_mask & (delta < 0)
+                # - If bridge > WSE (delta < 0): bridge is above water, set depth = nodata
+                # - If bridge <= WSE (delta >= 0): bridge submerged, depth = WSE - bridge_elev
+                bridge_above_water = process_mask & (delta < 0)
                 bridge_submerged = process_mask & (delta >= 0)
 
-                depth_data[bridge_dry] = 0
+                # Track pixels that will be modified
+                pixels_modified = int(np.sum(bridge_above_water) + np.sum(bridge_submerged))
+
+                # Set nodata for pixels where bridge is above water surface
+                nodata_value = depth_nodata if depth_nodata is not None else -9999.0
+                depth_data[bridge_above_water] = nodata_value
+                # When bridge is submerged, depth is water height above the bridge deck
                 depth_data[bridge_submerged] = delta[bridge_submerged]
 
         # Write output as COG
@@ -278,11 +293,11 @@ def process_depth_with_bridges(
         cog_options = gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"])
         gdal.Translate(str(output_path), temp_output, options=cog_options)
 
-        return True
+        return (True, pixels_modified)
 
     except Exception as e:
         logging.error(f"Error processing {depth_path}: {e}", exc_info=True)
-        return False
+        return (False, 0)
 
 
 def copy_as_cog(src_path: Path, dest_path: Path) -> bool:
@@ -334,7 +349,7 @@ def get_dem_path_for_reach(reach_id: str, submodels_dir: Path) -> Optional[Path]
     return None
 
 
-def bridge_worker(args: tuple) -> Tuple[str, bool]:
+def bridge_worker(args: tuple) -> Tuple[str, bool, int]:
     """
     Worker function for processing a single depth TIF.
 
@@ -342,7 +357,7 @@ def bridge_worker(args: tuple) -> Tuple[str, bool]:
         args: Tuple of (depth_path, dem_path, bridge_paths, output_path, temp_base_dir)
 
     Returns:
-        Tuple of (depth_path_str, success)
+        Tuple of (depth_path_str, success, pixels_modified)
     """
     depth_path, dem_path, bridge_paths, output_path, temp_base_dir = args
 
@@ -353,12 +368,15 @@ def bridge_worker(args: tuple) -> Tuple[str, bool]:
 
         if bridge_paths:
             # Process with bridge masking
-            success = process_depth_with_bridges(depth_path, dem_path, bridge_paths, output_path, temp_path)
+            success, pixels_modified = process_depth_with_bridges(
+                depth_path, dem_path, bridge_paths, output_path, temp_path
+            )
         else:
             # No bridges - just copy as COG
             success = copy_as_cog(depth_path, output_path)
+            pixels_modified = 0
 
-    return (str(depth_path), success)
+    return (str(depth_path), success, pixels_modified)
 
 
 def process_bridges(collection: "CollectionData", print_progress: bool = False) -> Dict[str, any]:
@@ -381,8 +399,9 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
             - total: Total number of TIFs processed
             - success: Number of successful processes
             - failed: Number of failed processes
-            - with_bridges: List of file paths that had bridges masked
+            - with_bridges: List of file paths that had bridge intersections
             - without_bridges: List of file paths with no bridge intersections
+            - modified: List of file paths where depth values were actually modified
     """
     library_dir = Path(collection.library_dir)
     submodels_dir = Path(collection.submodels_dir)
@@ -463,11 +482,14 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
     # Process with multiprocessing
     success_count = 0
     fail_count = 0
+    files_modified = []
 
     with multiprocessing.Pool(process_count) as pool:
-        for i, (path, success) in enumerate(pool.imap_unordered(bridge_worker, worker_args), 1):
+        for i, (path, success, pixels_modified) in enumerate(pool.imap_unordered(bridge_worker, worker_args), 1):
             if success:
                 success_count += 1
+                if pixels_modified > 0:
+                    files_modified.append(path)
             else:
                 fail_count += 1
                 logging.error(f"Failed to process: {path}")
@@ -498,4 +520,5 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
         "failed": fail_count,
         "with_bridges": files_with_bridges,
         "without_bridges": files_without_bridges,
+        "modified": files_modified,
     }
