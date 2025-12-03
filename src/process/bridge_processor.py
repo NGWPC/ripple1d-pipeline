@@ -3,17 +3,7 @@ Bridge processor module for masking depth library TIFs based on bridge locations
 
 This module processes depth grids to adjust water depth values where bridges
 are located. The algorithm calculates Water Surface Elevation (WSE) and compares
-it to bridge deck elevations to determine if water flows over or under bridges.
-
-Processing Steps:
-1. Query bridge tile index for intersecting bridges
-2. If intersection: load depth, DEM, and bridge rasters
-3. Align all rasters to depth grid
-4. Convert bridge elevations from meters to feet (DEM/depth are in feet)
-5. Calculate WSE = DEM_elevation + depth (only for valid depth pixels, nodata=-9999)
-6. Adjust depth based on bridge comparison:
-   - If bridge > WSE (above water): set depth = nodata (no flooding under bridge)
-   - If bridge <= WSE (submerged): set depth = WSE - bridge_elevation (water above deck)
+it to bridge elevations to determine if bridges are submerged or not.
 """
 
 import logging
@@ -21,12 +11,14 @@ import multiprocessing
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 from osgeo import gdal
+from shapely.geometry import box
 
 from .extent_library import setup_gdal_environment
 
@@ -36,31 +28,10 @@ if TYPE_CHECKING:
 # Enable GDAL exceptions
 gdal.UseExceptions()
 
-# S3 storage options for pandas
-S3_STORAGE_OPTIONS = {"profile": "fimbucket"}
-
-
-def load_bridge_index(bridge_index_path: str) -> pd.DataFrame:
-    """
-    Load the bridge tile index from S3 or local path.
-
-    Args:
-        bridge_index_path: Path to bridge index parquet (S3 or local)
-
-    Returns:
-        DataFrame with bridge index data
-    """
-    if bridge_index_path.startswith("s3://"):
-        return pd.read_parquet(bridge_index_path, storage_options=S3_STORAGE_OPTIONS)
-    return pd.read_parquet(bridge_index_path)
-
 
 def get_raster_bounds(tif_path: Path) -> Tuple[float, float, float, float]:
     """
     Get the bounding box of a raster file.
-
-    Args:
-        tif_path: Path to the raster file
 
     Returns:
         Tuple of (xmin, ymin, xmax, ymax)
@@ -77,42 +48,6 @@ def get_raster_bounds(tif_path: Path) -> Tuple[float, float, float, float]:
 
     ds = None
     return (xmin, ymin, xmax, ymax)
-
-
-def boxes_intersect(box1: Tuple[float, float, float, float], box2: Dict[str, float]) -> bool:
-    """
-    Check if two bounding boxes intersect.
-
-    Args:
-        box1: Tuple of (xmin, ymin, xmax, ymax)
-        box2: Dict with keys xmin, ymin, xmax, ymax
-
-    Returns:
-        True if boxes intersect
-    """
-    return not (
-        box1[2] < box2["xmin"]  # box1 xmax < box2 xmin
-        or box1[0] > box2["xmax"]  # box1 xmin > box2 xmax
-        or box1[3] < box2["ymin"]  # box1 ymax < box2 ymin
-        or box1[1] > box2["ymax"]  # box1 ymin > box2 ymax
-    )
-
-
-def query_intersecting_bridges(
-    depth_bounds: Tuple[float, float, float, float], bridge_index: pd.DataFrame
-) -> pd.DataFrame:
-    """
-    Query the bridge index for bridges that intersect the depth raster bounds.
-
-    Args:
-        depth_bounds: Bounding box of depth raster (xmin, ymin, xmax, ymax)
-        bridge_index: DataFrame with bridge tile index
-
-    Returns:
-        DataFrame of intersecting bridges
-    """
-    mask = bridge_index["geometry_bbox"].apply(lambda bbox: boxes_intersect(depth_bounds, bbox))
-    return bridge_index[mask]
 
 
 def align_raster_to_reference(
@@ -163,8 +98,13 @@ def align_raster_to_reference(
         return None
 
 
-def process_depth_with_bridges(
-    depth_path: Path, dem_path: Path, bridge_paths: List[str], output_path: Path, temp_dir: Path
+def apply_bridge_mask(
+    depth_path: Path,
+    dem_path: Path,
+    bridge_paths: List[str],
+    output_path: Path,
+    temp_dir: Path,
+    bridge_elev_conv_factor: float,
 ) -> Tuple[bool, int]:
     """
     Process a single depth TIF with bridge masking.
@@ -175,23 +115,22 @@ def process_depth_with_bridges(
         bridge_paths: List of bridge raster paths (can be /vsis3/)
         output_path: Path for output COG
         temp_dir: Temporary directory for intermediate files
+        bridge_elev_conv_factor: Conversion factor for bridge elevations to depth grid units
 
     Returns:
         Tuple of (success, pixels_modified)
     """
     try:
-        # Open depth raster as reference
+        # Using depth raster as reference
         depth_ds = gdal.Open(str(depth_path))
         if depth_ds is None:
             logging.error(f"Failed to open depth raster: {depth_path}")
             return (False, 0)
 
-        # Read depth data
         depth_band = depth_ds.GetRasterBand(1)
         depth_data = depth_band.ReadAsArray().astype(np.float32)
         depth_nodata = depth_band.GetNoDataValue()
 
-        # Align and read DEM
         aligned_dem_path = str(temp_dir / "aligned_dem.tif")
         if not align_raster_to_reference(str(dem_path), depth_ds, aligned_dem_path):
             depth_ds = None
@@ -201,7 +140,6 @@ def process_depth_with_bridges(
         dem_data = dem_ds.GetRasterBand(1).ReadAsArray().astype(np.float32)
         dem_ds = None
 
-        # Process each bridge raster
         combined_bridge_mask = np.zeros(depth_data.shape, dtype=bool)
         combined_bridge_elev = np.full(depth_data.shape, np.nan, dtype=np.float32)
 
@@ -220,57 +158,38 @@ def process_depth_with_bridges(
             bridge_nodata = bridge_band.GetNoDataValue()
             bridge_ds = None
 
-            # Convert bridge elevations from meters to feet
-            METERS_TO_FEET = 3.28084
-            bridge_data = bridge_data * METERS_TO_FEET
-            if bridge_nodata is not None:
-                bridge_nodata = bridge_nodata * METERS_TO_FEET
+            valid_bridge = bridge_data != bridge_nodata
 
-            # Create mask for valid bridge pixels
-            if bridge_nodata is not None:
-                valid_bridge = ~np.isclose(bridge_data, bridge_nodata)
-            else:
-                valid_bridge = ~np.isnan(bridge_data)
+            # Convert bridge elevations to depth grid units
+            bridge_data = bridge_data * bridge_elev_conv_factor
 
             # Update combined bridge data
             combined_bridge_mask |= valid_bridge
             np.copyto(combined_bridge_elev, bridge_data, where=valid_bridge)
 
-        # Apply bridge masking algorithm
+        # bridge masking algorithm
         pixels_modified = 0
         if np.any(combined_bridge_mask):
-            # Calculate WSE where we have valid depth (nodata is -9999, not 0)
-            if depth_nodata is not None:
-                has_valid_depth = ~np.isclose(depth_data, depth_nodata)
-            else:
-                has_valid_depth = ~np.isnan(depth_data)
-
-            # Only process pixels that have both bridge and valid depth
+            # Only Calculate WSE where we have valid depth
+            has_valid_depth = depth_data != depth_nodata
             process_mask = combined_bridge_mask & has_valid_depth
 
             if np.any(process_mask):
-                # Calculate Water Surface Elevation
                 wse = dem_data + depth_data
-
-                # Calculate difference: WSE - bridge_elevation
                 delta = wse - combined_bridge_elev
 
-                # Apply masking rules:
                 # - If bridge > WSE (delta < 0): bridge is above water, set depth = nodata
                 # - If bridge <= WSE (delta >= 0): bridge submerged, depth = WSE - bridge_elev
                 bridge_above_water = process_mask & (delta < 0)
                 bridge_submerged = process_mask & (delta >= 0)
 
-                # Track pixels that will be modified
                 pixels_modified = int(np.sum(bridge_above_water) + np.sum(bridge_submerged))
 
-                # Set nodata for pixels where bridge is above water surface
                 nodata_value = depth_nodata if depth_nodata is not None else -9999.0
                 depth_data[bridge_above_water] = nodata_value
                 # When bridge is submerged, depth is water height above the bridge deck
                 depth_data[bridge_submerged] = delta[bridge_submerged]
 
-        # Write output as COG
         driver = gdal.GetDriverByName("GTiff")
         temp_output = str(temp_dir / "temp_output.tif")
 
@@ -288,7 +207,6 @@ def process_depth_with_bridges(
         out_ds = None
         depth_ds = None
 
-        # Convert to COG
         output_path.parent.mkdir(parents=True, exist_ok=True)
         cog_options = gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"])
         gdal.Translate(str(output_path), temp_output, options=cog_options)
@@ -300,80 +218,31 @@ def process_depth_with_bridges(
         return (False, 0)
 
 
-def copy_as_cog(src_path: Path, dest_path: Path) -> bool:
-    """
-    Copy a raster file to destination as COG format.
-
-    Args:
-        src_path: Source raster path
-        dest_path: Destination path
-
-    Returns:
-        True if successful
-    """
-    try:
-        dest_path.parent.mkdir(parents=True, exist_ok=True)
-        cog_options = gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"])
-        result = gdal.Translate(str(dest_path), str(src_path), options=cog_options)
-        return result is not None
-    except Exception as e:
-        logging.error(f"Error copying {src_path} to COG: {e}")
-        return False
-
-
-def get_dem_path_for_reach(reach_id: str, submodels_dir: Path) -> Optional[Path]:
-    """
-    Get the DEM path for a specific reach from the submodels directory.
-
-    Args:
-        reach_id: The reach ID
-        submodels_dir: Path to submodels directory
-
-    Returns:
-        Path to DEM TIF or None if not found
-    """
-    terrain_dir = submodels_dir / reach_id / "Terrain"
-    if not terrain_dir.exists():
-        return None
-
-    # Look for the DEM TIF file
-    dem_files = list(terrain_dir.glob("*.seamless_3dep_dem_3m_5070.tif"))
-    if dem_files:
-        return dem_files[0]
-
-    # Fallback: look for any .tif that's not .hdf
-    tif_files = [f for f in terrain_dir.glob("*.tif") if ".hdf" not in f.name]
-    if tif_files:
-        return tif_files[0]
-
-    return None
-
-
 def bridge_worker(args: tuple) -> Tuple[str, bool, int]:
     """
     Worker function for processing a single depth TIF.
 
     Args:
-        args: Tuple of (depth_path, dem_path, bridge_paths, output_path, temp_base_dir)
+        args: Tuple of (depth_path, dem_path, bridge_paths, output_path, temp_base_dir, bridge_elev_conv_factor)
 
     Returns:
         Tuple of (depth_path_str, success, pixels_modified)
     """
-    depth_path, dem_path, bridge_paths, output_path, temp_base_dir = args
-
-    import tempfile
+    depth_path, dem_path, bridge_paths, output_path, temp_base_dir, bridge_elev_conv_factor = args
 
     with tempfile.TemporaryDirectory(dir=temp_base_dir) as temp_dir:
         temp_path = Path(temp_dir)
 
         if bridge_paths:
-            # Process with bridge masking
-            success, pixels_modified = process_depth_with_bridges(
-                depth_path, dem_path, bridge_paths, output_path, temp_path
+            success, pixels_modified = apply_bridge_mask(
+                depth_path, dem_path, bridge_paths, output_path, temp_path, bridge_elev_conv_factor
             )
         else:
-            # No bridges - just copy as COG
-            success = copy_as_cog(depth_path, output_path)
+            # No bridges so just copy as COG
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            cog_options = gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"])
+            result = gdal.Translate(str(output_path), str(depth_path), options=cog_options)
+            success = result is not None
             pixels_modified = 0
 
     return (str(depth_path), success, pixels_modified)
@@ -407,35 +276,31 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
     process_count = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+    bridge_elev_conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
 
     setup_gdal_environment(collection)
 
     if print_progress:
-        print(f"Loading bridge index from: {bridge_index_path}")
+        sys.stdout.write(f"Loading bridge index from: {bridge_index_path}\n")
 
-    # Load bridge index
-    bridge_index = load_bridge_index(bridge_index_path)
+    bridge_index = pd.read_parquet(bridge_index_path)
     if print_progress:
-        print(f"Loaded {len(bridge_index)} bridge records")
+        sys.stdout.write(f"Loaded {len(bridge_index)} bridge records\n")
 
-    # Rename library to temp
     library_temp_dir = library_dir.parent / "library_temp"
     if library_temp_dir.exists():
         shutil.rmtree(library_temp_dir)
 
     if print_progress:
-        print(f"Renaming {library_dir} to {library_temp_dir}")
+        sys.stdout.write(f"Renaming {library_dir} to {library_temp_dir}\n")
     shutil.move(str(library_dir), str(library_temp_dir))
 
-    # Create new library directory
     library_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get all depth TIFs
     depth_tifs = list(library_temp_dir.rglob("*.tif"))
     if print_progress:
-        print(f"Found {len(depth_tifs)} depth TIFs to process")
+        sys.stdout.write(f"Found {len(depth_tifs)} depth TIFs to process\n")
 
-    # Prepare worker arguments and track which files have bridges
     worker_args = []
     files_with_bridges = []
     files_without_bridges = []
@@ -444,28 +309,28 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
         # The reach_id is the parent of the z_xxx folder
         reach_id = depth_path.parent.parent.name
 
-        # Get DEM path for this reach
-        dem_path = get_dem_path_for_reach(reach_id, submodels_dir)
-        if dem_path is None:
-            logging.warning(f"No DEM found for reach {reach_id}, skipping")
-            continue
+        terrain_dir = submodels_dir / reach_id / "Terrain"
+        dem_files = list(terrain_dir.glob("*.seamless_3dep_dem_3m_5070.tif"))
+        if not dem_files:
+            raise FileNotFoundError(f"No DEM found for reach {reach_id} in {terrain_dir}")
+        dem_path = dem_files[0]
 
-        # Get depth raster bounds and query for intersecting bridges
         try:
             depth_bounds = get_raster_bounds(depth_path)
-            intersecting_bridges = query_intersecting_bridges(depth_bounds, bridge_index)
-            bridge_paths = intersecting_bridges["location"].tolist() if len(intersecting_bridges) > 0 else []
+            raster_box = box(*depth_bounds)
+            mask = bridge_index["geometry_bbox"].apply(
+                lambda bbox: raster_box.intersects(box(bbox["xmin"], bbox["ymin"], bbox["xmax"], bbox["ymax"]))
+            )
+            bridge_paths = bridge_index[mask]["location"].tolist()
         except Exception as e:
             logging.error(f"Error querying bridges for {depth_path}: {e}")
             bridge_paths = []
 
-        # Track which files have bridges
         if bridge_paths:
             files_with_bridges.append(str(depth_path))
         else:
             files_without_bridges.append(str(depth_path))
 
-        # Calculate output path (same relative structure)
         relative_path = depth_path.relative_to(library_temp_dir)
         output_path = library_dir / relative_path
 
@@ -476,10 +341,10 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
                 bridge_paths,
                 output_path,
                 str(library_dir.parent),  # temp base dir
+                bridge_elev_conv_factor,
             )
         )
 
-    # Process with multiprocessing
     success_count = 0
     fail_count = 0
     files_modified = []
@@ -502,17 +367,16 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
 
     if print_progress:
         sys.stdout.write("\n")
-        print(f"Bridge processing complete: {success_count} succeeded, {fail_count} failed")
+        sys.stdout.write(f"Bridge processing complete: {success_count} succeeded, {fail_count} failed\n")
 
-    # Clean up temp directory
     if fail_count == 0:
         if print_progress:
-            print(f"Removing temporary directory: {library_temp_dir}")
+            sys.stdout.write(f"Removing temporary directory: {library_temp_dir}\n")
         shutil.rmtree(library_temp_dir)
     else:
         logging.warning(f"Keeping {library_temp_dir} due to {fail_count} failures")
         if print_progress:
-            print(f"WARNING: Keeping {library_temp_dir} due to failures")
+            sys.stdout.write(f"WARNING: Keeping {library_temp_dir} due to failures\n")
 
     return {
         "total": len(worker_args),
