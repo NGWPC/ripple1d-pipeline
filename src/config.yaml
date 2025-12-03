@@ -120,6 +120,10 @@ processing_steps:
       cleanup: True
       cog: True
 
+bridge_processing:
+  BRIDGE_ELEV_UNITS: "meters"
+  BRIDGE_ELEV_CONV_FACTOR: 3.28084  # Convert bridge elevation units to feet (units used by terrain and depth grids)
+
 flows2fim:
   FLOW_FILES_DIR: C:\reference_data\flow_files
   FLOWS2FIM_BIN_PATH: C:\OSGeo4W\bin\flows2fim.exe
