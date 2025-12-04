@@ -14,10 +14,8 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Tuple
 
+from ..setup.collection_data import CollectionData
 from .extent_library import setup_gdal_environment
-
-if TYPE_CHECKING:
-    from ..setup.collection_data import CollectionData
 
 
 def run_cmd(cmd: List, description: str) -> subprocess.CompletedProcess:
@@ -76,104 +74,73 @@ def align_raster(
     run_cmd(cmd, f"gdalwarp align {src_path}")
 
 
-def apply_bridge_mask(
-    depth_path: Path,
-    dem_path: Path,
-    bridge_paths: List[str],
-    output_path: Path,
-    temp_dir: Path,
-    conv_factor: float,
-    depth_bounds: Tuple[float, float, float, float],
-    depth_res: Tuple[float, float],
-    depth_nodata: float,
-) -> bool:
+def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
     """
-    Process a single depth TIF with bridge masking.
+    Process a single depth TIF with bridge masking (worker function for multiprocessing).
 
     Uses gdalwarp to align DEM and bridge rasters to match the depth TIF's grid,
-    then applies gdal_calc for the masking computation.
+    then applies gdal_calc for the masking computation. Overwrites the original file on success.
     """
-    try:
-        # Merge bridges into single VRT (skip if only one)
-        if len(bridge_paths) == 1:
-            bridges_input = bridge_paths[0]
-        else:
-            bridges_vrt = temp_dir / "bridges.vrt"
-            run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
-            bridges_input = bridges_vrt
-
-        # Align DEM and bridges to depth grid
-        aligned_dem = temp_dir / "aligned_dem.vrt"
-        align_raster(dem_path, aligned_dem, depth_bounds, depth_res)
-
-        aligned_bridges = temp_dir / "aligned_bridges.vrt"
-        align_raster(Path(bridges_input), aligned_bridges, depth_bounds, depth_res, nodata=-9999)
-
-        # gdal_calc: A=depth, B=aligned DEM, C=aligned bridges
-        # Algorithm: delta = (DEM + depth) - bridge_elev * conv_factor
-        #   - bridge above water (delta < 0): set to nodata
-        #   - bridge submerged (delta >= 0): depth = delta
-        #   - no bridge (C is nodata): keep original depth
-        calc_expr = (
-            f"numpy.where((C == -9999) | numpy.isnan(C), A, "
-            f"numpy.where((B + A) - (C * {conv_factor}) < 0, {depth_nodata}, "
-            f"(B + A) - (C * {conv_factor})))"
-        )
-
-        temp_output = temp_dir / "result.tif"
-        run_cmd(
-            [
-                "gdal_calc",
-                "-A",
-                depth_path,
-                "-B",
-                aligned_dem,
-                "-C",
-                aligned_bridges,
-                "--outfile",
-                temp_output,
-                f"--NoDataValue={depth_nodata}",
-                "--co=COMPRESS=LZW",
-                "--quiet",
-                f"--calc={calc_expr}",
-            ],
-            "gdal_calc",
-        )
-
-        # Convert to COG
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        run_cmd(["gdal_translate", "-of", "COG", "-co", "COMPRESS=LZW", temp_output, output_path], "gdal_translate")
-
-        return True
-
-    except Exception as e:
-        logging.error(f"Error processing {depth_path}: {e}", exc_info=True)
-        return False
-
-
-def _process_single_depth(args: Tuple) -> Tuple[str, bool]:
-    """Worker function for parallel bridge masking."""
     depth_path, dem_path, bridge_paths, library_parent, conv_factor, bounds, depth_res, depth_nodata = args
     depth_path = Path(depth_path)
     dem_path = Path(dem_path)
 
-    with tempfile.TemporaryDirectory(dir=str(library_parent)) as temp_dir:
-        temp_output = Path(temp_dir) / "output.tif"
-        if apply_bridge_mask(
-            depth_path,
-            dem_path,
-            bridge_paths,
-            temp_output,
-            Path(temp_dir),
-            conv_factor,
-            bounds,
-            depth_res,
-            depth_nodata,
-        ):
-            shutil.move(str(temp_output), str(depth_path))
-            return (str(depth_path), True)
-        else:
-            return (str(depth_path), False)
+    try:
+        with tempfile.TemporaryDirectory(dir=library_parent) as temp_dir:
+            temp_dir = Path(temp_dir)
+
+            # Merge bridges into single VRT
+            bridges_vrt = temp_dir / "bridges.vrt"
+            run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
+
+            # Align DEM and bridges to depth grid
+            aligned_dem = temp_dir / "aligned_dem.vrt"
+            align_raster(dem_path, aligned_dem, bounds, depth_res)
+
+            aligned_bridges = temp_dir / "aligned_bridges.vrt"
+            align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=-9999)
+
+            # gdal_calc: A=depth, B=aligned DEM, C=aligned bridges
+            # Algorithm: delta = (DEM + depth) - bridge_elev * conv_factor
+            #   - bridge above water (delta < 0): set to nodata
+            #   - bridge submerged (delta >= 0): depth = delta
+            #   - no bridge (C is nodata): keep original depth
+            calc_expr = (
+                f"numpy.where((C == -9999) | numpy.isnan(C), A, "
+                f"numpy.where((B + A) - (C * {conv_factor}) < 0, {depth_nodata}, "
+                f"(B + A) - (C * {conv_factor})))"
+            )
+
+            temp_output = temp_dir / "result.tif"
+            run_cmd(
+                [
+                    "gdal_calc",
+                    "-A",
+                    depth_path,
+                    "-B",
+                    aligned_dem,
+                    "-C",
+                    aligned_bridges,
+                    "--outfile",
+                    temp_output,
+                    f"--NoDataValue={depth_nodata}",
+                    "--co=COMPRESS=LZW",
+                    "--quiet",
+                    f"--calc={calc_expr}",
+                ],
+                "gdal_calc",
+            )
+
+            # Convert to COG and overwrite original
+            cog_output = temp_dir / "output.tif"
+            run_cmd(["gdal_translate", "-of", "COG", "-co", "COMPRESS=LZW", temp_output, cog_output], "gdal_translate")
+            shutil.move(str(cog_output), str(depth_path))
+
+        return (str(depth_path), True)
+
+    except Exception as e:
+        logging.error(f"Error processing {depth_path}: {e}", exc_info=True)
+        return (str(depth_path), False)
 
 
 def process_bridges(collection: "CollectionData", print_progress: bool = False) -> Dict[str, any]:
@@ -260,7 +227,7 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
 
         num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
         with multiprocessing.Pool(processes=num_workers) as pool:
-            for depth_path, success in pool.imap_unordered(_process_single_depth, worker_args):
+            for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
                 if success:
                     success_count += 1
                     files_modified.append(depth_path)
