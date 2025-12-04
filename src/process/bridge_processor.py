@@ -130,6 +130,7 @@ def apply_bridge_mask(
         out_ds = None
         depth_ds = None
 
+        # Need to convert to cog with call to gdal.Translate because gdal's COG driver needs to read from an existing source
         output_path.parent.mkdir(parents=True, exist_ok=True)
         gdal.Translate(
             str(output_path), temp_output, options=gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"])
