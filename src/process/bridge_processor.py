@@ -1,63 +1,62 @@
 """
 Bridge processor module for masking depth library TIFs based on bridge locations.
 
-This module processes depth grids to adjust water depth values where bridges
-are located. The algorithm calculates Water Surface Elevation (WSE) and compares
-it to bridge elevations to determine if bridges are submerged or not.
+Uses GDAL/OGR command-line tools via subprocess for all operations.
+gdal_calc handles raster alignment automatically, eliminating need for explicit gdalwarp calls.
 """
 
+import json
 import logging
-import multiprocessing
-import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-
-import numpy as np
-import pandas as pd
-from osgeo import gdal
-from shapely.geometry import box
+from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from .extent_library import setup_gdal_environment
 
-# Enable GDAL exceptions
-gdal.UseExceptions()
+if TYPE_CHECKING:
+    from ..setup.collection_data import CollectionData
 
 
-def get_raster_bounds(tif_path: Path) -> Tuple[float, float, float, float]:
-    """Get bounding box (xmin, ymin, xmax, ymax) of a raster file."""
-    ds = gdal.Open(str(tif_path))
-    gt, w, h = ds.GetGeoTransform(), ds.RasterXSize, ds.RasterYSize
-    ds = None
-    return gt[0], gt[3] + h * gt[5], gt[0] + w * gt[1], gt[3]
+def run_cmd(cmd: List, description: str) -> subprocess.CompletedProcess:
+    """Run a command and raise on failure. This packages the error handling pattern used several times in extent_library.py whenever subprocess.run is called there"""
+    result = subprocess.run([str(c) for c in cmd], capture_output=True, text=True)
+    if result.returncode != 0:
+        logging.debug(f"{description} stdout: {result.stdout}")
+        logging.error(f"{description} stderr: {result.stderr}")
+        logging.debug(f"Command: {' '.join(str(c) for c in cmd)}")
+        raise RuntimeError(f"{description} failed")
+    return result
 
 
-def align_raster_to_reference(
-    src_path: str, ref_ds: gdal.Dataset, output_path: str, resampling: int = gdal.GRA_Bilinear
-) -> Optional[str]:
-    """Align a source raster to match a reference raster's grid."""
-    gt, w, h = ref_ds.GetGeoTransform(), ref_ds.RasterXSize, ref_ds.RasterYSize
-    warp_options = gdal.WarpOptions(
-        format="GTiff",
-        outputBounds=(gt[0], gt[3] + h * gt[5], gt[0] + w * gt[1], gt[3]),
-        xRes=abs(gt[1]),
-        yRes=abs(gt[5]),
-        dstSRS=ref_ds.GetProjection(),
-        resampleAlg=resampling,
-        creationOptions=["COMPRESS=LZW"],
+def get_raster_info(tif_path: Path) -> Tuple[Tuple[float, float, float, float], float]:
+    """Get bounds (xmin, ymin, xmax, ymax) and nodata value from a raster."""
+    result = run_cmd(["gdalinfo", "-json", tif_path], f"gdalinfo {tif_path}")
+    info = json.loads(result.stdout)
+    corners = info["cornerCoordinates"]
+    bounds = (corners["upperLeft"][0], corners["lowerRight"][1], corners["lowerRight"][0], corners["upperLeft"][1])
+    nodata = info["bands"][0].get("noDataValue", -9999.0)
+    return bounds, nodata
+
+
+def query_bridge_index(bridge_index_path: str, bounds: Tuple[float, float, float, float]) -> List[str]:
+    """Query bridge index parquet for bridges intersecting the given bounds using OGR."""
+    xmin, ymin, xmax, ymax = bounds
+
+    # OGR flattens parquet structs: geometry_bbox.xmin, geometry_bbox.xmax, etc.
+    sql = (
+        f"SELECT location FROM bridge_index WHERE "
+        f'"geometry_bbox.xmin" <= {xmax} AND "geometry_bbox.xmax" >= {xmin} AND '
+        f'"geometry_bbox.ymin" <= {ymax} AND "geometry_bbox.ymax" >= {ymin}'
     )
-    try:
-        result = gdal.Warp(output_path, src_path, options=warp_options)
-        if result is None:
-            logging.error(f"Failed to warp {src_path}")
-            return None
-        result = None
-        return output_path
-    except Exception as e:
-        logging.error(f"Error aligning raster {src_path}: {e}")
-        return None
+
+    result = run_cmd(["ogr2ogr", "-f", "CSV", "/vsistdout/", bridge_index_path, "-sql", sql], "ogr2ogr bridge query")
+
+    # Parse CSV output (first line is header "location", rest are paths)
+    lines = result.stdout.strip().split("\n")
+    return lines[1:] if len(lines) > 1 else []
 
 
 def apply_bridge_mask(
@@ -66,138 +65,86 @@ def apply_bridge_mask(
     bridge_paths: List[str],
     output_path: Path,
     temp_dir: Path,
-    bridge_elev_conv_factor: float,
-) -> Tuple[bool, int]:
-    """Process a single depth TIF with bridge masking. Returns (success, pixels_modified)."""
+    conv_factor: float,
+    depth_nodata: float,
+) -> bool:
+    """
+    Process a single depth TIF with bridge masking.
+
+    gdal_calc handles alignment automatically - uses first input's grid,
+    resamples other inputs to match. No explicit gdalwarp needed.
+
+    GDAL calls: 2-3 (gdalbuildvrt if multiple bridges, gdal_calc, gdal_translate)
+    """
     try:
-        depth_ds = gdal.Open(str(depth_path))
-        if depth_ds is None:
-            logging.error(f"Failed to open depth raster: {depth_path}")
-            return False, 0
+        # Merge bridges into single VRT (skip if only one)
+        if len(bridge_paths) == 1:
+            bridges_input = bridge_paths[0]
+        else:
+            bridges_vrt = temp_dir / "bridges.vrt"
+            run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
+            bridges_input = bridges_vrt
 
-        depth_band = depth_ds.GetRasterBand(1)
-        depth_data = depth_band.ReadAsArray().astype(np.float32)
-        depth_nodata = depth_band.GetNoDataValue()
-
-        if not align_raster_to_reference(str(dem_path), depth_ds, str(temp_dir / "aligned_dem.tif")):
-            depth_ds = None
-            return False, 0
-
-        dem_ds = gdal.Open(str(temp_dir / "aligned_dem.tif"))
-        dem_data = dem_ds.GetRasterBand(1).ReadAsArray().astype(np.float32)
-        dem_ds = None
-
-        combined_mask = np.zeros(depth_data.shape, dtype=bool)
-        combined_elev = np.full(depth_data.shape, np.nan, dtype=np.float32)
-
-        for i, bridge_path in enumerate(bridge_paths):
-            aligned_path = str(temp_dir / f"aligned_bridge_{i}.tif")
-            if not align_raster_to_reference(bridge_path, depth_ds, aligned_path):
-                logging.warning(f"Failed to align bridge raster: {bridge_path}")
-                continue
-            bridge_ds = gdal.Open(aligned_path)
-            if bridge_ds is None:
-                continue
-            band = bridge_ds.GetRasterBand(1)
-            data, nodata = band.ReadAsArray().astype(np.float32), band.GetNoDataValue()
-            bridge_ds = None
-            valid = data != nodata
-            combined_mask |= valid
-            np.copyto(combined_elev, data * bridge_elev_conv_factor, where=valid)
-
-        # Apply masking algorithm
-        pixels_modified = 0
-        if np.any(combined_mask):
-            process_mask = combined_mask & (depth_data != depth_nodata)
-            if np.any(process_mask):
-                delta = (dem_data + depth_data) - combined_elev
-                above_water, submerged = process_mask & (delta < 0), process_mask & (delta >= 0)
-                pixels_modified = int(np.sum(above_water) + np.sum(submerged))
-                depth_data[above_water] = depth_nodata if depth_nodata is not None else -9999.0
-                depth_data[submerged] = delta[submerged]
-
-        temp_output = str(temp_dir / "temp_output.tif")
-        out_ds = gdal.GetDriverByName("GTiff").Create(
-            temp_output, depth_ds.RasterXSize, depth_ds.RasterYSize, 1, gdal.GDT_Float32, ["COMPRESS=LZW"]
+        # gdal_calc: A=depth (defines output grid), B=DEM, C=bridges
+        # Algorithm: delta = (DEM + depth) - bridge_elev * conv_factor
+        #   - bridge above water (delta < 0): set to nodata
+        #   - bridge submerged (delta >= 0): depth = delta
+        #   - no bridge (C is nodata): keep original depth
+        calc_expr = (
+            f"numpy.where((C == -9999) | numpy.isnan(C), A, "
+            f"numpy.where((B + A) - (C * {conv_factor}) < 0, {depth_nodata}, "
+            f"(B + A) - (C * {conv_factor})))"
         )
-        out_ds.SetGeoTransform(depth_ds.GetGeoTransform())
-        out_ds.SetProjection(depth_ds.GetProjection())
-        out_band = out_ds.GetRasterBand(1)
-        if depth_nodata is not None:
-            out_band.SetNoDataValue(depth_nodata)
-        out_band.WriteArray(depth_data)
-        out_ds.FlushCache()
-        out_ds = None
-        depth_ds = None
 
-        # Need to convert to cog with call to gdal.Translate because gdal's COG driver needs to read from an existing source
+        temp_output = temp_dir / "result.tif"
+        run_cmd(
+            [
+                "gdal_calc",
+                "-A",
+                depth_path,
+                "-B",
+                dem_path,
+                "-C",
+                bridges_input,
+                "--outfile",
+                temp_output,
+                f"--NoDataValue={depth_nodata}",
+                "--co=COMPRESS=LZW",
+                "--quiet",
+                f"--calc={calc_expr}",
+            ],
+            "gdal_calc",
+        )
+
+        # Convert to COG
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        gdal.Translate(
-            str(output_path), temp_output, options=gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"])
-        )
-        return True, pixels_modified
+        run_cmd(["gdal_translate", "-of", "COG", "-co", "COMPRESS=LZW", temp_output, output_path], "gdal_translate")
+
+        return True
 
     except Exception as e:
         logging.error(f"Error processing {depth_path}: {e}", exc_info=True)
-        return False, 0
-
-
-def bridge_worker(args: tuple) -> Tuple[str, bool, int]:
-    """Worker for processing a single depth TIF. Returns (path, success, pixels_modified)."""
-    depth_path, dem_path, bridge_paths, output_path, temp_base_dir, bridge_elev_conv_factor = args
-    with tempfile.TemporaryDirectory(dir=temp_base_dir) as temp_dir:
-        if bridge_paths:
-            success, pixels_modified = apply_bridge_mask(
-                depth_path, dem_path, bridge_paths, output_path, Path(temp_dir), bridge_elev_conv_factor
-            )
-        else:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            result = gdal.Translate(
-                str(output_path),
-                str(depth_path),
-                options=gdal.TranslateOptions(format="COG", creationOptions=["COMPRESS=LZW"]),
-            )
-            success, pixels_modified = result is not None, 0
-    return str(depth_path), success, pixels_modified
+        return False
 
 
 def process_bridges(collection: "CollectionData", print_progress: bool = False) -> Dict[str, any]:
     """
     Apply bridge masking to depth library TIFs.
 
-    This function reads the bridge tile index, processes each depth TIF
-    to adjust water depths where bridges intersect, and outputs the
-    results as Cloud Optimized GeoTIFFs.
-
-    Args:
-        collection: CollectionData object with configuration including:
-            - library_dir: Path to depth library with TIF files
-            - submodels_dir: Path to submodels with terrain data
-            - bridge_tile_index_path: S3 path to bridge index parquet
-        print_progress: Whether to display progress information
-
-    Returns:
-        Dict with processing statistics:
-            - total: Total number of TIFs processed
-            - success: Number of successful processes
-            - failed: Number of failed processes
-            - with_bridges: List of file paths that had bridge intersections
-            - without_bridges: List of file paths with no bridge intersections
-            - modified: List of file paths where depth values were actually modified
+    GDAL/OGR calls per TIF:
+      - No bridges: 2 (gdalinfo, ogr2ogr) + file copy
+      - With bridges: 5 (gdalinfo, ogr2ogr, gdalbuildvrt, gdal_calc, gdal_translate)
+      - Single bridge: 4 (gdalinfo, ogr2ogr, gdal_calc, gdal_translate)
     """
     library_dir = Path(collection.library_dir)
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
-    process_count = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
-    bridge_elev_conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
+    conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
     _log = lambda m: print_progress and sys.stdout.write(m)
 
     setup_gdal_environment(collection)
 
-    _log(f"Loading bridge index from: {bridge_index_path}\n")
-    bridge_index = pd.read_parquet(bridge_index_path)
-    _log(f"Loaded {len(bridge_index)} bridge records\n")
-
+    # Rename library to temp, process into new library dir
     library_temp_dir = library_dir.parent / "library_temp"
     if library_temp_dir.exists():
         shutil.rmtree(library_temp_dir)
@@ -208,57 +155,56 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
     depth_tifs = list(library_temp_dir.rglob("*.tif"))
     _log(f"Found {len(depth_tifs)} depth TIFs to process\n")
 
-    worker_args, files_with_bridges, files_without_bridges = [], [], []
-    for depth_path in depth_tifs:
+    success_count, fail_count = 0, 0
+    files_with_bridges, files_without_bridges, files_modified = [], [], []
+
+    for i, depth_path in enumerate(depth_tifs, 1):
         reach_id = depth_path.parent.parent.name
         dem_files = list((submodels_dir / reach_id / "Terrain").glob("*.seamless_3dep_dem_3m_5070.tif"))
         if not dem_files:
             raise FileNotFoundError(f"No DEM found for reach {reach_id}")
+
+        # Get raster info and query bridges
         try:
-            raster_box = box(*get_raster_bounds(depth_path))
-            mask = bridge_index["geometry_bbox"].apply(
-                lambda bbox: raster_box.intersects(box(bbox["xmin"], bbox["ymin"], bbox["xmax"], bbox["ymax"]))
-            )
-            bridge_paths = bridge_index[mask]["location"].tolist()
+            bounds, depth_nodata = get_raster_info(depth_path)
+            bridge_paths = query_bridge_index(bridge_index_path, bounds)
         except Exception as e:
-            logging.error(f"Error querying bridges for {depth_path}: {e}")
-            bridge_paths = []
+            logging.error(f"Error reading {depth_path}: {e}")
+            fail_count += 1
+            continue
 
-        (files_with_bridges if bridge_paths else files_without_bridges).append(str(depth_path))
-        worker_args.append(
-            (
-                depth_path,
-                dem_files[0],
-                bridge_paths,
-                library_dir / depth_path.relative_to(library_temp_dir),
-                str(library_dir.parent),
-                bridge_elev_conv_factor,
-            )
-        )
+        output_path = library_dir / depth_path.relative_to(library_temp_dir)
 
-    success_count, fail_count, files_modified = 0, 0, []
-    with multiprocessing.Pool(process_count) as pool:
-        for i, (path, success, pixels_modified) in enumerate(pool.imap_unordered(bridge_worker, worker_args), 1):
-            if success:
-                success_count += 1
-                if pixels_modified > 0:
-                    files_modified.append(path)
-            else:
-                fail_count += 1
-                logging.error(f"Failed to process: {path}")
-            _log(f"\rProcessing: {i}/{len(worker_args)} (success: {success_count}, failed: {fail_count})")
-            print_progress and sys.stdout.flush()
+        if not bridge_paths:
+            # No bridges - copy file (already COG)
+            files_without_bridges.append(str(depth_path))
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(depth_path, output_path)
+            success_count += 1
+        else:
+            # Process with bridge masking
+            files_with_bridges.append(str(depth_path))
+            with tempfile.TemporaryDirectory(dir=str(library_dir.parent)) as temp_dir:
+                if apply_bridge_mask(
+                    depth_path, dem_files[0], bridge_paths, output_path, Path(temp_dir), conv_factor, depth_nodata
+                ):
+                    success_count += 1
+                    files_modified.append(str(depth_path))
+                else:
+                    fail_count += 1
+
+        _log(f"\rProcessing: {i}/{len(depth_tifs)} (success: {success_count}, failed: {fail_count})")
+        print_progress and sys.stdout.flush()
 
     _log(f"\nBridge processing complete: {success_count} succeeded, {fail_count} failed\n")
+
     if fail_count == 0:
-        _log(f"Removing temporary directory: {library_temp_dir}\n")
         shutil.rmtree(library_temp_dir)
     else:
         logging.warning(f"Keeping {library_temp_dir} due to {fail_count} failures")
-        _log(f"WARNING: Keeping {library_temp_dir} due to failures\n")
 
     return {
-        "total": len(worker_args),
+        "total": len(depth_tifs),
         "success": success_count,
         "failed": fail_count,
         "with_bridges": files_with_bridges,
