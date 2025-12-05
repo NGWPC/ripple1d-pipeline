@@ -1,7 +1,7 @@
 """
 Bridge processor module for masking depth library TIFs based on bridge locations.
 
-Uses GDAL/OGR command-line tools via subprocess for all operations.
+Uses GDAL/OGR command-line tools via subprocess for all operations. This has benefits of maintainability and also easier debugging if you have existing intermediate outputs before the subprocess call.
 """
 
 import json
@@ -9,13 +9,12 @@ import logging
 import multiprocessing
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from ..setup.collection_data import CollectionData
-from .extent_library import setup_gdal_environment
+from .extent_library import get_all_tif_paths, setup_gdal_environment
 
 
 def run_cmd(cmd: List, description: str) -> subprocess.CompletedProcess:
@@ -78,29 +77,16 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
     """
     Process a single depth TIF with bridge masking (worker function for multiprocessing).
 
-    Uses gdalwarp to align DEM and bridge rasters to match the depth TIF's grid,
-    then applies gdal_calc for the masking computation. Overwrites the original file on success.
+    Expects pre-aligned DEM and bridge VRTs. Runs gdal_calc for the masking computation
+    and overwrites the original file on success.
     """
-    depth_path, dem_path, bridge_paths, library_parent, conv_factor, bounds, depth_res, depth_nodata = args
+    depth_path, aligned_dem, aligned_bridges, library_parent, conv_factor, depth_nodata = args
     depth_path = Path(depth_path)
-    dem_path = Path(dem_path)
 
     try:
         with tempfile.TemporaryDirectory(dir=library_parent) as temp_dir:
             temp_dir = Path(temp_dir)
 
-            # Merge bridges into single VRT
-            bridges_vrt = temp_dir / "bridges.vrt"
-            run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
-
-            # Align DEM and bridges to depth grid
-            aligned_dem = temp_dir / "aligned_dem.vrt"
-            align_raster(dem_path, aligned_dem, bounds, depth_res)
-
-            aligned_bridges = temp_dir / "aligned_bridges.vrt"
-            align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=-9999)
-
-            # gdal_calc: A=depth, B=aligned DEM, C=aligned bridges
             # Algorithm: delta = (DEM + depth) - bridge_elev * conv_factor
             #   - bridge above water (delta < 0): set to nodata
             #   - bridge submerged (delta >= 0): depth = delta
@@ -131,7 +117,7 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
                 "gdal_calc",
             )
 
-            # Convert to COG and overwrite original
+            # gdal_calc can't work with COG so need to convert here
             cog_output = temp_dir / "output.tif"
             run_cmd(["gdal_translate", "-of", "COG", "-co", "COMPRESS=LZW", temp_output, cog_output], "gdal_translate")
             shutil.move(str(cog_output), str(depth_path))
@@ -147,16 +133,18 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
     """
     Apply bridge masking to depth library TIFs in place.
     """
+    if print_progress:
+        logging.getLogger().setLevel(logging.INFO)
+
     library_dir = Path(collection.library_dir)
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
     conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
-    _log = lambda m: print_progress and sys.stdout.write(m)
 
     setup_gdal_environment(collection)
 
-    depth_tifs = list(library_dir.rglob("*.tif"))
-    _log(f"Found {len(depth_tifs)} depth TIFs to process\n")
+    depth_tifs = get_all_tif_paths(library_dir)
+    logging.info(f"Found {len(depth_tifs)} depth TIFs to process")
 
     reaches: Dict[str, List[Path]] = {}
     for tif in depth_tifs:
@@ -171,7 +159,7 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
         if not dem_path.exists():
             raise FileNotFoundError(f"No DEM found for reach {reach_id}: {dem_path}")
 
-        # Query bridges once per reach (all TIFs have same bounds and nodata)
+        # The bridge query requires that all bridge tiles be in epsg 5070
         try:
             bounds, depth_res, depth_nodata = get_raster_info(reach_tifs[0])
             xmin, ymin, xmax, ymax = bounds
@@ -206,38 +194,48 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
                 files_without_bridges.append(str(depth_path))
                 success_count += 1
                 processed += 1
-                _log(f"\rProcessing: {processed}/{len(depth_tifs)} (success: {success_count}, failed: {fail_count})")
-                print_progress and sys.stdout.flush()
+            logging.info(f"Reach {reach_id}: no bridges, skipped {len(reach_tifs)} TIFs")
             continue
 
         files_with_bridges.extend(str(p) for p in reach_tifs)
-        worker_args = [
-            (
-                str(depth_path),
-                str(dem_path),
-                bridge_paths,
-                str(library_dir.parent),
-                conv_factor,
-                bounds,
-                depth_res,
-                depth_nodata,
-            )
-            for depth_path in reach_tifs
-        ]
 
-        num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
-        with multiprocessing.Pool(processes=num_workers) as pool:
-            for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
-                if success:
-                    success_count += 1
-                    files_modified.append(depth_path)
-                else:
-                    fail_count += 1
-                processed += 1
-                _log(f"\rProcessing: {processed}/{len(depth_tifs)} (success: {success_count}, failed: {fail_count})")
-                print_progress and sys.stdout.flush()
+        with tempfile.TemporaryDirectory(dir=str(library_dir.parent)) as reach_temp_dir:
+            reach_temp_dir = Path(reach_temp_dir)
 
-    _log(f"\nBridge processing complete: {success_count} succeeded, {fail_count} failed\n")
+            bridges_vrt = reach_temp_dir / "bridges.vrt"
+            run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
+
+            aligned_dem = reach_temp_dir / "aligned_dem.vrt"
+            align_raster(dem_path, aligned_dem, bounds, depth_res)
+
+            aligned_bridges = reach_temp_dir / "aligned_bridges.vrt"
+            align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=-9999)
+
+            worker_args = [
+                (
+                    str(depth_path),
+                    str(aligned_dem),
+                    str(aligned_bridges),
+                    str(library_dir.parent),
+                    conv_factor,
+                    depth_nodata,
+                )
+                for depth_path in reach_tifs
+            ]
+
+            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+            with multiprocessing.Pool(processes=num_workers) as pool:
+                for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
+                    if success:
+                        success_count += 1
+                        files_modified.append(depth_path)
+                    else:
+                        fail_count += 1
+                    processed += 1
+
+            logging.info(f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(bridge_paths)} bridges")
+
+    logging.info(f"Bridge processing complete: {success_count} succeeded, {fail_count} failed")
 
     return {
         "total": len(depth_tifs),
