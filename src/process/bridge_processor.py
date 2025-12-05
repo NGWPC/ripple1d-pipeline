@@ -47,8 +47,12 @@ def align_raster(
     bounds: Tuple[float, float, float, float],
     res: Tuple[float, float],
     nodata: float = None,
+    target_crs: str = None,
 ) -> None:
-    """Align a raster to the specified extent and resolution, outputting a VRT."""
+    """Align a raster to the specified extent and resolution, outputting a VRT.
+
+    If target_crs is provided, the source raster will be reprojected to that CRS.
+    """
     xmin, ymin, xmax, ymax = bounds
     xres, yres = res
     cmd = [
@@ -67,6 +71,8 @@ def align_raster(
         "-r",
         "bilinear",
     ]
+    if target_crs is not None:
+        cmd.extend(["-t_srs", target_crs])
     if nodata is not None:
         cmd.extend(["-dstnodata", nodata])
     cmd.extend([src_path, output_path])
@@ -205,11 +211,14 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
             bridges_vrt = reach_temp_dir / "bridges.vrt"
             run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
 
+            # Depth rasters are in EPSG:5070, reproject DEM and bridges to match
+            target_crs = "EPSG:5070"
+
             aligned_dem = reach_temp_dir / "aligned_dem.vrt"
-            align_raster(dem_path, aligned_dem, bounds, depth_res)
+            align_raster(dem_path, aligned_dem, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
 
             aligned_bridges = reach_temp_dir / "aligned_bridges.vrt"
-            align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=-9999)
+            align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
 
             worker_args = [
                 (
