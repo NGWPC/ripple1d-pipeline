@@ -107,6 +107,7 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
             run_cmd(
                 [
                     "gdal_calc",
+                    "--hideNoData",  # If you don't pass this flag then gdal_calc will not evaluate pixels where one source is no data. This blanks out the depth raster since most of the bridge raster is nodata
                     "-A",
                     depth_path,
                     "-B",
