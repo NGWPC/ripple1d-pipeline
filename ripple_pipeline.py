@@ -86,7 +86,7 @@ def process(collection_name):
     logging.info("Starting Extract Submodel Step >>>>>>")
     submodel_step_processor = GenericReachStepProcessor(collection, reaches, "extract_submodel")
     submodel_step_processor.execute_step(jobclient, database, timeout=10)
-    logging.info("<<<<<< Finihsed Extract Submodel Step")
+    logging.info("<<<<<< Finished Extract Submodel Step")
 
     logging.info("Starting Create Ras Terrain Step >>>>>>")
     terrain_step_processor = GenericReachStepProcessor(
@@ -133,13 +133,7 @@ def process(collection_name):
     logging.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
 
     logging.info("Starting Final execute_kwse_step >>>>>>")
-    non_outlet_valid_reaches = [
-        reach
-        for reach in nd_rc_step_processor.valid_entities
-        if reach.to_id is not None
-        and reach.to_id in [valid_reach.id for valid_reach in nd_rc_step_processor.valid_entities]
-    ]
-    kwse_step_processor = KWSEStepProcessor(collection, non_outlet_valid_reaches)
+    kwse_step_processor = KWSEStepProcessor(collection, nd_rc_step_processor.valid_entities)
     kwse_step_processor.execute_step(jobclient, database, timeout=240)
     logging.info("<<<<< Finished Final execute_kwse_step")
     kwse_step_processor.dismiss_timedout_jobs(jobclient)

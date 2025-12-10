@@ -18,22 +18,26 @@ from .reach import Reach
 
 
 def get_min_max_elevation(
-    downstream_id: int,
+    reach_id: int,
     submodels_directory: str,
+    get_ds_wse: bool = False,
 ) -> Tuple[Optional[float], Optional[float]]:
     """
-    Fetch min and max upstream elevation for a reach
+    Fetch min and max upstream or downstream wsel for a reach
     """
 
-    ds_submodel_db_path = os.path.join(submodels_directory, str(downstream_id), f"{downstream_id}.db")
-    if not os.path.exists(ds_submodel_db_path):
-        logging.info(f"Submodel database not found for reach_id: {downstream_id}")
+    submodel_db_path = os.path.join(submodels_directory, str(reach_id), f"{reach_id}.db")
+    if not os.path.exists(submodel_db_path):
+        logging.info(f"Submodel database not found for reach_id: {reach_id}")
         return None, None
 
-    conn = sqlite3.connect(ds_submodel_db_path)
+    conn = sqlite3.connect(submodel_db_path)
     try:
         cursor = conn.cursor()
-        cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves")
+        if get_ds_wse:
+            cursor.execute("SELECT MIN(ds_wse), MAX(ds_wse) FROM rating_curves")
+        else:
+            cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves")
         min_elevation, max_elevation = cursor.fetchone()
     finally:
         conn.close()
@@ -52,7 +56,8 @@ def process_reach(
 ) -> None:
     """
     Process a single reach for KWSE.
-    1. Find us min max elevation to use as boundary conditions
+    1. Find us min max elevation for non-terminal reach
+       and ds min max elevation for terminal reach to use as boundary conditions
     2. Submit KWSE execution job to API and wait for it to finish
     3. Create FIM Library
     4. Load rating curves to central database
@@ -68,12 +73,18 @@ def process_reach(
         submodel_directory_path = os.path.join(submodels_directory, str(reach.id))
         headers = {"Content-Type": "application/json"}
 
-        if (
-            reach.to_id
-            and reach.id in [valid_reach.id for valid_reach in valid_reaches]
-            and reach.to_id in [valid_reach.id for valid_reach in valid_reaches]
-        ):
-            min_elevation, max_elevation = get_min_max_elevation(reach.to_id, submodels_directory)
+
+        if reach.id in [valid_reach.id for valid_reach in valid_reaches]:
+            consider_outlet = False
+            if (reach.to_id is None) or (reach.to_id not in [valid_reach.id for valid_reach in valid_reaches]):
+                consider_outlet = True
+
+                logging.info(f"{reach.id} will be considered outlet")
+
+            min_elevation, max_elevation = get_min_max_elevation(
+                reach.id if consider_outlet else reach.to_id, submodels_directory, consider_outlet
+            )
+
             if min_elevation and max_elevation:
 
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
