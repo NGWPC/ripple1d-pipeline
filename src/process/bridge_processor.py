@@ -150,25 +150,26 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
 
     setup_gdal_environment(collection)
 
-    depth_tifs = get_all_tif_paths(library_dir)
-    logging.info(f"Found {len(depth_tifs)} depth TIFs to process")
+    reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
+    logging.info(f"Found {len(reach_dirs)} reaches to process")
 
-    reaches: Dict[str, List[Path]] = {}
-    for tif in depth_tifs:
-        reach_id = tif.parent.parent.name
-        reaches.setdefault(reach_id, []).append(tif)
+    reaches_with_bridges, reaches_without_bridges, files_modified = [], [], []
 
-    success_count, fail_count, processed = 0, 0, 0
-    files_with_bridges, files_without_bridges, files_modified = [], [], []
+    for reach_dir in reach_dirs:
+        reach_id = reach_dir.name
 
-    for reach_id, reach_tifs in reaches.items():
+        # Use generator to stop at first match. Faster than getting all reach tifs
+        sample_reach_tif = next(iter(reach_dir.rglob("*.tif")), None)
+        if sample_reach_tif is None:
+            logging.warning(f"Reach {reach_id}: no TIF files found, skipping")
+            continue
         dem_path = submodels_dir / reach_id / "Terrain" / f"{reach_id}.seamless_3dep_dem_3m_5070.tif"
         if not dem_path.exists():
             raise FileNotFoundError(f"No DEM found for reach {reach_id}: {dem_path}")
 
         # The bridge query requires that all bridge tiles be in epsg 5070
         try:
-            bounds, depth_res, depth_nodata = get_raster_info(reach_tifs[0])
+            bounds, depth_res, depth_nodata = get_raster_info(sample_reach_tif)
             xmin, ymin, xmax, ymax = bounds
             result = run_cmd(
                 [
@@ -188,29 +189,26 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
                 "ogr2ogr bridge query",
             )
             lines = result.stdout.strip().split("\n")
-            bridge_paths = lines[1:] if len(lines) > 1 else []
+            intersecting_bridge_paths = lines[1:] if len(lines) > 1 else []
         except Exception as e:
             logging.error(f"Error querying bridges for reach {reach_id}: {e}")
-            fail_count += len(reach_tifs)
-            processed += len(reach_tifs)
             continue
 
-        if not bridge_paths:
+        if not intersecting_bridge_paths:
             # No bridges in this reach - nothing to do
-            for depth_path in reach_tifs:
-                files_without_bridges.append(str(depth_path))
-                success_count += 1
-                processed += 1
-            logging.info(f"Reach {reach_id}: no bridges, skipped {len(reach_tifs)} TIFs")
+            reaches_without_bridges.append(reach_id)
+            logging.info(f"Reach {reach_id}: no bridges, skipped")
             continue
 
-        files_with_bridges.extend(str(p) for p in reach_tifs)
+        # Only enumerate all TIFs for processing if there are bridges that intersect reach bounds
+        reach_tifs = get_all_tif_paths(reach_dir)
+        reaches_with_bridges.append(reach_id)
 
         with tempfile.TemporaryDirectory(dir=str(library_dir.parent)) as reach_temp_dir:
             reach_temp_dir = Path(reach_temp_dir)
 
             bridges_vrt = reach_temp_dir / "bridges.vrt"
-            run_cmd(["gdalbuildvrt", bridges_vrt] + bridge_paths, "gdalbuildvrt")
+            run_cmd(["gdalbuildvrt", bridges_vrt] + intersecting_bridge_paths, "gdalbuildvrt")
 
             # Depth rasters are in EPSG:5070, reproject DEM and bridges to match
             target_crs = "EPSG:5070"
@@ -237,21 +235,18 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
             with multiprocessing.Pool(processes=num_workers) as pool:
                 for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
                     if success:
-                        success_count += 1
                         files_modified.append(depth_path)
-                    else:
-                        fail_count += 1
-                    processed += 1
 
-            logging.info(f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(bridge_paths)} bridges")
+            logging.info(
+                f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(intersecting_bridge_paths)} bridges"
+            )
 
-    logging.info(f"Bridge processing complete: {success_count} succeeded, {fail_count} failed")
+    logging.info(
+        f"Bridge processing complete: {len(reaches_with_bridges)} reaches with bridges, {len(reaches_without_bridges)} reaches without bridges"
+    )
 
     return {
-        "total": len(depth_tifs),
-        "success": success_count,
-        "failed": fail_count,
-        "with_bridges": files_with_bridges,
-        "without_bridges": files_without_bridges,
+        "reaches_with_bridges": reaches_with_bridges,
+        "reaches_without_bridges": reaches_without_bridges,
         "modified": files_modified,
     }

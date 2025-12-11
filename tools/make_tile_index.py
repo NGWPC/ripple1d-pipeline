@@ -1,5 +1,6 @@
 import argparse
 import os
+import tempfile
 from multiprocessing import Pool
 
 from osgeo import gdal, ogr
@@ -31,12 +32,9 @@ def build_tileindex(args):
     idx, rasters, tmp_dir = args
     out_name = os.path.join(tmp_dir, f"tmp_index_{idx}.gpkg")
 
-    # Ensure no stale file exists
     if os.path.exists(out_name):
-        try:
-            os.remove(out_name)
-        except OSError:
-            pass
+        print(f"Chunk {idx} already exists, skipping...")
+        return out_name
 
     try:
         # gdal.TileIndex is the Python binding for gdaltindex
@@ -109,7 +107,18 @@ def main():
 
     args = parser.parse_args()
 
-    tifs = list_vsi_tifs(args.s3_path)
+    cache_bridge_filename = args.s3_path.replace("/", "_").strip("_") + "_tifs.txt"
+    cache_bridge_file = os.path.join(tempfile.gettempdir(), cache_bridge_filename)
+
+    if os.path.exists(cache_bridge_file):
+        print(f"Loading TIF list from {cache_bridge_file}...")
+        with open(cache_bridge_file, "r") as f:
+            tifs = [line.strip() for line in f if line.strip()]
+    else:
+        tifs = list_vsi_tifs(args.s3_path)
+        print(f"Saving TIF list to {cache_bridge_file}...")
+        with open(cache_bridge_file, "w") as f:
+            f.write("\n".join(tifs))
     print(f"Found {len(tifs)} TIFFs.")
 
     if len(tifs) == 0:
@@ -131,14 +140,6 @@ def main():
     if valid_indexes:
         merge_gpkgs(valid_indexes, args.final_gpkg)
         print(f"DONE. Output saved to: {args.final_gpkg}")
-
-        print("Cleaning up temporary files...")
-        for f in valid_indexes:
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except Exception as e:
-                print(f"Warning: Could not delete temp file {f}: {e}")
     else:
         print("No temporary indexes were created. Check errors above.")
 

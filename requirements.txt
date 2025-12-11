@@ -13,5 +13,3 @@ openpyxl==3.1.5
 geopandas==1.0.1
 pyarrow==17.0.0
 python-dotenv==1.0.1
-fsspec==2025.10.0
-s3fs==2025.10.0
