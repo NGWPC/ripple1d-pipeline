@@ -17,3 +17,6 @@
 # Virtual Environments
 *.venv
 .vscode/settings.json
+
+# Local data directory
+data/

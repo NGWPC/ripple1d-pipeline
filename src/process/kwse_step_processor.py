@@ -32,7 +32,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         if not min_elev or not max_elev:
             return JobRecord(reach, "", "not_accepted")
 
-        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config["processing_steps"][self.process_name]["api_process_name"]}/execution"
+        url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config['processing_steps'][self.process_name]['api_process_name']}/execution"
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id)
         payload.update({"min_elevation": min_elev, "max_elevation": max_elev})
