@@ -43,7 +43,13 @@ class STACImporter:
             gpkg_key = ""
             for _, asset in item.assets.items():
                 if "ras-geometry-gpkg" in asset.roles:
-                    gpkg_key = asset.href
+                    s3_bucket = os.environ.get("S3_DATA_BUCKET")
+                    s3_key = asset.extra_fields.get("s3_key", "")
+                    if s3_bucket:
+                        # TODO: remove once assets are in hv-fim-dev-data (post-OWP handoff)
+                        gpkg_key = f"s3://{s3_bucket}/{s3_key}"
+                    else:
+                        gpkg_key = f"s3://{s3_key}"
                     break
             if gpkg_key:
                 models_data[item.id] = {"gpkg": gpkg_key, "model_name": item.properties["model_name"]}
