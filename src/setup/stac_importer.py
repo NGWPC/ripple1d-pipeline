@@ -68,13 +68,7 @@ class STACImporter:
         - self.models_data (dict): Dictionary containing model IDs and their file URLs.
         - self.source_models_dir (str): The local directory to store the downloaded models.
         """
-        session = boto3.Session(
-            aws_access_key_id=os.environ.get("RP_STAC_AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.environ.get("RP_STAC_AWS_SECRET_ACCESS_KEY"),
-            region_name=os.environ.get("RP_STAC_AWS_REGION", "us-east-1"),
-        )
-
-        s3_client = session.client("s3")
+        s3_client = boto3.client("s3")
 
         for id, data in self.models_data.items():
             try:
