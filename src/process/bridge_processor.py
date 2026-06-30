@@ -231,6 +231,7 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
                 for depth_path in reach_tifs
             ]
 
+            # based on the cpu utilization, the num_workers maybe increased by x1.5, or x2 or even x3.
             num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
             with multiprocessing.Pool(processes=num_workers) as pool:
                 for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):

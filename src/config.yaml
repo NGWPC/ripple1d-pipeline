@@ -34,6 +34,7 @@ processing_steps:
         type: *SOURCE_NETWORK_TYPE
       min_flow_multiplier: 0.9
       max_flow_multiplier: 1.5
+      ignore_ras_flows: True
 
   extract_submodel:
     domain: "reach"
