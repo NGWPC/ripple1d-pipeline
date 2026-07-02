@@ -13,5 +13,6 @@ from .model import Model
 from .move_fims_to_library import move_fims_to_library
 from .reach import Reach
 from .update_network import update_network
+from .bridge_processor import process_bridges
 
 logging.basicConfig(level=logging.INFO)

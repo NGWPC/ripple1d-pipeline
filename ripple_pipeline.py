@@ -157,6 +157,13 @@ def process(collection_name):
     fimlib_step_processor.dismiss_timedout_jobs(jobclient)
 
     try:
+        logging.info("Starting bridge deck masking Step >>>>>>")
+        process_bridges(collection)
+        logging.info("<<<<< Finished bridge deck masking Step")
+    except:
+        logging.error("Error - bridge deck masking step failed")
+
+    try:
         logging.info("Starting create extent library Step >>>>>>")
         create_extent_lib(collection)
         logging.info("<<<<< Finished create extent library Step")
