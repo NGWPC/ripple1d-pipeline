@@ -86,11 +86,12 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
     Expects pre-aligned DEM and bridge VRTs. Runs gdal_calc for the masking computation
     and overwrites the original file on success.
     """
-    depth_path, aligned_dem, aligned_bridges, library_parent, conv_factor, depth_nodata = args
+    depth_path, aligned_dem, aligned_bridges, library_parent, conv_factor, depth_nodata, reach_id = args
+    logging.debug(f"Processing {depth_path} with bridge mask")
     depth_path = Path(depth_path)
 
     try:
-        with tempfile.TemporaryDirectory(dir=library_parent) as temp_dir:
+        with tempfile.TemporaryDirectory(dir=library_parent, prefix=f"{reach_id}_") as temp_dir:
             temp_dir = Path(temp_dir)
 
             # Algorithm: delta = (DEM + depth) - bridge_elev * conv_factor
@@ -107,7 +108,7 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
             run_cmd(
                 [
                     "gdal_calc",
-                    "--hideNoData",  # If you don't pass this flag then gdal_calc will not evaluate pixels where one source is no data. This blanks out the depth raster since most of the bridge raster is nodata
+                    "--hideNoData",  # If we don't pass this flag then gdal_calc will not evaluate pixels where one source is no data. This blanks out the depth raster since most of the bridge raster is nodata
                     "-A",
                     depth_path,
                     "-B",
@@ -127,8 +128,9 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
             # gdal_calc can't work with COG so need to convert here
             cog_output = temp_dir / "output.tif"
             run_cmd(["gdal_translate", "-of", "COG", "-co", "COMPRESS=LZW", temp_output, cog_output], "gdal_translate")
+            logging.debug(f"Finished processing {depth_path}, moving result to original location")
             shutil.move(str(cog_output), str(depth_path))
-
+            logging.debug(f"Successfully processed {depth_path}")
         return (str(depth_path), True)
 
     except Exception as e:
@@ -157,6 +159,7 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
 
     for reach_dir in reach_dirs:
         reach_id = reach_dir.name
+        logging.debug(f"Processing reach {reach_id}")
 
         # Use generator to stop at first match. Faster than getting all reach tifs
         sample_reach_tif = next(iter(reach_dir.rglob("*.tif")), None)
@@ -190,6 +193,7 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
             )
             lines = result.stdout.strip().split("\n")
             intersecting_bridge_paths = lines[1:] if len(lines) > 1 else []
+            logging.info(f"Reach {reach_id}: found {len(intersecting_bridge_paths)} intersecting bridges")
         except Exception as e:
             logging.error(f"Error querying bridges for reach {reach_id}: {e}")
             continue
@@ -200,11 +204,13 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
             logging.info(f"Reach {reach_id}: no bridges, skipped")
             continue
 
-        # Only enumerate all TIFs for processing if there are bridges that intersect reach bounds
-        reach_tifs = get_all_tif_paths(reach_dir)
         reaches_with_bridges.append(reach_id)
 
-        with tempfile.TemporaryDirectory(dir=str(library_dir.parent)) as reach_temp_dir:
+        # Only enumerate all TIFs for processing if there are bridges that intersect reach bounds
+        reach_tifs = get_all_tif_paths(reach_dir)
+        logging.debug(f"Reach {reach_id}: found {len(reach_tifs)} TIFs to process")
+
+        with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_") as reach_temp_dir:
             reach_temp_dir = Path(reach_temp_dir)
 
             bridges_vrt = reach_temp_dir / "bridges.vrt"
@@ -227,16 +233,19 @@ def process_bridges(collection: "CollectionData", print_progress: bool = False) 
                     str(library_dir.parent),
                     conv_factor,
                     depth_nodata,
+                    reach_id
                 )
                 for depth_path in reach_tifs
             ]
 
             # based on the cpu utilization, the num_workers maybe increased by x1.5, or x2 or even x3.
-            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"] * 2
             with multiprocessing.Pool(processes=num_workers) as pool:
                 for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
                     if success:
                         files_modified.append(depth_path)
+                    else:
+                        logging.error(f"Failed to process {depth_path}")
 
             logging.info(
                 f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(intersecting_bridge_paths)} bridges"
