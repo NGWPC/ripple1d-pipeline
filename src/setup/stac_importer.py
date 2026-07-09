@@ -43,13 +43,8 @@ class STACImporter:
             gpkg_key = ""
             for _, asset in item.assets.items():
                 if "ras-geometry-gpkg" in asset.roles:
-                    s3_bucket = os.environ.get("S3_DATA_BUCKET")
                     s3_key = asset.extra_fields.get("s3_key", "")
-                    if s3_bucket:
-                        # TODO: remove once assets are in hv-fim-dev-data (post-OWP handoff)
-                        gpkg_key = f"s3://{s3_bucket}/{s3_key}"
-                    else:
-                        gpkg_key = f"s3://{s3_key}"
+                    gpkg_key = f"s3://{os.environ.get("RP_S3_KEY_PREFIX", "")}{s3_key}"
                     break
             if gpkg_key:
                 models_data[item.id] = {"gpkg": gpkg_key, "model_name": item.properties["model_name"]}
@@ -68,7 +63,13 @@ class STACImporter:
         - self.models_data (dict): Dictionary containing model IDs and their file URLs.
         - self.source_models_dir (str): The local directory to store the downloaded models.
         """
-        s3_client = boto3.client("s3")
+        session = boto3.Session(
+            aws_access_key_id=os.environ.get("RP_STAC_AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.environ.get("RP_STAC_AWS_SECRET_ACCESS_KEY"),
+            region_name=os.environ.get("RP_STAC_AWS_REGION", "us-east-1"),
+        )
+
+        s3_client = session.client("s3")
 
         for id, data in self.models_data.items():
             try:

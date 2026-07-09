@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import time
 
 # Import necessary modules
 from src.process import *
@@ -226,9 +225,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--collection",
-        help=f"A valid collection of HEC-RAS models. The collection will initially be pulled "
-        "locally from the provided STAC URL (in config.py). "
-        "https://radiantearth.github.io/stac-browser/#/external/stac2.dewberryanalytics.com/?.language=en ",
+        help="A valid collection of HEC-RAS models. The collection will initially be pulled "
+        "locally from the provided STAC URL (in config.py). ",
         required=True,
     )
     args = vars(parser.parse_args())
