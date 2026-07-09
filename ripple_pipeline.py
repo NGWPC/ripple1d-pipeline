@@ -5,15 +5,10 @@ import logging
 import time
 
 # Import necessary modules
+from src import configure_logging
 from src.process import *
 from src.qc import *
 from src.setup import *
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
 
 
 def setup(collection_name):
@@ -238,6 +233,13 @@ if __name__ == "__main__":
         "https://radiantearth.github.io/stac-browser/#/external/stac2.dewberryanalytics.com/?.language=en ",
         required=True,
     )
+    parser.add_argument(
+        "--log-level",
+        default=None,
+        help="Logging level: DEBUG, INFO, WARNING, ERROR. Overrides RP_LOG_LEVEL env var. Default INFO.",
+    )
     args = vars(parser.parse_args())
+
+    configure_logging(args.pop("log_level"))
 
     run_pipeline(**args)

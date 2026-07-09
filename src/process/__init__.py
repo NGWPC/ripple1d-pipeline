@@ -1,5 +1,4 @@
-import logging
-
+from .bridge_processor import process_bridges
 from .conflate_step_processor import ConflateModelStepProcessor
 from .create_f2f_start_file import create_f2f_start_file
 from .extent_library import create_extent_lib
@@ -13,6 +12,3 @@ from .model import Model
 from .move_fims_to_library import move_fims_to_library
 from .reach import Reach
 from .update_network import update_network
-from .bridge_processor import process_bridges
-
-logging.basicConfig(level=logging.INFO)

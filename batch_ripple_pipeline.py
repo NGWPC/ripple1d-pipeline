@@ -13,12 +13,7 @@ from pathlib import Path
 import yaml
 
 from monitoring_database import MonitoringDatabase
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from src import configure_logging
 
 
 def load_config(config_file):
@@ -285,10 +280,18 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--collection_list",
-        help=f"A filepath (.txt or .lst) containing a new line separated list of valid collections or a space separated string of collections",
+        help="A filepath (.txt or .lst) containing a new line separated list of valid collections or a space separated string of collections",
         required=True,
     )
 
+    parser.add_argument(
+        "--log-level",
+        default=None,
+        help="Logging level: DEBUG, INFO, WARNING, ERROR. Overrides RP_LOG_LEVEL env var. Default INFO.",
+    )
+
     args = vars(parser.parse_args())
+
+    configure_logging(args.pop("log_level"))
 
     batch_pipeline(**args)

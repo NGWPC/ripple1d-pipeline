@@ -138,13 +138,10 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
         return (str(depth_path), False)
 
 
-def process_bridges(collection: "CollectionData", print_progress: bool = False) -> Dict[str, any]:
+def process_bridges(collection: "CollectionData") -> Dict[str, any]:
     """
     Apply bridge masking to depth library TIFs in place.
     """
-    if print_progress:
-        logging.getLogger().setLevel(logging.INFO)
-
     library_dir = Path(collection.library_dir)
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
