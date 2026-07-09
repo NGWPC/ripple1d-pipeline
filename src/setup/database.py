@@ -408,7 +408,7 @@ class Database:
                 FROM network n
                 JOIN processing p ON n.reach_id = p.reach_id
                 JOIN models m ON p.model_id = m.model_id
-                WHERE p.eclipsed IS FALSE AND p.model_id IN ({','.join(['?'] * len(model_ids))})
+                WHERE p.eclipsed IS FALSE AND p.model_id IN ({",".join(["?"] * len(model_ids))})
             """
         return self.execute_select_query(select_query, model_ids)
 
@@ -475,7 +475,10 @@ class Database:
         return self.execute_select_query(select_query)
 
     def get_entities_by_process_and_status(
-        self, process_name: str, status: str, process_table: str = "processing",
+        self,
+        process_name: str,
+        status: str,
+        process_table: str = "processing",
     ) -> List[Tuple[int, str, str]]:
         """
         Retrieves entities for a given process and status.

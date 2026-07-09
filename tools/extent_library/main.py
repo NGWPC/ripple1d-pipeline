@@ -117,7 +117,15 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
         raise FileNotFoundError(f"{tmp_tif} not created")
 
     # burn xs_concave_hull
-    gdal_rasterize_cmd = ["gdal_rasterize", "-l", "XS_concave_hull", "-burn", "0", gpkg_path, tmp_tif]
+    gdal_rasterize_cmd = [
+        "gdal_rasterize",
+        "-l",
+        "XS_concave_hull",
+        "-burn",
+        "0",
+        gpkg_path,
+        tmp_tif,
+    ]
 
     result = subprocess.run(gdal_rasterize_cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -230,7 +238,11 @@ def get_reachid_tif_map(tif_paths: List[Path]) -> Dict[str, Path]:
 
 
 def create_extent_lib(
-    src_library, dest_library, submodels_dir, process_count=multiprocessing.cpu_count(), print_progress: bool = False
+    src_library,
+    dest_library,
+    submodels_dir,
+    process_count=multiprocessing.cpu_count(),
+    print_progress: bool = False,
 ) -> None:
     """
     Main function to create extent library from depth library.
@@ -246,13 +258,16 @@ def create_extent_lib(
 
     logging.info("Processing FIM files")
     with multiprocessing.Pool(process_count) as pool:
-        for i, _ in enumerate(pool.imap_unordered(fim_worker, [(p, src_library, dest_library) for p in tif_paths]), 1):
+        for i, _ in enumerate(
+            pool.imap_unordered(fim_worker, [(p, src_library, dest_library) for p in tif_paths]),
+            1,
+        ):
             if print_progress:
                 sys.stdout.write(f"\rProcessing FIMs: {i}/{len(tif_paths)}")
                 sys.stdout.flush()
             else:
                 if (i + 1) % 100 == 0:
-                    logging.info(f"Processed {i+1}/{len(tif_paths)}.")
+                    logging.info(f"Processed {i + 1}/{len(tif_paths)}.")
     if print_progress:
         sys.stdout.write("\n")
 
@@ -261,7 +276,10 @@ def create_extent_lib(
     reach_map = get_reachid_tif_map(tif_paths)
     with multiprocessing.Pool(process_count) as pool:
         for i, _ in enumerate(
-            pool.imap_unordered(domain_worker, [(rid, p, dest_library, submodels_dir) for rid, p in reach_map.items()]),
+            pool.imap_unordered(
+                domain_worker,
+                [(rid, p, dest_library, submodels_dir) for rid, p in reach_map.items()],
+            ),
             1,
         ):
             if print_progress:
@@ -269,7 +287,7 @@ def create_extent_lib(
                 sys.stdout.flush()
             else:
                 if (i + 1) % 100 == 0:
-                    logging.info(f"Processed {i+1}/{len(reach_map)}.")
+                    logging.info(f"Processed {i + 1}/{len(reach_map)}.")
 
     if print_progress:
         sys.stdout.write("\n")
@@ -281,8 +299,20 @@ def main():
     """
     parser = argparse.ArgumentParser(description="Create extent library from depth library.")
     parser.add_argument("-src", "--src_library", type=Path, required=True, help="Path to source library")
-    parser.add_argument("-dst", "--dest_library", type=Path, required=True, help="Path to destination library")
-    parser.add_argument("-m", "--submodels_dir", type=Path, required=True, help="Path to submodels directory")
+    parser.add_argument(
+        "-dst",
+        "--dest_library",
+        type=Path,
+        required=True,
+        help="Path to destination library",
+    )
+    parser.add_argument(
+        "-m",
+        "--submodels_dir",
+        type=Path,
+        required=True,
+        help="Path to submodels directory",
+    )
     parser.add_argument("-pp", "--print_progress", action="store_true", help="Print progress")
     parser.add_argument(
         "-ll",
@@ -294,10 +324,18 @@ def main():
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=getattr(logging, args.log_level), format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s - %(levelname)s - %(message)s",
+    )
 
     # Create extent library
-    create_extent_lib(args.src_library, args.dest_library, args.submodels_dir, print_progress=args.print_progress)
+    create_extent_lib(
+        args.src_library,
+        args.dest_library,
+        args.submodels_dir,
+        print_progress=args.print_progress,
+    )
     logging.info("Extent library created successfully.")
 
 

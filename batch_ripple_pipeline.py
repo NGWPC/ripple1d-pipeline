@@ -122,7 +122,6 @@ def batch_pipeline(collection_list):
         )
 
     for collection in collections:
-
         logging.info(f"Starting processing for collection: {collection} ...")
         # Construct the command to execute ripple_pipeline.py
         cmd = [
@@ -151,7 +150,6 @@ def batch_pipeline(collection_list):
             collection_finish_time = None
 
             try:
-
                 # Get timestamp for collection start time
                 collection_start_time = datetime.now()
 
@@ -193,14 +191,12 @@ def batch_pipeline(collection_list):
                 total_collections_succeeded += 1
 
             except subprocess.CalledProcessError as e:
-
                 logging.error(f"Error processing collection {collection}: {e} ")
                 logging.info(f"See {log_file} for more details.")
                 collection_status = "failed"
                 error_message = str(e)
 
             except Exception as e:
-
                 logging.error(f"Unexpected error occurred: {e}")
                 logging.error(f"Executing run_pipeline on collection: {collection}")
                 logging.info(f"See {log_file} for more details.")
@@ -208,7 +204,6 @@ def batch_pipeline(collection_list):
                 error_message = str(e)
 
             finally:
-
                 # Update collections table in monitoring database
                 with exception_handler("COLLECTIONS"):
                     monitoring_database.update_collections_table(

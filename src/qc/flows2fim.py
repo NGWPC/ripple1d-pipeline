@@ -58,7 +58,10 @@ def run_flows2fim(
             flow_file_path = os.path.join(flow_files_dir, flow_file)
             basename = os.path.splitext(flow_file)[0]
             control_csv = os.path.join(output_subfolder_path, f"{basename.replace('flows', 'controls')}.csv")
-            fim_output = os.path.join(output_subfolder_path, f"{basename.replace('flows', 'fim')}.{"vrt" if fim_format == "VRT" else "tif"}")
+            fim_output = os.path.join(
+                output_subfolder_path,
+                f"{basename.replace('flows', 'fim')}.{'vrt' if fim_format == 'VRT' else 'tif'}",
+            )
 
             # Generate control CSV
             cmd_controls = [
@@ -103,7 +106,6 @@ def run_flows2fim(
 
 
 if __name__ == "__main__":
-
     collection_name = ""
     collection = CollectionData(collection_name)
     run_flows2fim(collection)

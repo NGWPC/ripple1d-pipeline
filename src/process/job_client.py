@@ -174,25 +174,40 @@ class JobClient:
                 metadata = response.json().get(job_id, {})
 
                 row = {
-                    'id': entity_id,
-                    'accept_time': metadata.get('accept_time'),
-                    'dismiss_time': metadata.get('dismiss_time'),
-                    'finish_duration': metadata.get('finish_duration_minutes'),
-                    'status': metadata.get('ogc_status'),
-                    'start_time': metadata.get('start_time'),
-                    'status_time': metadata.get('status_time'),
-                    'payload': metadata.get('func_kwargs'),
+                    "id": entity_id,
+                    "accept_time": metadata.get("accept_time"),
+                    "dismiss_time": metadata.get("dismiss_time"),
+                    "finish_duration": metadata.get("finish_duration_minutes"),
+                    "status": metadata.get("ogc_status"),
+                    "start_time": metadata.get("start_time"),
+                    "status_time": metadata.get("status_time"),
+                    "payload": metadata.get("func_kwargs"),
                 }
                 results.append(row)
 
             except Exception as e:
                 logging.error(f"Failed to get job metadata. Error: {str(e)}")
-                results.append({
-                    'id': entity_id,
-                    'msg': f"Failed to get job metadata. Error: {str(e)}"
-                })
+                results.append(
+                    {
+                        "id": entity_id,
+                        "msg": f"Failed to get job metadata. Error: {str(e)}",
+                    }
+                )
 
-        return pd.DataFrame(results, columns=["id", "status", "accept_time", "start_time", "dismiss_time", "finish_duration", "status_time", "payload", "msg"])
+        return pd.DataFrame(
+            results,
+            columns=[
+                "id",
+                "status",
+                "accept_time",
+                "start_time",
+                "dismiss_time",
+                "finish_duration",
+                "status_time",
+                "payload",
+                "msg",
+            ],
+        )
 
     def get_failed_jobs_df(self, failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
         """
@@ -268,9 +283,7 @@ class JobClient:
                 if response.status_code == 200:
                     logging.info(f"Dismissed job {job.id}")
                 else:
-                    logging.error(
-                        f"Failed to dismiss {job.id} - Status {response.status_code}"
-                    )
+                    logging.error(f"Failed to dismiss {job.id} - Status {response.status_code}")
             except requests.RequestException as e:
                 logging.error(f"Error dismissing {job.id}: {str(e)}")
                 continue

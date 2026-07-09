@@ -73,7 +73,6 @@ def process_reach(
         submodel_directory_path = os.path.join(submodels_directory, str(reach.id))
         headers = {"Content-Type": "application/json"}
 
-
         if reach.id in [valid_reach.id for valid_reach in valid_reaches]:
             consider_outlet = False
             if (reach.to_id is None) or (reach.to_id not in [valid_reach.id for valid_reach in valid_reaches]):
@@ -82,11 +81,12 @@ def process_reach(
                 logging.info(f"{reach.id} will be considered outlet")
 
             min_elevation, max_elevation = get_min_max_elevation(
-                reach.id if consider_outlet else reach.to_id, submodels_directory, consider_outlet
+                reach.id if consider_outlet else reach.to_id,
+                submodels_directory,
+                consider_outlet,
             )
 
             if min_elevation and max_elevation:
-
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
                 payload = json.dumps(
                     {
@@ -132,12 +132,16 @@ def process_reach(
                     ):
                         with central_db_lock:
                             database.update_processing_table(
-                                [(reach.id, rc_db_job_id)], "ikwse_create_rating_curves_db", "failed"
+                                [(reach.id, rc_db_job_id)],
+                                "ikwse_create_rating_curves_db",
+                                "failed",
                             )
                     else:
                         with central_db_lock:
                             database.update_processing_table(
-                                [(reach.id, rc_db_job_id)], "ikwse_create_rating_curves_db", "successful"
+                                [(reach.id, rc_db_job_id)],
+                                "ikwse_create_rating_curves_db",
+                                "successful",
                             )
             else:
                 logging.info(f"Could not retrieve min/max elevation for reach_id: {reach.to_id}")
