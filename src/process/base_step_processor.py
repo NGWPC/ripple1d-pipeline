@@ -12,7 +12,13 @@ class BaseStepProcessor:
 
     def __init__(self, collection: CollectionData):
         self.collection = collection
-        self.job_records = {"accepted": [], "succeeded": [], "failed": [], "not_accepted": [], "unknown": []}
+        self.job_records = {
+            "accepted": [],
+            "succeeded": [],
+            "failed": [],
+            "not_accepted": [],
+            "unknown": [],
+        }
 
     def execute_step(self, job_client: JobClient, database: Database, timeout: int):
         """Template method defining the processing workflow"""
@@ -38,9 +44,11 @@ class BaseStepProcessor:
 
     def _wait_for_jobs(self, job_client: JobClient, timeout: int):
         """Common job waiting implementation"""
-        self.job_records["succeeded"], self.job_records["failed"], self.job_records["unknown"] = (
-            job_client.wait_for_jobs(self.job_records["accepted"], timeout)
-        )
+        (
+            self.job_records["succeeded"],
+            self.job_records["failed"],
+            self.job_records["unknown"],
+        ) = job_client.wait_for_jobs(self.job_records["accepted"], timeout)
 
     def _categorize_job_record(self, job_record: JobRecord) -> None:
         """Categorizes a job result into appropriate status list"""

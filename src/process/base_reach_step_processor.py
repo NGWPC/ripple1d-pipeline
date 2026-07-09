@@ -15,7 +15,11 @@ class BaseReachStepProcessor(BaseStepProcessor):
         self.db_table = "processing"
 
     def _format_reach_payload(
-        self, template: Dict, reach_id: int, model_id: Optional[str] = None, model_name: Optional[str] = None
+        self,
+        template: Dict,
+        reach_id: int,
+        model_id: Optional[str] = None,
+        model_name: Optional[str] = None,
     ) -> Dict:
         """Common reach payload formatting"""
         replacements = {

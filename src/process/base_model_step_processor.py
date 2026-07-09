@@ -19,7 +19,9 @@ class BaseModelStepProcessor(BaseStepProcessor):
         return {
             key: (
                 value.format(
-                    model_id=model_id, model_name=model_name, source_model_directory=self.collection.source_models_dir
+                    model_id=model_id,
+                    model_name=model_name,
+                    source_model_directory=self.collection.source_models_dir,
                 )
                 if isinstance(value, str)
                 else value

@@ -131,7 +131,15 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
         raise FileNotFoundError(f"{tmp_tif} not created")
 
     # burn xs_concave_hull
-    gdal_rasterize_cmd = ["gdal_rasterize", "-l", "XS_concave_hull", "-burn", "0", gpkg_path, tmp_tif]
+    gdal_rasterize_cmd = [
+        "gdal_rasterize",
+        "-l",
+        "XS_concave_hull",
+        "-burn",
+        "0",
+        gpkg_path,
+        tmp_tif,
+    ]
 
     result = subprocess.run(gdal_rasterize_cmd, capture_output=True, text=True)
     if result.returncode != 0:
@@ -250,7 +258,8 @@ def create_extent_lib(collection: Type[CollectionData], print_progress: bool = F
     tif_paths = get_all_tif_paths(library_dir)
     with multiprocessing.Pool(process_count) as pool:
         for i, _ in enumerate(
-            pool.imap_unordered(fim_worker, [(p, library_dir, extent_library_dir) for p in tif_paths]), 1
+            pool.imap_unordered(fim_worker, [(p, library_dir, extent_library_dir) for p in tif_paths]),
+            1,
         ):
             if print_progress:
                 sys.stdout.write(f"\rProcessing FIMs: {i}/{len(tif_paths)}")
@@ -263,7 +272,8 @@ def create_extent_lib(collection: Type[CollectionData], print_progress: bool = F
     with multiprocessing.Pool(process_count) as pool:
         for i, _ in enumerate(
             pool.imap_unordered(
-                domain_worker, [(rid, p, extent_library_dir, submodels_dir) for rid, p in reach_map.items()]
+                domain_worker,
+                [(rid, p, extent_library_dir, submodels_dir) for rid, p in reach_map.items()],
             ),
             1,
         ):

@@ -15,9 +15,10 @@ def load_json(file_path: str) -> Dict:
         data = json.load(file)
     return data
 
+
 def get_ras_length(reach: Optional[dict]) -> float:
     """Safely extracts ras length from reach data as some time objects can be missing or have None values."""
-    metrics =  reach.get("metrics", None)
+    metrics = reach.get("metrics", None)
     if metrics:
         lengths = metrics.get("lengths", None)
         if lengths:
@@ -26,6 +27,7 @@ def get_ras_length(reach: Optional[dict]) -> float:
                 return ras
 
     return 0
+
 
 def load_conflation(models: List[Model], database: Type[Database]) -> None:
     """
@@ -47,8 +49,8 @@ def load_conflation(models: List[Model], database: Type[Database]) -> None:
         models_data.items(),
         key=lambda item: (
             len(item[1]["reaches"]),
-            sum(get_ras_length(reach) for reach in item[1]["reaches"].values())
-        )
+            sum(get_ras_length(reach) for reach in item[1]["reaches"].values()),
+        ),
     )
 
     for model_id, json_data in sorted_models_data:

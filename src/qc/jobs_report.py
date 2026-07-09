@@ -35,20 +35,21 @@ def write_df_to_excel(df: pd.DataFrame, process_name: str, file_path: str) -> No
 
 def create_failed_jobs_report(collection: CollectionData, database, job_client) -> None:
     for step_name in collection.config["processing_steps"].keys():
-            domain = collection.config["processing_steps"][step_name]["domain"]
-            # Lets not capture the final status to preserve the timedout status jobs
-            # job_client.poll_and_update_job_status(database, step_name, "models" if domain == "model" else "processing")
-            failed_entities = database.get_entities_by_process_and_status(
-                step_name, "failed", "models" if domain == "model" else "processing"
-            )
-            df = job_client.get_failed_jobs_df(failed_entities)
-            write_df_to_excel(df, step_name, collection.failed_jobs_report_path)
+        domain = collection.config["processing_steps"][step_name]["domain"]
+        # Lets not capture the final status to preserve the timedout status jobs
+        # job_client.poll_and_update_job_status(database, step_name, "models" if domain == "model" else "processing")
+        failed_entities = database.get_entities_by_process_and_status(
+            step_name, "failed", "models" if domain == "model" else "processing"
+        )
+        df = job_client.get_failed_jobs_df(failed_entities)
+        write_df_to_excel(df, step_name, collection.failed_jobs_report_path)
+
 
 def create_timedout_jobs_report(collection: CollectionData, database, job_client) -> None:
     for step_name in collection.config["processing_steps"].keys():
-            domain = collection.config["processing_steps"][step_name]["domain"]
-            timedout_entities = database.get_entities_by_process_and_status(
-                step_name, "unknown", "models" if domain == "model" else "processing"
-            )
-            df = job_client.get_jobs_metadata_df(timedout_entities)
-            write_df_to_excel(df, step_name, collection.timedout_jobs_report_path)
+        domain = collection.config["processing_steps"][step_name]["domain"]
+        timedout_entities = database.get_entities_by_process_and_status(
+            step_name, "unknown", "models" if domain == "model" else "processing"
+        )
+        df = job_client.get_jobs_metadata_df(timedout_entities)
+        write_df_to_excel(df, step_name, collection.timedout_jobs_report_path)

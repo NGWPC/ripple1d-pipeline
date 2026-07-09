@@ -29,7 +29,6 @@ def list_collections(stac_endpoint):
         mip_collections = []
         for c in collections:
             if c.id.startswith("ble"):
-
                 ble_collections.append(
                     Collection(
                         c.id,

@@ -41,7 +41,13 @@ def setup_logging():
 
 
 def download_collection_data(collection_id: str, s3_root_dir) -> None:
-    aws_cmd = ["aws", "s3", "cp", f"{s3_root_dir}/{collection_id}/ripple.gpkg", f"./{collection_id}/ripple.gpkg"]
+    aws_cmd = [
+        "aws",
+        "s3",
+        "cp",
+        f"{s3_root_dir}/{collection_id}/ripple.gpkg",
+        f"./{collection_id}/ripple.gpkg",
+    ]
     subprocess.run(aws_cmd, check=True)
 
     aws_cmd = [
@@ -75,7 +81,8 @@ def create_rc_points_parquet(ripple_gpkg_path, submodels_dir, output_parquet_pat
         with sqlite3.connect(ripple_gpkg_path) as conn:
             models_df = pd.read_sql("SELECT model_id, reach_id FROM processing;", conn)
             us_rcs_df = pd.read_sql(
-                "SELECT reach_id, us_flow, us_wse FROM rating_curves WHERE boundary_condition = 'nd';", conn
+                "SELECT reach_id, us_flow, us_wse FROM rating_curves WHERE boundary_condition = 'nd';",
+                conn,
             )
     except Exception as e:
         logging.error(f"Error reading base datasets: {str(e)}")
@@ -172,9 +179,19 @@ def parse_arguments():
         """,
     )
     parser.add_argument(
-        "-root", "--s3_root_prefix", required=True, type=str, help="Directory path collections folder on S3."
+        "-root",
+        "--s3_root_prefix",
+        required=True,
+        type=str,
+        help="Directory path collections folder on S3.",
     )
-    parser.add_argument("-o", "--s3_output_prefix", required=True, type=str, help="Directory path for output data.")
+    parser.add_argument(
+        "-o",
+        "--s3_output_prefix",
+        required=True,
+        type=str,
+        help="Directory path for output data.",
+    )
     parser.add_argument(
         "-c",
         "--collection_id",
