@@ -1,4 +1,3 @@
-from typing import Dict, List
 
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
@@ -9,12 +8,12 @@ from .model import Model
 class BaseModelStepProcessor(BaseStepProcessor):
     """Base class for model-level processing steps"""
 
-    def __init__(self, collection: CollectionData, models: List[Model]):
+    def __init__(self, collection: CollectionData, models: list[Model]):
         super().__init__(collection)
         self.models = models
         self.db_table = "models"
 
-    def _format_model_payload(self, template: Dict, model_id: str, model_name: str) -> Dict:
+    def _format_model_payload(self, template: dict, model_id: str, model_name: str) -> dict:
         """Common model payload formatting"""
         return {
             key: (

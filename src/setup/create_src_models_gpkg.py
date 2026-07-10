@@ -1,11 +1,12 @@
 import logging
 import os
-from typing import Dict, List, Type
 
 import geopandas as gpd
 import pandas as pd
 
 from .collection_data import CollectionData
+
+logger = logging.getLogger(__name__)
 
 
 def load_layer_from_gpkg(gpkg_path: str, layer_name: str) -> gpd.GeoDataFrame:
@@ -22,11 +23,11 @@ def load_layer_from_gpkg(gpkg_path: str, layer_name: str) -> gpd.GeoDataFrame:
     try:
         return gpd.read_file(gpkg_path, columns=[], layer=layer_name)
     except Exception as e:
-        logging.info(f"Error loading {layer_name} table from {gpkg_path}: {e}")
+        logger.info(f"Error loading {layer_name} table from {gpkg_path}: {e}")
         return None
 
 
-def process_and_save_layer(layer_name: str, gdfs: List[gpd.GeoDataFrame], output_path: str) -> None:
+def process_and_save_layer(layer_name: str, gdfs: list[gpd.GeoDataFrame], output_path: str) -> None:
     """
     Process and save combined GeoDataFrames for a specific layer.
 
@@ -36,18 +37,18 @@ def process_and_save_layer(layer_name: str, gdfs: List[gpd.GeoDataFrame], output
         output_path (str): Path to output GeoPackage
     """
     if not gdfs:
-        logging.info(f"No {layer_name} tables were combined.")
+        logger.info(f"No {layer_name} tables were combined.")
         return
 
     try:
         combined_gdf = gpd.GeoDataFrame(pd.concat(gdfs, ignore_index=True))
         combined_gdf.to_file(output_path, driver="GPKG", layer=layer_name)
-        logging.info(f"Combined {layer_name} tables saved to {output_path}")
+        logger.info(f"Combined {layer_name} tables saved to {output_path}")
     except Exception as e:
-        logging.info(f"Error saving combined {layer_name} table: {e}")
+        logger.info(f"Error saving combined {layer_name} table: {e}")
 
 
-def create_src_models_gpkg(models_data: Dict, collection: Type[CollectionData]) -> None:
+def create_src_models_gpkg(models_data: dict, collection: type[CollectionData]) -> None:
     """
     Combine multiple GeoPackage layers from different models into a single GeoPackage.
 
@@ -63,7 +64,7 @@ def create_src_models_gpkg(models_data: Dict, collection: Type[CollectionData]) 
         gpkg_path = os.path.join(collection.source_models_dir, model_id, f"{model_data['model_name']}.gpkg")
 
         if not os.path.exists(gpkg_path):
-            logging.info(f"GPKG file not found: {gpkg_path}")
+            logger.info(f"GPKG file not found: {gpkg_path}")
             continue
 
         for layer_name in layer_data.keys():

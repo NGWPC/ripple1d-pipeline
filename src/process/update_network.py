@@ -1,10 +1,11 @@
 import logging
-from typing import Type
 
 from ..setup.database import Database
 
+logger = logging.getLogger(__name__)
 
-def update_network(database: Type[Database]) -> None:
+
+def update_network(database: type[Database]) -> None:
     """
     Build the modified network by updating updated_to_id based on valid and eclipsed reaches.
     """
@@ -32,6 +33,6 @@ def update_network(database: Type[Database]) -> None:
     if updates:
         # Execute batch updates
         database.update_to_id_batch(updates)
-        logging.info(f"Updated {len(updates)} reaches successfully.")
+        logger.info(f"Updated {len(updates)} reaches successfully.")
     else:
-        logging.info("No updates to process.")
+        logger.info("No updates to process.")

@@ -13,17 +13,14 @@ from pathlib import Path
 import yaml
 
 from monitoring_database import MonitoringDatabase
+from src import configure_logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+logger = logging.getLogger("batch_ripple_pipeline")
 
 
 def load_config(config_file):
     try:
-        with open(str(Path.cwd() / "src" / config_file), "r") as file:
+        with open(str(Path.cwd() / "src" / config_file)) as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
         raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
@@ -66,7 +63,7 @@ def s3_move(
         ]
 
     subprocess.Popen(s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-    logging.info(f"Submitted S3 mv command on collection: {collection} ...")
+    logger.info(f"Submitted S3 mv command on collection: {collection} ...")
 
 
 @contextmanager
@@ -74,7 +71,7 @@ def exception_handler(table):
     try:
         yield
     except Exception as e:
-        logging.error(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
+        logger.error(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
 
 
 def batch_pipeline(collection_list):
@@ -122,7 +119,7 @@ def batch_pipeline(collection_list):
         )
 
     for collection in collections:
-        logging.info(f"Starting processing for collection: {collection} ...")
+        logger.info(f"Starting processing for collection: {collection} ...")
         # Construct the command to execute ripple_pipeline.py
         cmd = [
             "python",
@@ -186,20 +183,20 @@ def batch_pipeline(collection_list):
                     raise subprocess.CalledProcessError(process.returncode, cmd)
 
                 # Logic for successfully processed collections
-                logging.info(f"Collection {collection} processed successfully.")
+                logger.info(f"Collection {collection} processed successfully.")
                 collection_status = "successful"
                 total_collections_succeeded += 1
 
             except subprocess.CalledProcessError as e:
-                logging.error(f"Error processing collection {collection}: {e} ")
-                logging.info(f"See {log_file} for more details.")
+                logger.error(f"Error processing collection {collection}: {e} ")
+                logger.info(f"See {log_file} for more details.")
                 collection_status = "failed"
                 error_message = str(e)
 
             except Exception as e:
-                logging.error(f"Unexpected error occurred: {e}")
-                logging.error(f"Executing run_pipeline on collection: {collection}")
-                logging.info(f"See {log_file} for more details.")
+                logger.error(f"Unexpected error occurred: {e}")
+                logger.error(f"Executing run_pipeline on collection: {collection}")
+                logger.info(f"See {log_file} for more details.")
                 collection_status = "failed"
                 error_message = str(e)
 
@@ -244,7 +241,7 @@ def read_input(collection_list):
         if source_file_extension.lower() not in acceptable_file_formats:
             raise Exception("Incoming file must be in .lst, .txt, or .csv format if submitting a file name and path.")
 
-        with open(collection_list, "r") as collections_file:
+        with open(collection_list) as collections_file:
             file_lines = collections_file.readlines()
             collections = [strip_newline(fl) for fl in file_lines]
 
@@ -280,10 +277,25 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--collection_list",
-        help=f"A filepath (.txt or .lst) containing a new line separated list of valid collections or a space separated string of collections",
+        help="A filepath (.txt or .lst) containing a new line separated list of valid collections or a space separated string of collections",
         required=True,
     )
 
+    parser.add_argument(
+        "--log-level",
+        default=None,
+        help="Logging level: DEBUG, INFO, WARNING, ERROR. Overrides RP_LOG_LEVEL env var. Default INFO.",
+    )
+
+    parser.add_argument(
+        "--third-party-log-level",
+        default=None,
+        help="Logging level for third-party libraries, i.e. everything not listed under "
+        "logging.FIRST_PARTY in config.yaml. Overrides RP_THIRD_PARTY_LOG_LEVEL env var. Default WARNING.",
+    )
+
     args = vars(parser.parse_args())
+
+    configure_logging(args.pop("log_level"), args.pop("third_party_log_level"))
 
     batch_pipeline(**args)

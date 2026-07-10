@@ -1,10 +1,11 @@
 import logging
 from abc import abstractmethod
-from typing import Tuple
 
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
 from .job_client import JobClient, JobRecord
+
+logger = logging.getLogger(__name__)
 
 
 class BaseStepProcessor:
@@ -25,7 +26,7 @@ class BaseStepProcessor:
         self._execute_requests()
         self._update_database(database, "accepted")
         self._update_database(database, "not_accepted")
-        logging.info("Jobs submitted, waiting for jobs to finish")
+        logger.info("Jobs submitted, waiting for jobs to finish")
         self._wait_for_jobs(job_client, timeout)
         self._update_database(database, "succeeded")
         self._update_database(database, "failed")
@@ -63,10 +64,10 @@ class BaseStepProcessor:
 
     def _log_results(self):
         """Common logging implementation"""
-        logging.info(f"Successful: {len(self.job_records['succeeded'])}")
-        logging.info(f"Failed: {len(self.job_records['failed'])}")
-        logging.info(f"Not Accepted: {len(self.job_records['not_accepted'])}")
-        logging.info(f"Unknown: {len(self.job_records['unknown'])}")
+        logger.info(f"Successful: {len(self.job_records['succeeded'])}")
+        logger.info(f"Failed: {len(self.job_records['failed'])}")
+        logger.info(f"Not Accepted: {len(self.job_records['not_accepted'])}")
+        logger.info(f"Unknown: {len(self.job_records['unknown'])}")
 
     def dismiss_timedout_jobs(self, job_client: JobClient):
         """Dismiss all unknown jobs"""

@@ -4,6 +4,8 @@ import logging
 
 import duckdb
 
+logger = logging.getLogger(__name__)
+
 
 def create_discharge_files(parquet_file, output_csv_dir):
     discharge_columns = [
@@ -25,10 +27,10 @@ def create_discharge_files(parquet_file, output_csv_dir):
             TO '{output_csv}' (FORMAT CSV, HEADER TRUE);
         """
         con.execute(query)
-        logging.info(f"Created {output_csv}")
+        logger.info(f"Created {output_csv}")
 
     con.close()
-    logging.info("All discharge files have been created.")
+    logger.info("All discharge files have been created.")
 
 
 if __name__ == "__main__":

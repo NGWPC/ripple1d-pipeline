@@ -1,11 +1,13 @@
 import logging
 import os
 import subprocess
-from typing import List, Type
+
 from ..setup.collection_data import CollectionData
 
+logger = logging.getLogger(__name__)
 
-def setup_gdal_environment(collection: Type[CollectionData]):
+
+def setup_gdal_environment(collection: type[CollectionData]):
     """
     Add GDAL binaries to the system PATH
     """
@@ -21,9 +23,9 @@ def setup_gdal_environment(collection: Type[CollectionData]):
 
 
 def run_flows2fim(
-    collection: Type[CollectionData],
+    collection: type[CollectionData],
     output_subfolder: str = "qc",
-    start_reaches: List = [],
+    start_reaches: list = [],
     fim_format: str = "COG",
 ) -> None:
     """
@@ -102,7 +104,7 @@ def run_flows2fim(
             ]
             subprocess.run(cmd_fim, shell=True, check=True)
 
-            logging.info(f"{basename} have been processed.")
+            logger.info(f"{basename} have been processed.")
 
 
 if __name__ == "__main__":

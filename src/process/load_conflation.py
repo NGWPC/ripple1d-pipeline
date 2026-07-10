@@ -1,22 +1,23 @@
 import json
 import logging
 import os
-from typing import Dict, List, Optional, Type
 
 from ..setup.database import Database
 from .model import Model
 
+logger = logging.getLogger(__name__)
 
-def load_json(file_path: str) -> Dict:
+
+def load_json(file_path: str) -> dict:
     """
     Loads JSON data from a given file path.
     """
-    with open(file_path, "r") as file:
+    with open(file_path) as file:
         data = json.load(file)
     return data
 
 
-def get_ras_length(reach: Optional[dict]) -> float:
+def get_ras_length(reach: dict | None) -> float:
     """Safely extracts ras length from reach data as some time objects can be missing or have None values."""
     metrics = reach.get("metrics", None)
     if metrics:
@@ -29,7 +30,7 @@ def get_ras_length(reach: Optional[dict]) -> float:
     return 0
 
 
-def load_conflation(models: List[Model], database: Type[Database]) -> None:
+def load_conflation(models: list[Model], database: type[Database]) -> None:
     """
     Loads conflation data into the processing table from the specified model keys and source models directory.
     """
@@ -42,7 +43,7 @@ def load_conflation(models: List[Model], database: Type[Database]) -> None:
             json_data = load_json(f"{source_models_directory}\\{model.id}\\{model.name}.conflation.json")
             models_data[model.id] = json_data
         else:
-            logging.info(f"Does not exist {file_path}")
+            logger.info(f"Does not exist {file_path}")
 
     # Order by number of reaches (ascending) and total RAS length (ascending to place higher lengths last)
     sorted_models_data = sorted(
@@ -56,4 +57,4 @@ def load_conflation(models: List[Model], database: Type[Database]) -> None:
     for model_id, json_data in sorted_models_data:
         database.update_model_id_and_eclipsed(json_data, model_id)
 
-    logging.info(f"Conflation loaded to {database.db_path} from .conflation.json files")
+    logger.info(f"Conflation loaded to {database.db_path} from .conflation.json files")

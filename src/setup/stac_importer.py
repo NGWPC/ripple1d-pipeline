@@ -1,6 +1,5 @@
 import logging
 import os
-from typing import List, Type
 
 import boto3
 import pystac_client
@@ -8,13 +7,15 @@ from dotenv import load_dotenv
 
 from .collection_data import CollectionData
 
+logger = logging.getLogger(__name__)
+
 
 class STACImporter:
     """
     Methods to identify models from a STAC Collection, and download each model's gpkg files from AWS S3.
     """
 
-    def __init__(self, collectiondata: Type[CollectionData]):
+    def __init__(self, collectiondata: type[CollectionData]):
         self.db_path = collectiondata.db_path
         self.stac_collection = collectiondata.stac_collection_id
         self.stac_endpoint = collectiondata.STAC_URL
@@ -52,9 +53,9 @@ class STACImporter:
                     "model_name": item.properties["model_name"],
                 }
 
-        logging.info(f"Total {i} models in this collection")
-        logging.info(f"{omitted} models were omitted from this collection")
-        logging.info(f"Total usable models from this collection: {len(models_data)}.")
+        logger.info(f"Total {i} models in this collection")
+        logger.info(f"{omitted} models were omitted from this collection")
+        logger.info(f"Total usable models from this collection: {len(models_data)}.")
 
         self.models_data = models_data
 
@@ -86,11 +87,11 @@ class STACImporter:
                 bucket_name, key = gpkg_url.replace("s3://", "").split("/", 1)
                 s3_client.download_file(bucket_name, key, local_gpkg_path)
 
-                logging.info(f"Successfully downloaded files for {id}")
+                logger.info(f"Successfully downloaded files for {id}")
             except Exception as e:
-                logging.info(f"Failed to download files for {id}: {e}")
+                logger.info(f"Failed to download files for {id}: {e}")
 
-    def get_model_ids(self) -> List[str]:
+    def get_model_ids(self) -> list[str]:
         self.model_ids = list(self.models_data.keys())
         return self.model_ids
 
@@ -107,16 +108,16 @@ class STACImporter:
         """
 
         if item.properties["has_2d"]:
-            logging.info(f"{item.id} skipping because it has 2d elements")
+            logger.info(f"{item.id} skipping because it has 2d elements")
             return True
         if item.properties["ras_units"] != "English":
-            logging.info(f"{item.id} skipping because it has non English Units")
+            logger.info(f"{item.id} skipping because it has non English Units")
             return True
         # If there are no steady flow files, skip the model (Ripple1d cannot process unsteady flow files)
         flows = item.properties["flows"]
         any_flows_start_with_f = any(value.startswith("f") or value.startswith("F") for value in flows.values())
         if any_flows_start_with_f == False:
-            logging.info(f"{item.id} skipping because it has no valid steady flow files")
+            logger.info(f"{item.id} skipping because it has no valid steady flow files")
             return True
         else:
             return False

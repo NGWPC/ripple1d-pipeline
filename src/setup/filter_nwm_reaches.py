@@ -1,12 +1,13 @@
 import logging
-from typing import Type
 
 import geopandas as gpd
 
 from .collection_data import CollectionData
 
+logger = logging.getLogger(__name__)
 
-def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
+
+def filter_nwm_reaches(collection: type[CollectionData]) -> None:
     """
     Filters NWM flowlines that intersect with the convex hull of the River table from the river_gpkg_path GPKG file
     and saves the result to a new GPKG file (db_path).
@@ -44,4 +45,4 @@ def filter_nwm_reaches(collection: Type[CollectionData]) -> None:
     # Save the filtered NWM flowlines to a new GeoPackage (GPKG) file
     filtered_nwm_gdf.to_file(output_gpkg_path, layer="reaches", driver="GPKG")
 
-    logging.info(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")
+    logger.info(f"Subset NWM flowlines written to reaches table {output_gpkg_path}")

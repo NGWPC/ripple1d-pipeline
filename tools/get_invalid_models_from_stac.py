@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-import pystac_client
 import logging
+
+import pystac_client
 
 """
     Cerrtain model properties are incompatible with Ripple1d, and this script identifies which

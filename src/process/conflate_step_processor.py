@@ -1,6 +1,5 @@
 import logging
 from time import sleep
-from typing import Dict, List, Tuple
 
 import requests
 
@@ -9,11 +8,13 @@ from .base_model_step_processor import BaseModelStepProcessor
 from .job_client import JobRecord
 from .model import Model
 
+logger = logging.getLogger(__name__)
+
 
 class ConflateModelStepProcessor(BaseModelStepProcessor):
     """Handles model conflation specific logic"""
 
-    def __init__(self, collection: CollectionData, models: List[Model]):
+    def __init__(self, collection: CollectionData, models: list[Model]):
         super().__init__(collection, models)
         self.process_name = "conflate_model"
 
@@ -34,7 +35,7 @@ class ConflateModelStepProcessor(BaseModelStepProcessor):
             response = requests.post(url, json=payload)
             if response.status_code == 201:
                 return JobRecord(model, response.json()["jobID"], "accepted")
-            logging.debug(f"Attempt {attempt + 1} failed for model {model.id}: {response.text}")
+            logger.debug(f"Attempt {attempt + 1} failed for model {model.id}: {response.text}")
             sleep(attempt * self.collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"])
 
         return JobRecord(model, "", "not_accepted")

@@ -2,8 +2,21 @@
 
 RIPPLE1D_VERSION: 0.10.4
 
+logging:
+  # Loggers promoted out of "third party". These follow the main log level
+  # (--log-level / RP_LOG_LEVEL) instead of the third-party floor
+  # (--third-party-log-level / RP_THIRD_PARTY_LOG_LEVEL).
+  #
+  # Use the logger name printed in each log line. A name covers its children,
+  # so "botocore" also covers "botocore.endpoint".
+  # Levels themselves are NOT set here; they stay on the flags/env vars.
+  FIRST_PARTY:
+    # - botocore
+    # - urllib3
+    # - s3transfer
+
 paths:
-  COLLECTIONS_ROOT_DIR: C:\collections
+  COLLECTIONS_ROOT_DIR: C:\Users\abdul.siddiqui\Downloads\collections
   NWM_FLOWLINES_PATH: C:\reference_data\nwm_flowlines.parquet
   S3_UPLOAD_PREFIX: "" # Exclude trailing slash of S3 Bucket
   S3_UPLOAD_FAILED_PREFIX: "" # Exclude trailing slash of S3 Bucket

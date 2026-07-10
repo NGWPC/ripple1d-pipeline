@@ -6,10 +6,9 @@ import argparse
 import json
 import logging
 import os
-import shutil
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import geopandas as gpd
 import pandas as pd
@@ -18,7 +17,7 @@ import pandas as pd
 class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_record = {
-            "time": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "time": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "msg": record.getMessage(),
         }

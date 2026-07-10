@@ -117,7 +117,7 @@ def main():
 
     if os.path.exists(cache_bridge_file):
         print(f"Loading TIF list from {cache_bridge_file}...")
-        with open(cache_bridge_file, "r") as f:
+        with open(cache_bridge_file) as f:
             tifs = [line.strip() for line in f if line.strip()]
     else:
         tifs = list_vsi_tifs(args.s3_path)

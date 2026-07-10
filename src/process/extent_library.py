@@ -11,9 +11,10 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List, Type
 
 from ..setup.collection_data import CollectionData
+
+logger = logging.getLogger(__name__)
 
 
 def setup_gdal_environment(collection: CollectionData) -> None:
@@ -45,7 +46,7 @@ def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
     dest_tif = dest_dir / f"{tif_path.stem}.tif"
 
     if dest_tif.exists():
-        logging.debug(f"Destination file {dest_tif} exists. Skipping processing.")
+        logger.debug(f"Destination file {dest_tif} exists. Skipping processing.")
         return
 
     gdal_calc_cmd = [
@@ -60,13 +61,13 @@ def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
 
     result = subprocess.run(gdal_calc_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"gdal_calc stdout: {result.stdout}")
-        logging.error(f"gdal_calc stderr: {result.stderr}")
-        logging.debug(" ".join(gdal_calc_cmd))
+        logger.debug(f"gdal_calc stdout: {result.stdout}")
+        logger.error(f"gdal_calc stderr: {result.stderr}")
+        logger.debug(" ".join(gdal_calc_cmd))
         raise RuntimeError(f"gdal_calc failed for {tif_path}")
 
     if not os.path.exists(tmp_tif):
-        logging.error(f"Temporary file {tmp_tif} not created!")
+        logger.error(f"Temporary file {tmp_tif} not created!")
         raise FileNotFoundError(f"{tmp_tif} not created")
 
     # Translate to COG, COG format can't be created with gdal_calc
@@ -81,10 +82,10 @@ def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
     # Execute gdalwarp with output redirection
     result = subprocess.run(gdal_translate_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"gdal_translate stdout: {result.stdout}")
-        logging.error(f"gdal_translate stderr: {result.stderr}")
-        logging.debug(" ".join(gdal_calc_cmd))
-        logging.debug(" ".join(gdal_translate_cmd))
+        logger.debug(f"gdal_translate stdout: {result.stdout}")
+        logger.error(f"gdal_translate stderr: {result.stderr}")
+        logger.debug(" ".join(gdal_calc_cmd))
+        logger.debug(" ".join(gdal_translate_cmd))
 
         if os.path.exists(dest_tif):  # clean up
             os.remove(dest_tif)
@@ -105,7 +106,7 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
     dest_tif = dest_dir / "domain.tif"
 
     if dest_tif.exists():
-        logging.debug(f"Domain file {dest_tif} exists. Skipping processing.")
+        logger.debug(f"Domain file {dest_tif} exists. Skipping processing.")
         return
 
     # create a temporary raster with same extents as all other to burn xs_concave_hull
@@ -121,13 +122,13 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
 
     result = subprocess.run(gdal_calc_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"gdal_calc stdout: {result.stdout}")
-        logging.error(f"gdal_calc stderr: {result.stderr}")
-        logging.debug(" ".join(gdal_calc_cmd))
+        logger.debug(f"gdal_calc stdout: {result.stdout}")
+        logger.error(f"gdal_calc stderr: {result.stderr}")
+        logger.debug(" ".join(gdal_calc_cmd))
         raise RuntimeError(f"gdal_calc failed for domain from {tif_path}")
 
     if not os.path.exists(tmp_tif):
-        logging.error(f"Temporary file {tmp_tif} not created!")
+        logger.error(f"Temporary file {tmp_tif} not created!")
         raise FileNotFoundError(f"{tmp_tif} not created")
 
     # burn xs_concave_hull
@@ -143,9 +144,9 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
 
     result = subprocess.run(gdal_rasterize_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"gdal_rasterize stdout: {result.stdout}")
-        logging.error(f"gdal_rasterize stderr: {result.stderr}")
-        logging.debug(" ".join(gdal_rasterize_cmd))
+        logger.debug(f"gdal_rasterize stdout: {result.stdout}")
+        logger.error(f"gdal_rasterize stderr: {result.stderr}")
+        logger.debug(" ".join(gdal_rasterize_cmd))
         raise RuntimeError(f"gdal_rasterize failed for domain {tmp_tif}")
 
     # Translate to COG, COG format can't be created with gdal_calc, or burn value into
@@ -159,11 +160,11 @@ def create_domain_tif(tif_path: Path, tmp_dir: Path, gpkg_path: Path, dest_dir: 
 
     result = subprocess.run(gdal_translate_cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"gdal_translate stdout: {result.stdout}")
-        logging.error(f"gdal_translate stderr: {result.stderr}")
-        logging.debug(" ".join(gdal_calc_cmd))
-        logging.debug(" ".join(gdal_rasterize_cmd))
-        logging.debug(" ".join(gdal_translate_cmd))
+        logger.debug(f"gdal_translate stdout: {result.stdout}")
+        logger.error(f"gdal_translate stderr: {result.stderr}")
+        logger.debug(" ".join(gdal_calc_cmd))
+        logger.debug(" ".join(gdal_rasterize_cmd))
+        logger.debug(" ".join(gdal_translate_cmd))
 
         if os.path.exists(dest_tif):  # clean up
             os.remove(dest_tif)
@@ -187,7 +188,7 @@ def fim_worker(args: tuple) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             create_extent_tif(tif_path, Path(tmp_dir), dest_dir)
     except Exception as e:
-        logging.error(f"Error processing {tif_path}: {str(e)}")
+        logger.error(f"Error processing {tif_path}: {str(e)}")
 
 
 def domain_worker(args: tuple) -> None:
@@ -208,12 +209,12 @@ def domain_worker(args: tuple) -> None:
             with tempfile.TemporaryDirectory() as tmp_dir:
                 create_domain_tif(tif_path, Path(tmp_dir), gpkg_path, dest_dir)
         else:
-            logging.error(f"Missing geopackage for reach {reach_id}: {gpkg_path}")
+            logger.error(f"Missing geopackage for reach {reach_id}: {gpkg_path}")
     except Exception as e:
-        logging.error(f"Error processing domain {reach_id}: {str(e)}", exc_info=True)
+        logger.error(f"Error processing domain {reach_id}: {str(e)}", exc_info=True)
 
 
-def get_all_tif_paths(src_dir: Path) -> List[Path]:
+def get_all_tif_paths(src_dir: Path) -> list[Path]:
     """
     Get all TIFF file paths recursively from source directory.
 
@@ -226,7 +227,7 @@ def get_all_tif_paths(src_dir: Path) -> List[Path]:
     return list(src_dir.rglob("*.tif"))
 
 
-def get_reachid_tif_map(tif_paths: List[Path]) -> Dict[str, Path]:
+def get_reachid_tif_map(tif_paths: list[Path]) -> dict[str, Path]:
     """
     Create mapping of reach IDs to representative TIFF paths.
 
@@ -239,7 +240,7 @@ def get_reachid_tif_map(tif_paths: List[Path]) -> Dict[str, Path]:
     return {str(path.parent.parent.name): path for path in tif_paths}
 
 
-def create_extent_lib(collection: Type[CollectionData], print_progress: bool = False) -> None:
+def create_extent_lib(collection: type[CollectionData], print_progress: bool = False) -> None:
     """
     Main function to create extent library from depth library.
 

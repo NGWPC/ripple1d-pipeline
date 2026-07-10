@@ -5,6 +5,8 @@ import pandas as pd
 
 from ..setup.collection_data import CollectionData
 
+logger = logging.getLogger(__name__)
+
 
 def write_df_to_excel(df: pd.DataFrame, process_name: str, file_path: str) -> None:
     """
@@ -30,7 +32,7 @@ def write_df_to_excel(df: pd.DataFrame, process_name: str, file_path: str) -> No
         with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
             df.to_excel(writer, sheet_name=process_name, index=False)
 
-    logging.info(f"Data written to {file_path} in sheet {process_name}.")
+    logger.info(f"Data written to {file_path} in sheet {process_name}.")
 
 
 def create_failed_jobs_report(collection: CollectionData, database, job_client) -> None:

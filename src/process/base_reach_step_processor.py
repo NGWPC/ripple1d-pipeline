@@ -1,4 +1,3 @@
-from typing import Dict, List, Optional, Tuple
 
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
@@ -9,18 +8,18 @@ from .reach import Reach
 class BaseReachStepProcessor(BaseStepProcessor):
     """Base class for reach-level processing steps"""
 
-    def __init__(self, collection: CollectionData, reaches: List[Reach]):
+    def __init__(self, collection: CollectionData, reaches: list[Reach]):
         super().__init__(collection)
         self.reaches = reaches
         self.db_table = "processing"
 
     def _format_reach_payload(
         self,
-        template: Dict,
+        template: dict,
         reach_id: int,
-        model_id: Optional[str] = None,
-        model_name: Optional[str] = None,
-    ) -> Dict:
+        model_id: str | None = None,
+        model_name: str | None = None,
+    ) -> dict:
         """Common reach payload formatting"""
         replacements = {
             "nwm_reach_id": reach_id,
