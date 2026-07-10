@@ -6,7 +6,14 @@ import duckdb
 
 
 def create_discharge_files(parquet_file, output_csv_dir):
-    discharge_columns = ["f2year", "f5year", "f10year", "f25year", "f50year", "f100year"]
+    discharge_columns = [
+        "f2year",
+        "f5year",
+        "f10year",
+        "f25year",
+        "f50year",
+        "f100year",
+    ]
 
     con = duckdb.connect()
     con.execute(f"CREATE TABLE data AS SELECT * FROM read_parquet('{parquet_file}')")

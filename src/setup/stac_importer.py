@@ -43,10 +43,14 @@ class STACImporter:
             gpkg_key = ""
             for _, asset in item.assets.items():
                 if "ras-geometry-gpkg" in asset.roles:
-                    gpkg_key = asset.href
+                    s3_key = asset.extra_fields.get("s3_key", "")
+                    gpkg_key = f"s3://{os.environ.get('RP_S3_KEY_PREFIX', '')}{s3_key}"
                     break
             if gpkg_key:
-                models_data[item.id] = {"gpkg": gpkg_key, "model_name": item.properties["model_name"]}
+                models_data[item.id] = {
+                    "gpkg": gpkg_key,
+                    "model_name": item.properties["model_name"],
+                }
 
         logging.info(f"Total {i} models in this collection")
         logging.info(f"{omitted} models were omitted from this collection")

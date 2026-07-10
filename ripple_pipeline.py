@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import time
 
 # Import necessary modules
 from src import configure_logging
@@ -56,7 +55,7 @@ def process(collection_name):
     conflate_step_processor = ConflateModelStepProcessor(collection, models)
     conflate_step_processor.execute_step(jobclient, database, timeout=20)
     logging.info("<<<<<<Finished Conflate Model Step")
-    conflate_step_processor.dismiss_timedout_jobs(jobclient) # dismiss stale jobs so they don't occupy API
+    conflate_step_processor.dismiss_timedout_jobs(jobclient)  # dismiss stale jobs so they don't occupy API
 
     logging.info("Starting Load Conflation Step >>>>>>")
     valid_models = conflate_step_processor.valid_entities
@@ -89,11 +88,15 @@ def process(collection_name):
     )
     terrain_step_processor.execute_step(jobclient, database, timeout=10)
     logging.info("<<<<<< Finished Create Ras Terrain Step")
-    submodel_step_processor.dismiss_timedout_jobs(jobclient) # by dismissing jobs one step later, we give previous step more time, when possible
+    submodel_step_processor.dismiss_timedout_jobs(
+        jobclient
+    )  # by dismissing jobs one step later, we give previous step more time, when possible
 
     logging.info("Starting Create Model Run Normal Depth Step  >>>>>>>>")
     create_model_step_processor = GenericReachStepProcessor(
-        collection, terrain_step_processor.valid_entities, "create_model_run_normal_depth"
+        collection,
+        terrain_step_processor.valid_entities,
+        "create_model_run_normal_depth",
     )
     create_model_step_processor.execute_step(jobclient, database, timeout=15)
     logging.info("<<<<<< Finished Create Model Run Normal Depth Step")
@@ -101,7 +104,9 @@ def process(collection_name):
 
     logging.info("<<<<< Started Run Incremental Normal Depth Step")
     nd_step_processor = GenericReachStepProcessor(
-        collection, create_model_step_processor.valid_entities, "run_incremental_normal_depth"
+        collection,
+        create_model_step_processor.valid_entities,
+        "run_incremental_normal_depth",
     )
     nd_step_processor.execute_step(jobclient, database, timeout=25)
     logging.info("<<<<< Finished Run Incremental Normal Depth Step")
@@ -202,7 +207,6 @@ def run_pipeline(collection: str):
     """Automate execution of all pipeline steps with conditional QC"""
     execute_flows2fim = False
 
-
     try:
         setup(collection)
         process(collection)
@@ -217,6 +221,7 @@ def run_pipeline(collection: str):
         except Exception as qc_error:
             logging.error(f"QC failed: {str(qc_error)}")
 
+
 if __name__ == "__main__":
     """
     Sample Usage:
@@ -228,9 +233,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--collection",
-        help=f"A valid collection of HEC-RAS models. The collection will initially be pulled "
-        "locally from the provided STAC URL (in config.py). "
-        "https://radiantearth.github.io/stac-browser/#/external/stac2.dewberryanalytics.com/?.language=en ",
+        help="A valid collection of HEC-RAS models. The collection will initially be pulled "
+        "locally from the provided STAC URL (in config.py). ",
         required=True,
     )
     parser.add_argument(

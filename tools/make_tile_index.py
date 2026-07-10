@@ -103,7 +103,12 @@ def main():
     parser.add_argument("--s3-path", required=True, help="S3 path (e.g., /vsis3/bucket/folder)")
     parser.add_argument("--final-gpkg", required=True, help="Output GeoPackage filename")
     parser.add_argument("--processes", type=int, default=20, help="Number of parallel processes")
-    parser.add_argument("--chunk-size", type=int, default=300, help="Number of rasters per temporary GPKG")
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=300,
+        help="Number of rasters per temporary GPKG",
+    )
 
     args = parser.parse_args()
 

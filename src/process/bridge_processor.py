@@ -28,12 +28,19 @@ def run_cmd(cmd: List, description: str) -> subprocess.CompletedProcess:
     return result
 
 
-def get_raster_info(tif_path: Path) -> Tuple[Tuple[float, float, float, float], Tuple[float, float], float]:
+def get_raster_info(
+    tif_path: Path,
+) -> Tuple[Tuple[float, float, float, float], Tuple[float, float], float]:
     """Get bounds (xmin, ymin, xmax, ymax), resolution (xres, yres), and nodata value from a raster."""
     result = run_cmd(["gdalinfo", "-json", tif_path], f"gdalinfo {tif_path}")
     info = json.loads(result.stdout)
     corners = info["cornerCoordinates"]
-    bounds = (corners["upperLeft"][0], corners["lowerRight"][1], corners["lowerRight"][0], corners["upperLeft"][1])
+    bounds = (
+        corners["upperLeft"][0],
+        corners["lowerRight"][1],
+        corners["lowerRight"][0],
+        corners["upperLeft"][1],
+    )
     # geoTransform: [originX, pixelWidth, 0, originY, 0, pixelHeight]
     gt = info["geoTransform"]
     res = (abs(gt[1]), abs(gt[5]))
@@ -86,7 +93,15 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
     Expects pre-aligned DEM and bridge VRTs. Runs gdal_calc for the masking computation
     and overwrites the original file on success.
     """
-    depth_path, aligned_dem, aligned_bridges, library_parent, conv_factor, depth_nodata, reach_id = args
+    (
+        depth_path,
+        aligned_dem,
+        aligned_bridges,
+        library_parent,
+        conv_factor,
+        depth_nodata,
+        reach_id,
+    ) = args
     logging.debug(f"Processing {depth_path} with bridge mask")
     depth_path = Path(depth_path)
 
@@ -127,7 +142,18 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
 
             # gdal_calc can't work with COG so need to convert here
             cog_output = temp_dir / "output.tif"
-            run_cmd(["gdal_translate", "-of", "COG", "-co", "COMPRESS=LZW", temp_output, cog_output], "gdal_translate")
+            run_cmd(
+                [
+                    "gdal_translate",
+                    "-of",
+                    "COG",
+                    "-co",
+                    "COMPRESS=LZW",
+                    temp_output,
+                    cog_output,
+                ],
+                "gdal_translate",
+            )
             logging.debug(f"Finished processing {depth_path}, moving result to original location")
             shutil.move(str(cog_output), str(depth_path))
             logging.debug(f"Successfully processed {depth_path}")
@@ -211,16 +237,33 @@ def process_bridges(collection: "CollectionData") -> Dict[str, any]:
             reach_temp_dir = Path(reach_temp_dir)
 
             bridges_vrt = reach_temp_dir / "bridges.vrt"
-            run_cmd(["gdalbuildvrt", bridges_vrt] + intersecting_bridge_paths, "gdalbuildvrt")
+            run_cmd(
+                ["gdalbuildvrt", bridges_vrt] + intersecting_bridge_paths,
+                "gdalbuildvrt",
+            )
 
             # Depth rasters are in EPSG:5070, reproject DEM and bridges to match
             target_crs = "EPSG:5070"
 
             aligned_dem = reach_temp_dir / "aligned_dem.vrt"
-            align_raster(dem_path, aligned_dem, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
+            align_raster(
+                dem_path,
+                aligned_dem,
+                bounds,
+                depth_res,
+                nodata=depth_nodata,
+                target_crs=target_crs,
+            )
 
             aligned_bridges = reach_temp_dir / "aligned_bridges.vrt"
-            align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
+            align_raster(
+                bridges_vrt,
+                aligned_bridges,
+                bounds,
+                depth_res,
+                nodata=depth_nodata,
+                target_crs=target_crs,
+            )
 
             worker_args = [
                 (
@@ -230,7 +273,7 @@ def process_bridges(collection: "CollectionData") -> Dict[str, any]:
                     str(library_dir.parent),
                     conv_factor,
                     depth_nodata,
-                    reach_id
+                    reach_id,
                 )
                 for depth_path in reach_tifs
             ]

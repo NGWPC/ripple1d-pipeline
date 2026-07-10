@@ -8,7 +8,14 @@ class MonitoringDatabase:
     Monitoring database class to monitor collection processing at scale.
     """
 
-    def __init__(self, ip_address: str, maintainer: str, db_path: str, ripple1d_version: str, timeout=60) -> None:
+    def __init__(
+        self,
+        ip_address: str,
+        maintainer: str,
+        db_path: str,
+        ripple1d_version: str,
+        timeout=60,
+    ) -> None:
         self.ripple1d_version = ripple1d_version
         self.db_path = db_path
         self.ip_address = ip_address
