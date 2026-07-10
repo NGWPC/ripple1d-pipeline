@@ -1,6 +1,5 @@
 import logging
 from time import sleep
-from typing import Dict, List, Tuple
 
 import requests
 
@@ -10,11 +9,13 @@ from .ikwse_step import get_min_max_elevation
 from .job_client import JobRecord
 from .reach import Reach
 
+logger = logging.getLogger(__name__)
+
 
 class KWSEStepProcessor(BaseReachStepProcessor):
     """Handles KWSE-specific reach processing"""
 
-    def __init__(self, collection: CollectionData, reaches: List[Reach]):
+    def __init__(self, collection: CollectionData, reaches: list[Reach]):
         super().__init__(collection, reaches)
         self.process_name = "run_known_wse"
 
@@ -41,7 +42,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
             response = requests.post(url, json=payload)
             if response.status_code == 201:
                 return JobRecord(reach, response.json()["jobID"], "accepted")
-            logging.info(f"Attempt {attempt + 1} failed for model {reach.id}: {response.text}")
+            logger.info(f"Attempt {attempt + 1} failed for model {reach.id}: {response.text}")
             sleep(attempt * self.collection.config["polling"]["API_LAUNCH_JOBS_RETRY_WAIT"])
 
         return JobRecord(reach, "", "not_accepted")

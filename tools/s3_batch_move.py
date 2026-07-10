@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 import argparse
+import logging
 import os
 import pathlib
 import subprocess
-import logging
-import yaml
+from datetime import datetime
 from pathlib import Path
 
-from datetime import datetime
+import yaml
+
 from ripple_pipeline import *
 from src.setup import *
 
@@ -49,7 +50,7 @@ def s3_move(collection: str, failed: bool = False):
 
 def load_config(config_file):
     try:
-        with open(str(Path.cwd() / "src" / config_file), "r") as file:
+        with open(str(Path.cwd() / "src" / config_file)) as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
         raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
@@ -86,7 +87,7 @@ def read_input(collection_list):
         if source_file_extension.lower() not in acceptable_file_formats:
             raise Exception("Incoming file must be in .lst, .txt, or .csv format if submitting a file name and path.")
 
-        with open(collection_list, "r") as collections_file:
+        with open(collection_list) as collections_file:
             file_lines = collections_file.readlines()
             collections = [strip_newline(fl) for fl in file_lines]
 
@@ -122,7 +123,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--collection_list",
-        help=f"A filepath (.txt or .lst) containaing a new line separated list of valid collections or a space separated string of collections",
+        help="A filepath (.txt or .lst) containaing a new line separated list of valid collections or a space separated string of collections",
         required=True,
     )
 

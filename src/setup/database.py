@@ -2,9 +2,10 @@ import logging
 import sqlite3
 import threading
 from contextlib import contextmanager
-from typing import Dict, List, Tuple, Type
 
 from .collection_data import CollectionData
+
+logger = logging.getLogger(__name__)
 
 
 class Database:
@@ -12,7 +13,7 @@ class Database:
     Main database class to hold all Database methods (SQL Queries).
     """
 
-    def __init__(self, collection: Type[CollectionData]):
+    def __init__(self, collection: type[CollectionData]):
         self.db_path = collection.db_path
         self.stac_collection_id = collection.stac_collection_id  # Not used currently
         self.source_models_dir = collection.source_models_dir  # Not used currently
@@ -105,7 +106,7 @@ class Database:
             conn.commit()
 
     @staticmethod
-    def init_db(collection: Type[CollectionData]) -> None:
+    def init_db(collection: type[CollectionData]) -> None:
         """
         Initialize database and create tables
         """
@@ -132,7 +133,7 @@ class Database:
             )
 
             cursor.execute(
-                f"""
+                """
                 INSERT INTO metadata
                 VALUES (?, ?, ?);
                 """,
@@ -295,15 +296,15 @@ class Database:
             # )
 
             connection.commit()
-            logging.info(f"Database initialized successfully at {db_path}")
+            logger.info(f"Database initialized successfully at {db_path}")
         except Exception as e:
-            logging.info(e)
+            logger.info(e)
             connection.rollback()
         finally:
             connection.close()
 
     @staticmethod
-    def insert_models(models_data: Dict, collection: Type[CollectionData]) -> None:
+    def insert_models(models_data: dict, collection: type[CollectionData]) -> None:
         """ """
         collection_id = collection.stac_collection_id
         db_path = collection.db_path
@@ -321,7 +322,7 @@ class Database:
                 rows,
             )
             conn.commit()
-            logging.info(f"Models record inserted at {db_path}")
+            logger.info(f"Models record inserted at {db_path}")
         finally:
             conn.close()
 
@@ -335,7 +336,7 @@ class Database:
 
         self.executemany_dml_query(update_query, params)
 
-    def update_processing_table(self, reach_job_ids: List[Tuple[int, str]], process_name: str, job_status: str) -> None:
+    def update_processing_table(self, reach_job_ids: list[tuple[int, str]], process_name: str, job_status: str) -> None:
         """
         Updates the processing table with job_id and job_status for a given process.
         """
@@ -348,12 +349,12 @@ class Database:
 
         self.executemany_dml_query(update_query, params)
 
-    def update_model_id_and_eclipsed(self, data: Dict, model_id: str) -> None:
+    def update_model_id_and_eclipsed(self, data: dict, model_id: str) -> None:
         """
         Updates the model_id and eclipsed status in the processing table
         based on upstream and downstream reach conflation data.
         """
-        update_query = f"""
+        update_query = """
                 UPDATE processing
                 SET model_id = ?, eclipsed = ?
                 WHERE reach_id = ?;
@@ -363,11 +364,11 @@ class Database:
             eclipsed = value["eclipsed"] == True
             self.execute_dml_query(update_query, (model_id, eclipsed, key))
 
-    def get_valid_reaches(self) -> List[Tuple[int, int]]:
+    def get_valid_reaches(self) -> list[tuple[int, int]]:
         """
         Get reaches that are not eclipsed by joining the network and processing tables.
         """
-        select_query = f"""
+        select_query = """
                 SELECT n.reach_id, n.nwm_to_id
                 FROM network n
                 JOIN processing p ON n.reach_id = p.reach_id
@@ -375,11 +376,11 @@ class Database:
                 """
         return self.execute_select_query(select_query)
 
-    def get_eclipsed_reaches(self) -> List[Tuple[int, int]]:
+    def get_eclipsed_reaches(self) -> list[tuple[int, int]]:
         """
         Get reaches that are eclipsed by joining the network and processing tables.
         """
-        select_query = f"""
+        select_query = """
                 SELECT n.reach_id, n.nwm_to_id
                 FROM network n
                 JOIN processing p ON n.reach_id = p.reach_id
@@ -387,18 +388,18 @@ class Database:
                 """
         return self.execute_select_query(select_query)
 
-    def update_to_id_batch(self, updates: List[Tuple[int, int]]) -> None:
+    def update_to_id_batch(self, updates: list[tuple[int, int]]) -> None:
         """
         Batch update the updated_to_id for multiple reaches.
         """
-        update_query = f"""
+        update_query = """
                 UPDATE network
                 SET updated_to_id = ?
                 WHERE reach_id = ?
                 """
         self.executemany_dml_query(update_query, updates)
 
-    def get_reaches_by_models(self, model_ids: List[str]) -> List[Tuple[int, int, str]]:
+    def get_reaches_by_models(self, model_ids: list[str]) -> list[tuple[int, int, str]]:
         """
         Retrieves reach IDs, updated_to_ids, and model keys from the network and processing tables
         where the model keys match and the reach is not eclipsed.
@@ -412,11 +413,11 @@ class Database:
             """
         return self.execute_select_query(select_query, model_ids)
 
-    def get_upstream_reaches(self, updated_to_id: int, db_lock: threading.Lock) -> List[int]:
+    def get_upstream_reaches(self, updated_to_id: int, db_lock: threading.Lock) -> list[int]:
         """
         Fetch upstream reach IDs from the 'network' table.
         """
-        select_query = f"""
+        select_query = """
                 SELECT reach_id
                 FROM network
                 WHERE updated_to_id = ?
@@ -429,7 +430,7 @@ class Database:
         """
         Check if FIM library has been created for a reach.
         """
-        select_query = f"""
+        select_query = """
                 SELECT create_fim_lib_job_id
                 FROM processing
                 WHERE reach_id = ?
@@ -455,7 +456,7 @@ class Database:
 
     def get_all_job_ids_for_process(
         self, process_name: str, process_table: str = "processing"
-    ) -> List[Tuple[int, str]]:
+    ) -> list[tuple[int, str]]:
         """
         Retrieves all job IDs for the specified process from the processing table.
 
@@ -479,7 +480,7 @@ class Database:
         process_name: str,
         status: str,
         process_table: str = "processing",
-    ) -> List[Tuple[int, str, str]]:
+    ) -> list[tuple[int, str, str]]:
         """
         Retrieves entities for a given process and status.
 

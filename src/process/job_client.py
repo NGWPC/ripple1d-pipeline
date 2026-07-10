@@ -1,14 +1,16 @@
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple, Type
+from datetime import UTC, datetime
+from typing import Any
 
 import pandas as pd
 import requests
 
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -23,7 +25,7 @@ class JobClient:
     Main class to communicate with Ripple1d API.
     """
 
-    def __init__(self, collection: Type[CollectionData]):
+    def __init__(self, collection: type[CollectionData]):
         self.stac_collection_id = collection.stac_collection_id
         self.DEFAULT_POLL_WAIT = collection.config["polling"]["DEFAULT_POLL_WAIT"]
         self.RIPPLE1D_API_URL = collection.RIPPLE1D_API_URL
@@ -34,7 +36,7 @@ class JobClient:
         # Parse the string into a naive datetime object
         dt_naive = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
         # Make the datetime object timezone-aware (UTC)
-        dt_utc = dt_naive.replace(tzinfo=timezone.utc)
+        dt_utc = dt_naive.replace(tzinfo=UTC)
         # Convert to epoch time
         epoch_time = int(dt_utc.timestamp())
         return epoch_time
@@ -72,16 +74,16 @@ class JobClient:
             if status == "successful":
                 return True
             elif status == "failed":
-                logging.error(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true job failed")
+                logger.error(f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true job failed")
                 return False
             elif status == "running":
                 elapsed_time = time.time() - self.datetime_to_epoch_utc(self.get_job_update_time(job_id))
                 if elapsed_time / 60 > timeout_minutes:
-                    logging.warning(f"{self.RIPPLE1D_API_URL}/jobs/{job_id} client timeout")
+                    logger.warning(f"{self.RIPPLE1D_API_URL}/jobs/{job_id} client timeout")
                     return False
             time.sleep(self.DEFAULT_POLL_WAIT)
 
-    def wait_for_jobs(self, job_records: List[JobRecord], timeout_minutes=90) -> Tuple[List[JobRecord]]:
+    def wait_for_jobs(self, job_records: list[JobRecord], timeout_minutes=90) -> tuple[list[JobRecord]]:
         """
         Waits for jobs to finish and returns lists of successful, failed, and unknown status jobsjobs.
         """
@@ -99,13 +101,13 @@ class JobClient:
                 elif status == "failed":
                     job_record.status = "failed"
                     failed.append(job_record)
-                    logging.error(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id}?tb=true job failed")
+                    logger.error(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id}?tb=true job failed")
                     break
                 elif status == "running":
                     updated_time = self.get_job_update_time(job_record.id)
                     elapsed_time = time.time() - self.datetime_to_epoch_utc(updated_time)
                     if elapsed_time / 60 > timeout_minutes:
-                        logging.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id} client timeout")
+                        logger.info(f"{self.RIPPLE1D_API_URL}/jobs/{job_record.id} client timeout")
                         job_record.status = "unknown"
                         unknown.append(job_record)
                         break
@@ -113,7 +115,7 @@ class JobClient:
 
         return succeeded, failed, unknown
 
-    def get_failed_job_err_and_tb(self, job_id) -> Tuple[str, str]:
+    def get_failed_job_err_and_tb(self, job_id) -> tuple[str, str]:
         headers = {"Content-Type": "application/json"}
 
         url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}?tb=true"
@@ -132,7 +134,7 @@ class JobClient:
         except Exception as e:
             return (f"Failed to get job status. Error: {str(e)}", "")
 
-    def get_job_payload(self, job_id) -> Dict:
+    def get_job_payload(self, job_id) -> dict:
         headers = {"Content-Type": "application/json"}
 
         url = f"{self.RIPPLE1D_API_URL}/jobs/{job_id}/metadata"
@@ -148,7 +150,7 @@ class JobClient:
         except Exception as e:
             return {"error": f"Failed to get job metadata. Error: {str(e)}"}
 
-    def get_jobs_metadata_df(self, job_records: List[Tuple[int, str, str]]) -> pd.DataFrame:
+    def get_jobs_metadata_df(self, job_records: list[tuple[int, str, str]]) -> pd.DataFrame:
         """
         Fetches metadata for provided jobs and returns a formatted DataFrame.
 
@@ -186,7 +188,7 @@ class JobClient:
                 results.append(row)
 
             except Exception as e:
-                logging.error(f"Failed to get job metadata. Error: {str(e)}")
+                logger.error(f"Failed to get job metadata. Error: {str(e)}")
                 results.append(
                     {
                         "id": entity_id,
@@ -209,7 +211,7 @@ class JobClient:
             ],
         )
 
-    def get_failed_jobs_df(self, failed_ids: List[Tuple[int, str, str]]) -> pd.DataFrame:
+    def get_failed_jobs_df(self, failed_ids: list[tuple[int, str, str]]) -> pd.DataFrame:
         """
         Sends a GET request to the API for each failed reach's job and returns a formatted table
         with reach_id, error message (err), and traceback (tb), payload.
@@ -234,7 +236,7 @@ class JobClient:
 
     def poll_and_update_job_status(
         self,
-        database: Type[Database],
+        database: type[Database],
         process_name: str,
         process_table: str = "processing",
     ):
@@ -266,13 +268,13 @@ class JobClient:
                         # Step 3: Update the processing table with the new status
                         database.update_table_with_job_status(process_table, process_name, job_status, entity)
                     else:
-                        logging.info(
+                        logger.info(
                             f"Failed to poll job {job_id} for reach {entity}. Status code: {response.status_code}"
                         )
                 except requests.RequestException as e:
-                    logging.info(f"Error polling job {job_id} for reach {entity}: {e}")
+                    logger.info(f"Error polling job {job_id} for reach {entity}: {e}")
 
-    def dismiss_jobs(self, job_records: List[JobRecord]) -> None:
+    def dismiss_jobs(self, job_records: list[JobRecord]) -> None:
         """Silently dismiss multiple jobs with error logging"""
         for job in job_records:
             if not job.id:
@@ -281,9 +283,9 @@ class JobClient:
             try:
                 response = requests.delete(f"{self.RIPPLE1D_API_URL}/jobs/{job.id}")
                 if response.status_code == 200:
-                    logging.info(f"Dismissed job {job.id}")
+                    logger.info(f"Dismissed job {job.id}")
                 else:
-                    logging.error(f"Failed to dismiss {job.id} - Status {response.status_code}")
+                    logger.error(f"Failed to dismiss {job.id} - Status {response.status_code}")
             except requests.RequestException as e:
-                logging.error(f"Error dismissing {job.id}: {str(e)}")
+                logger.error(f"Error dismissing {job.id}: {str(e)}")
                 continue

@@ -11,26 +11,27 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Tuple
 
 from ..setup.collection_data import CollectionData
 from .extent_library import get_all_tif_paths, setup_gdal_environment
 
+logger = logging.getLogger(__name__)
 
-def run_cmd(cmd: List, description: str) -> subprocess.CompletedProcess:
+
+def run_cmd(cmd: list, description: str) -> subprocess.CompletedProcess:
     """Run a command and raise on failure. This packages the error handling pattern used several times in extent_library.py whenever subprocess.run is called there"""
     result = subprocess.run([str(c) for c in cmd], capture_output=True, text=True)
     if result.returncode != 0:
-        logging.debug(f"{description} stdout: {result.stdout}")
-        logging.error(f"{description} stderr: {result.stderr}")
-        logging.debug(f"Command: {' '.join(str(c) for c in cmd)}")
+        logger.debug(f"{description} stdout: {result.stdout}")
+        logger.error(f"{description} stderr: {result.stderr}")
+        logger.debug(f"Command: {' '.join(str(c) for c in cmd)}")
         raise RuntimeError(f"{description} failed")
     return result
 
 
 def get_raster_info(
     tif_path: Path,
-) -> Tuple[Tuple[float, float, float, float], Tuple[float, float], float]:
+) -> tuple[tuple[float, float, float, float], tuple[float, float], float]:
     """Get bounds (xmin, ymin, xmax, ymax), resolution (xres, yres), and nodata value from a raster."""
     result = run_cmd(["gdalinfo", "-json", tif_path], f"gdalinfo {tif_path}")
     info = json.loads(result.stdout)
@@ -51,8 +52,8 @@ def get_raster_info(
 def align_raster(
     src_path: Path,
     output_path: Path,
-    bounds: Tuple[float, float, float, float],
-    res: Tuple[float, float],
+    bounds: tuple[float, float, float, float],
+    res: tuple[float, float],
     nodata: float = None,
     target_crs: str = None,
 ) -> None:
@@ -86,7 +87,7 @@ def align_raster(
     run_cmd(cmd, f"gdalwarp align {src_path}")
 
 
-def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
+def apply_bridge_mask(args: tuple) -> tuple[str, bool]:
     """
     Process a single depth TIF with bridge masking (worker function for multiprocessing).
 
@@ -102,7 +103,7 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
         depth_nodata,
         reach_id,
     ) = args
-    logging.debug(f"Processing {depth_path} with bridge mask")
+    logger.debug(f"Processing {depth_path} with bridge mask")
     depth_path = Path(depth_path)
 
     try:
@@ -154,17 +155,17 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
                 ],
                 "gdal_translate",
             )
-            logging.debug(f"Finished processing {depth_path}, moving result to original location")
+            logger.debug(f"Finished processing {depth_path}, moving result to original location")
             shutil.move(str(cog_output), str(depth_path))
-            logging.debug(f"Successfully processed {depth_path}")
+            logger.debug(f"Successfully processed {depth_path}")
         return (str(depth_path), True)
 
     except Exception as e:
-        logging.error(f"Error processing {depth_path}: {e}", exc_info=True)
+        logger.error(f"Error processing {depth_path}: {e}", exc_info=True)
         return (str(depth_path), False)
 
 
-def process_bridges(collection: "CollectionData") -> Dict[str, any]:
+def process_bridges(collection: "CollectionData") -> dict[str, any]:
     """
     Apply bridge masking to depth library TIFs in place.
     """
@@ -176,18 +177,18 @@ def process_bridges(collection: "CollectionData") -> Dict[str, any]:
     setup_gdal_environment(collection)
 
     reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
-    logging.info(f"Found {len(reach_dirs)} reaches to process")
+    logger.info(f"Found {len(reach_dirs)} reaches to process")
 
     reaches_with_bridges, reaches_without_bridges, files_modified = [], [], []
 
     for reach_dir in reach_dirs:
         reach_id = reach_dir.name
-        logging.debug(f"Processing reach {reach_id}")
+        logger.debug(f"Processing reach {reach_id}")
 
         # Use generator to stop at first match. Faster than getting all reach tifs
         sample_reach_tif = next(iter(reach_dir.rglob("*.tif")), None)
         if sample_reach_tif is None:
-            logging.warning(f"Reach {reach_id}: no TIF files found, skipping")
+            logger.warning(f"Reach {reach_id}: no TIF files found, skipping")
             continue
         dem_path = submodels_dir / reach_id / "Terrain" / f"{reach_id}.seamless_3dep_dem_3m_5070.tif"
         if not dem_path.exists():
@@ -216,22 +217,22 @@ def process_bridges(collection: "CollectionData") -> Dict[str, any]:
             )
             lines = result.stdout.strip().split("\n")
             intersecting_bridge_paths = lines[1:] if len(lines) > 1 else []
-            logging.info(f"Reach {reach_id}: found {len(intersecting_bridge_paths)} intersecting bridges")
+            logger.info(f"Reach {reach_id}: found {len(intersecting_bridge_paths)} intersecting bridges")
         except Exception as e:
-            logging.error(f"Error querying bridges for reach {reach_id}: {e}")
+            logger.error(f"Error querying bridges for reach {reach_id}: {e}")
             continue
 
         if not intersecting_bridge_paths:
             # No bridges in this reach - nothing to do
             reaches_without_bridges.append(reach_id)
-            logging.info(f"Reach {reach_id}: no bridges, skipped")
+            logger.info(f"Reach {reach_id}: no bridges, skipped")
             continue
 
         reaches_with_bridges.append(reach_id)
 
         # Only enumerate all TIFs for processing if there are bridges that intersect reach bounds
         reach_tifs = get_all_tif_paths(reach_dir)
-        logging.debug(f"Reach {reach_id}: found {len(reach_tifs)} TIFs to process")
+        logger.debug(f"Reach {reach_id}: found {len(reach_tifs)} TIFs to process")
 
         with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_") as reach_temp_dir:
             reach_temp_dir = Path(reach_temp_dir)
@@ -285,13 +286,13 @@ def process_bridges(collection: "CollectionData") -> Dict[str, any]:
                     if success:
                         files_modified.append(depth_path)
                     else:
-                        logging.error(f"Failed to process {depth_path}")
+                        logger.error(f"Failed to process {depth_path}")
 
-            logging.info(
+            logger.info(
                 f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(intersecting_bridge_paths)} bridges"
             )
 
-    logging.info(
+    logger.info(
         f"Bridge processing complete: {len(reaches_with_bridges)} reaches with bridges, {len(reaches_without_bridges)} reaches without bridges"
     )
 

@@ -2,6 +2,8 @@ import logging
 import sqlite3
 from datetime import datetime
 
+logger = logging.getLogger(__name__)
+
 
 class MonitoringDatabase:
     """
@@ -46,7 +48,7 @@ class MonitoringDatabase:
             )
 
             cursor.execute(
-                f"""
+                """
                 INSERT INTO metadata
                 VALUES (?, ?);
                 """,
@@ -86,9 +88,9 @@ class MonitoringDatabase:
             )
 
             connection.commit()
-            logging.info(f"Database initialized successfully at {self.db_path}")
+            logger.info(f"Database initialized successfully at {self.db_path}")
         except Exception as e:
-            logging.info(e)
+            logger.info(e)
             connection.rollback()
         finally:
             connection.close()
@@ -136,7 +138,7 @@ class MonitoringDatabase:
                 ),
             )
             conn.commit()
-            logging.info(f"Instances Table record inserted in {self.db_path}")
+            logger.info(f"Instances Table record inserted in {self.db_path}")
 
         finally:
             conn.close()
@@ -179,6 +181,6 @@ class MonitoringDatabase:
                 ),
             )
             conn.commit()
-            logging.info(f"Collections Table record inserted in {self.db_path}")
+            logger.info(f"Collections Table record inserted in {self.db_path}")
         finally:
             conn.close()

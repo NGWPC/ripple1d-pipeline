@@ -84,7 +84,7 @@ def main():
 
     # Read collection names from the file
     try:
-        with open(args.collection_list, "r") as file:
+        with open(args.collection_list) as file:
             collection_list = [line.strip() for line in file if line.strip()]
     except FileNotFoundError:
         logging.error(f"Collection list file not found: {args.collection_list}")

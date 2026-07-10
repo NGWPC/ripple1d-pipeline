@@ -7,7 +7,6 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 from queue import Queue
 from threading import Lock
-from typing import List, Optional, Tuple, Type
 
 import requests
 
@@ -16,19 +15,21 @@ from ..setup.database import Database
 from .job_client import JobClient
 from .reach import Reach
 
+logger = logging.getLogger(__name__)
+
 
 def get_min_max_elevation(
     reach_id: int,
     submodels_directory: str,
     get_ds_wse: bool = False,
-) -> Tuple[Optional[float], Optional[float]]:
+) -> tuple[float | None, float | None]:
     """
     Fetch min and max upstream or downstream wsel for a reach
     """
 
     submodel_db_path = os.path.join(submodels_directory, str(reach_id), f"{reach_id}.db")
     if not os.path.exists(submodel_db_path):
-        logging.info(f"Submodel database not found for reach_id: {reach_id}")
+        logger.info(f"Submodel database not found for reach_id: {reach_id}")
         return None, None
 
     conn = sqlite3.connect(submodel_db_path)
@@ -46,10 +47,10 @@ def get_min_max_elevation(
 
 def process_reach(
     reach: Reach,
-    collection: Type[CollectionData],
-    database: Type[Database],
-    job_client: Type[JobClient],
-    valid_reaches: List[Reach],
+    collection: type[CollectionData],
+    database: type[Database],
+    job_client: type[JobClient],
+    valid_reaches: list[Reach],
     task_queue: Queue,
     central_db_lock: Lock,
     timeout_minutes: int = 30,
@@ -78,7 +79,7 @@ def process_reach(
             if (reach.to_id is None) or (reach.to_id not in [valid_reach.id for valid_reach in valid_reaches]):
                 consider_outlet = True
 
-                logging.info(f"{reach.id} will be considered outlet")
+                logger.info(f"{reach.id} will be considered outlet")
 
             min_elevation, max_elevation = get_min_max_elevation(
                 reach.id if consider_outlet else reach.to_id,
@@ -100,14 +101,14 @@ def process_reach(
                     }
                 )
 
-                logging.info(f"Submitting task for reach {reach.id} with downstream {reach.to_id}")
+                logger.info(f"Submitting task for reach {reach.id} with downstream {reach.to_id}")
 
                 # to do: launch job with retry
                 response = requests.post(url, headers=headers, data=payload)
                 response_json = response.json()
                 job_id = response_json.get("jobID")
                 if not job_id or not job_client.check_job_successful(job_id, timeout_minutes=timeout_minutes):
-                    logging.info(f"KWSE run failed for {reach.id}, API job ID: {job_id}")
+                    logger.info(f"KWSE run failed for {reach.id}, API job ID: {job_id}")
                     with central_db_lock:
                         database.update_processing_table([(reach.id, job_id)], "run_iknown_wse", "failed")
                 else:
@@ -144,23 +145,23 @@ def process_reach(
                                 "successful",
                             )
             else:
-                logging.info(f"Could not retrieve min/max elevation for reach_id: {reach.to_id}")
+                logger.info(f"Could not retrieve min/max elevation for reach_id: {reach.to_id}")
 
         upstream_reaches = database.get_upstream_reaches(reach.id, central_db_lock)
         for upstream_reach in upstream_reaches:
             task_queue.put(Reach(upstream_reach, reach.id, None))
 
     except Exception as e:
-        logging.info(f"Error processing reach {reach.id}: {str(e)}")
+        logger.info(f"Error processing reach {reach.id}: {str(e)}")
         traceback.print_exc()
 
 
 def execute_ikwse_for_network(
-    initial_reaches: List[Reach],
-    collection: Type[CollectionData],
-    database: Type[Database],
-    job_client: Type[JobClient],
-    valid_reaches: List[Reach],
+    initial_reaches: list[Reach],
+    collection: type[CollectionData],
+    database: type[Database],
+    job_client: type[JobClient],
+    valid_reaches: list[Reach],
     timeout: int = 30,
 ) -> None:
     """

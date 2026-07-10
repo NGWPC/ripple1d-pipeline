@@ -2,6 +2,8 @@ import logging
 import os
 import shutil
 
+logger = logging.getLogger(__name__)
+
 
 def move_fims_to_library(submodels_dir: str, library_dir: str) -> None:
     """
@@ -18,7 +20,7 @@ def move_fims_to_library(submodels_dir: str, library_dir: str) -> None:
                     shutil.copytree(source_path, destination_path)
                 shutil.rmtree(source_path)
 
-    logging.info("All fims have been copied to the library directory.")
+    logger.info("All fims have been copied to the library directory.")
 
 
 if __name__ == "__main__":

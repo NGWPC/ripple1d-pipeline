@@ -15,7 +15,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Dict, List
 
 from osgeo import gdal
 
@@ -197,7 +196,7 @@ def domain_worker(args: tuple) -> None:
         logging.error(f"Error processing domain {reach_id}: {str(e)}", exc_info=True)
 
 
-def get_all_tif_paths(src_dir: Path) -> List[Path]:
+def get_all_tif_paths(src_dir: Path) -> list[Path]:
     """
     Get all TIFF file paths recursively from source directory.
 
@@ -224,7 +223,7 @@ def get_all_tif_paths(src_dir: Path) -> List[Path]:
     return tifs
 
 
-def get_reachid_tif_map(tif_paths: List[Path]) -> Dict[str, Path]:
+def get_reachid_tif_map(tif_paths: list[Path]) -> dict[str, Path]:
     """
     Create mapping of reach IDs to representative TIFF paths.
 

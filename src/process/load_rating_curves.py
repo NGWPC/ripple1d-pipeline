@@ -1,9 +1,10 @@
 import logging
 import os
 import sqlite3
-from typing import Type
 
 from ..setup.database import Database
+
+logger = logging.getLogger(__name__)
 
 # TODO Move functions to ../setup/database.py, delete load_rating_curve?
 
@@ -120,12 +121,12 @@ def load_rating_curve(db_path, reach_id, sub_db_path, timeout):
             try:
                 os.remove(sub_db_path)
             except Exception as e:
-                logging.error(f"Could not remove {sub_db_path} Error: {e}")
+                logger.error(f"Could not remove {sub_db_path} Error: {e}")
     finally:
         conn.close()
 
 
-def load_all_rating_curves(database: Type[Database]) -> None:
+def load_all_rating_curves(database: type[Database]) -> None:
     """
     Loads all rating curves from submodel databases into the central library database.
     """
@@ -142,8 +143,8 @@ def load_all_rating_curves(database: Type[Database]) -> None:
                 try:
                     os.remove(sub_db_path)
                 except Exception as e:
-                    logging.error(f"Could not remove {sub_db_path} Error: {e}")
+                    logger.error(f"Could not remove {sub_db_path} Error: {e}")
 
-        logging.info("All rating curves loaded into central database")
+        logger.info("All rating curves loaded into central database")
     finally:
         conn.close()

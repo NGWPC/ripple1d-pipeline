@@ -1,10 +1,11 @@
 import logging
 import os
 from pathlib import Path
-from typing import List, Tuple
 
 import yaml
 from dotenv import load_dotenv
+
+logger = logging.getLogger(__name__)
 
 
 class CollectionData:
@@ -21,7 +22,7 @@ class CollectionData:
     # TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class?
     def load_yaml(self, config_file):
         try:
-            with open(str(Path.cwd() / "src" / config_file), "r") as file:
+            with open(str(Path.cwd() / "src" / config_file)) as file:
                 self.config = yaml.safe_load(file)
         except FileNotFoundError:
             raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
@@ -57,9 +58,9 @@ class CollectionData:
         os.makedirs(self.submodels_dir, exist_ok=True)
         os.makedirs(self.library_dir, exist_ok=True)
 
-        logging.info(f"Folders created successfully inside {self.root_dir}")
+        logger.info(f"Folders created successfully inside {self.root_dir}")
 
-    def get_models(self) -> List[Tuple[str, str]]:
+    def get_models(self) -> list[tuple[str, str]]:
         """Discover models and their associated .gpkg files in source models directory.
 
         Returns:
@@ -70,7 +71,7 @@ class CollectionData:
 
         try:
             if not base_path.exists():
-                logging.error(f"Source models directory not found: {base_path}")
+                logger.error(f"Source models directory not found: {base_path}")
                 return []
 
             for model_path in base_path.iterdir():
@@ -82,17 +83,17 @@ class CollectionData:
                         gpkg_name = gpkg_files[0].stem
                         models.append((model_path.name, gpkg_name))
                     elif len(gpkg_files) > 1:
-                        logging.error(f"Multiple .gpkg files in {model_path.name}, using first")
+                        logger.error(f"Multiple .gpkg files in {model_path.name}, using first")
                     else:
-                        logging.error(f"No .gpkg file found in {model_path.name}")
+                        logger.error(f"No .gpkg file found in {model_path.name}")
 
                     continue
 
             if not models:
-                logging.warning(f"No valid model directories found in {base_path}")
+                logger.warning(f"No valid model directories found in {base_path}")
 
             return models
 
         except Exception as e:
-            logging.error(f"Model discovery failed: {str(e)}", exc_info=True)
+            logger.error(f"Model discovery failed: {str(e)}", exc_info=True)
             return []

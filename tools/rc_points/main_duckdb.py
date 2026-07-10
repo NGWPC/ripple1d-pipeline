@@ -4,9 +4,8 @@ import argparse
 import json
 import logging
 import os
-import shutil
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import duckdb
 import geopandas as gpd
@@ -16,7 +15,7 @@ from shapely import wkb
 class JsonFormatter(logging.Formatter):
     def format(self, record):
         log_record = {
-            "time": datetime.fromtimestamp(record.created, tz=timezone.utc).isoformat(),
+            "time": datetime.fromtimestamp(record.created, tz=UTC).isoformat(),
             "level": record.levelname,
             "msg": record.getMessage(),
         }
