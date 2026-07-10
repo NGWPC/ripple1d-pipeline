@@ -15,7 +15,7 @@ Compatible with ripple1d==0.10.4. Use repository tags to get older versions.
  - [Ripple1d](https://github.com/Dewberry/ripple1d)
  - HEC-RAS (v6.3.1)
  - GDAL
- - [Flows2fim](https://github.com/ar-siddiqui/flows2fim) (if creating composite rasters)
+ - [Flows2fim](https://github.com/NGWPC/flows2fim) (if creating composite rasters)
  - AWS profile in `~\.aws\config` which includes valid AWS credentials (access key id and secret access key).
 
 ## Getting Started
@@ -82,7 +82,7 @@ If the last command is successful, two new terminal windows will appear (Huey co
 The easiest way is to download the [OSGeo4W network installer](https://download.osgeo.org/osgeo4w/v2/osgeo4w-setup.exe), this aligns with the current default paths listed in `config.yaml`.
 
 ### 8. **Install flows2fim**
-1. Download the [flows2fim zip](https://github.com/ar-siddiqui/flows2fim/releases/download/v0.2.1/flows2fim-windows-amd64.zip)
+1. Download the [flows2fim zip](https://github.com/NGWPC/flows2fim/releases/download/v0.4.1/flows2fim-windows-amd64.zip)
 2. Extract the .zip file's contents to `C:\OSGeo4W\bin\`
 
    ###  **Pull flow files**

@@ -155,6 +155,6 @@ database:
 
 execution:
   stop_on_error: False
-  OPTIMUM_PARALLEL_PROCESS_COUNT: 22  # Rule of thumb - use half the cores available.
+  OPTIMUM_PARALLEL_PROCESS_COUNT: 22  # Tuned for c6i.8xlarge; keep <= ~31 (Windows multiprocessing cap, fails silently).
 
 ...
