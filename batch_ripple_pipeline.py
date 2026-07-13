@@ -13,14 +13,14 @@ from pathlib import Path
 import yaml
 
 from monitoring_database import MonitoringDatabase
-from src import configure_logging
+from ripple1d_pipeline import configure_logging
 
 logger = logging.getLogger("batch_ripple_pipeline")
 
 
 def load_config(config_file):
     try:
-        with open(str(Path.cwd() / "src" / config_file)) as file:
+        with open(str(Path.cwd() / "ripple1d_pipeline" / config_file)) as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
         raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")

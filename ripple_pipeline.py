@@ -4,10 +4,10 @@ import argparse
 import logging
 
 # Import necessary modules
-from src import configure_logging
-from src.process import *
-from src.qc import *
-from src.setup import *
+from ripple1d_pipeline import configure_logging
+from ripple1d_pipeline.process import *
+from ripple1d_pipeline.qc import *
+from ripple1d_pipeline.setup import *
 
 logger = logging.getLogger("ripple_pipeline")
 

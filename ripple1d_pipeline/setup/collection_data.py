@@ -22,7 +22,7 @@ class CollectionData:
     # TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class?
     def load_yaml(self, config_file):
         try:
-            with open(str(Path.cwd() / "src" / config_file)) as file:
+            with open(str(Path.cwd() / "ripple1d_pipeline" / config_file)) as file:
                 self.config = yaml.safe_load(file)
         except FileNotFoundError:
             raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")

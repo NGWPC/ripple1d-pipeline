@@ -10,13 +10,13 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Loggers owned by this project. Everything else is third-party and is held at the
 # floor level unless promoted via `logging.FIRST_PARTY` in config.yaml.
-PROJECT_LOGGERS = ("src", "ripple_pipeline", "batch_ripple_pipeline", "monitoring_database")
+PROJECT_LOGGERS = ("ripple1d_pipeline", "run_collection", "run_batch")
 
 
 def _first_party_loggers(config_file="config.yaml"):
     """Read `logging.FIRST_PARTY` from config.yaml. A missing file or section is not fatal."""
     try:
-        with open(Path.cwd() / "src" / config_file) as file:
+        with open(Path.cwd() / "ripple1d_pipeline" / config_file) as file:
             config = yaml.safe_load(file) or {}
     except (FileNotFoundError, yaml.YAMLError):
         return ()

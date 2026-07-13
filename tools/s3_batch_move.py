@@ -11,7 +11,7 @@ from pathlib import Path
 import yaml
 
 from ripple_pipeline import *
-from src.setup import *
+from ripple1d_pipeline.setup import *
 
 
 def s3_move(collection: str, failed: bool = False):
@@ -50,7 +50,7 @@ def s3_move(collection: str, failed: bool = False):
 
 def load_config(config_file):
     try:
-        with open(str(Path.cwd() / "src" / config_file)) as file:
+        with open(str(Path.cwd() / "ripple1d_pipeline" / config_file)) as file:
             config = yaml.safe_load(file)
     except FileNotFoundError:
         raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
