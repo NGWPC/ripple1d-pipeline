@@ -9,7 +9,7 @@ from ripple1d_pipeline.process import *
 from ripple1d_pipeline.qc import *
 from ripple1d_pipeline.setup import *
 
-logger = logging.getLogger("ripple_pipeline")
+logger = logging.getLogger("run_collection")
 
 
 def setup(collection_name):

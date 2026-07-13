@@ -8,8 +8,6 @@ import subprocess
 from datetime import datetime
 
 from ripple1d_pipeline.config import load_config
-from ripple1d_pipeline.setup import *
-from ripple_pipeline import *
 
 
 def s3_move(collection: str, failed: bool = False):

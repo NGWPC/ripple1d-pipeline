@@ -13,7 +13,7 @@ from monitoring_database import MonitoringDatabase
 from ripple1d_pipeline import configure_logging
 from ripple1d_pipeline.config import load_config
 
-logger = logging.getLogger("batch_ripple_pipeline")
+logger = logging.getLogger("run_batch")
 
 
 def s3_move(
@@ -106,10 +106,10 @@ def batch_pipeline(collection_list):
 
     for collection in collections:
         logger.info(f"Starting processing for collection: {collection} ...")
-        # Construct the command to execute ripple_pipeline.py
+        # Construct the command to execute run_collection.py (sibling script, located via __file__)
         cmd = [
             "python",
-            "ripple_pipeline.py",
+            str(pathlib.Path(__file__).parent / "run_collection.py"),
             "--collection",
             collection,
         ]

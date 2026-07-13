@@ -8,7 +8,7 @@ _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Loggers owned by this project. Everything else is third-party and is held at the
 # floor level unless promoted via `logging.FIRST_PARTY` in default_config.yaml.
-PROJECT_LOGGERS = ("ripple1d_pipeline", "run_collection", "run_batch")
+PROJECT_LOGGERS = ("ripple1d_pipeline", "run_collection", "run_batch", "monitoring_database")
 
 
 def _first_party_loggers():
