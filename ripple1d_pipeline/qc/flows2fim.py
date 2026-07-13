@@ -25,7 +25,7 @@ def setup_gdal_environment(collection: type[CollectionData]):
 def run_flows2fim(
     collection: type[CollectionData],
     output_subfolder: str = "qc",
-    start_reaches: list = [],
+    start_reaches: list | None = None,
     fim_format: str = "COG",
 ) -> None:
     """
@@ -42,6 +42,7 @@ def run_flows2fim(
         start_reaches (List): List of reaches to start.
         fim_format (str): Output format for FIM files ('GTiff' or 'VRT' or 'COG').
     """
+    start_reaches = start_reaches or []
     output_dir = collection.root_dir
     library_path = collection.library_dir
     library_db_path = collection.db_path

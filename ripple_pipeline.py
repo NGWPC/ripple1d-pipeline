@@ -162,21 +162,21 @@ def process(collection_name):
         logger.info("Starting bridge deck masking Step >>>>>>")
         process_bridges(collection)
         logger.info("<<<<< Finished bridge deck masking Step")
-    except:
+    except Exception:
         logger.error("Error - bridge deck masking step failed")
 
     try:
         logger.info("Starting create extent library Step >>>>>>")
         create_extent_lib(collection)
         logger.info("<<<<< Finished create extent library Step")
-    except:
+    except Exception:
         logger.error("Error - create extent library step failed")
 
     try:
         logger.info("Creating f2f start file >>>>>>")
         create_f2f_start_file([reach.id for reach in outlet_reaches], collection.f2f_start_file)
         logger.info("<<<<< Created f2f start file")
-    except:
+    except Exception:
         logger.error("Error - unable to create f2f start file")
 
 
