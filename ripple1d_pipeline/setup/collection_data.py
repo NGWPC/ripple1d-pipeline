@@ -2,8 +2,7 @@ import logging
 import os
 from pathlib import Path
 
-import yaml
-from dotenv import load_dotenv
+from ..config import load_config, load_env
 
 logger = logging.getLogger(__name__)
 
@@ -13,28 +12,18 @@ class CollectionData:
     Load configuration file, assign filepaths, create folders within the collection's root directory.
     """
 
-    def __init__(self, stac_collection_id, config_file="config.yaml"):
+    def __init__(self, stac_collection_id):
         self.stac_collection_id = stac_collection_id
-        self.load_dotenv(".env")
-        self.load_yaml(config_file)
+        self.load_env()
+        self.config = load_config()
         self.assign_paths()
 
-    # TODO - Assign ALL parameters from config.yaml to attributes of CollectionData Class?
-    def load_yaml(self, config_file):
+    def load_env(self):
         try:
-            with open(str(Path.cwd() / "ripple1d_pipeline" / config_file)) as file:
-                self.config = yaml.safe_load(file)
-        except FileNotFoundError:
-            raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
-        except yaml.YAMLError:
-            raise ValueError("Invalid YAML configuration")
-
-    def load_dotenv(self, dotenv_file):
-        try:
-            load_dotenv(dotenv_file, override=True)
+            load_env(override=True)
             self.RIPPLE1D_API_URL = os.getenv("RP_RIPPLE1D_API_URL")
             self.STAC_URL = os.getenv("RP_STAC_URL")
-        except:
+        except Exception:
             raise ValueError("Invalid .env configuration")
 
     def assign_paths(self):

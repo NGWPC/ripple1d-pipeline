@@ -8,6 +8,21 @@ from .job_client import JobClient, JobRecord
 logger = logging.getLogger(__name__)
 
 
+def format_template(value, replacements: dict):
+    """Recursively substitute {placeholders} in a payload template.
+
+    Applies str.format(**replacements) to every string, at any nesting depth
+    (dicts, lists), leaving non-strings (numbers, bools) untouched.
+    """
+    if isinstance(value, str):
+        return value.format(**replacements)
+    if isinstance(value, dict):
+        return {k: format_template(v, replacements) for k, v in value.items()}
+    if isinstance(value, list):
+        return [format_template(v, replacements) for v in value]
+    return value
+
+
 class BaseStepProcessor:
     """Base class for all processing steps"""
 

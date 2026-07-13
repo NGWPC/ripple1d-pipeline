@@ -1,7 +1,6 @@
-
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
-from .base_step_processor import BaseStepProcessor
+from .base_step_processor import BaseStepProcessor, format_template
 from .model import Model
 
 
@@ -15,18 +14,13 @@ class BaseModelStepProcessor(BaseStepProcessor):
 
     def _format_model_payload(self, template: dict, model_id: str, model_name: str) -> dict:
         """Common model payload formatting"""
-        return {
-            key: (
-                value.format(
-                    model_id=model_id,
-                    model_name=model_name,
-                    source_model_directory=self.collection.source_models_dir,
-                )
-                if isinstance(value, str)
-                else value
-            )
-            for key, value in template.items()
+        replacements = {
+            "model_id": model_id,
+            "model_name": model_name,
+            "source_model_directory": self.collection.source_models_dir,
+            "source_network": self.collection.config["paths"]["SOURCE_NETWORK"],
         }
+        return {key: format_template(value, replacements) for key, value in template.items()}
 
     def _update_database(self, database: Database, status: str):
         """Common model database update"""

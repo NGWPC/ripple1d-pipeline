@@ -3,8 +3,8 @@ import os
 
 import boto3
 import pystac_client
-from dotenv import load_dotenv
 
+from ..config import load_env
 from .collection_data import CollectionData
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class STACImporter:
         self.source_models_dir = collectiondata.source_models_dir
         self.models_data = None
         self.model_ids = None
-        load_dotenv(".env", override=True)
+        load_env(override=True)
 
     def get_models_from_stac(self) -> None:
         """

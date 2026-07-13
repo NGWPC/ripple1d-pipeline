@@ -1,27 +1,9 @@
----
-
-RIPPLE1D_VERSION: 0.10.4
-
 logging:
-  # Loggers promoted out of "third party". These follow the main log level
-  # (--log-level / RP_LOG_LEVEL) instead of the third-party floor
-  # (--third-party-log-level / RP_THIRD_PARTY_LOG_LEVEL).
-  #
-  # Use the logger name printed in each log line. A name covers its children,
-  # so "botocore" also covers "botocore.endpoint".
-  # Levels themselves are NOT set here; they stay on the flags/env vars.
+  # Libraries to promote so they follow the main log level. See design_guide.md.
   FIRST_PARTY:
     # - botocore
     # - urllib3
     # - s3transfer
-
-paths:
-  COLLECTIONS_ROOT_DIR: C:\Users\abdul.siddiqui\Downloads\collections
-  NWM_FLOWLINES_PATH: C:\reference_data\nwm_flowlines.parquet
-  S3_UPLOAD_PREFIX: "" # Exclude trailing slash of S3 Bucket
-  S3_UPLOAD_FAILED_PREFIX: "" # Exclude trailing slash of S3 Bucket
-  MONITORING_DB_PATH: Z:\shared\monitoring.sqlite
-  BRIDGE_TILE_INDEX_PATH: /vsis3/fimc-data/reference/owp_bridge_data/bridge_index.parquet # All tiles in the tile index need to be in EPSG 5070 to work with ripple libraries
 
 ripple_settings:
   RAS_VERSION: &RAS_VERSION "631"
@@ -29,9 +11,7 @@ ripple_settings:
   DS_DEPTH_INCREMENT: &DS_DEPTH_INCREMENT 1
   RESOLUTION: &RESOLUTION 3.0
   RESOLUTION_UNITS: &RESOLUTION_UNITS "Meters"
-  TERRAIN_SOURCE_URL: &TERRAIN_SOURCE_URL C:\reference_data\dem\seamless_3dep_dem_3m_5070.vrt
-  SOURCE_NETWORK: &SOURCE_NETWORK C:\reference_data\nwm_flowlines_with_bbox.parquet
-  SOURCE_NETWORK_VERSION:  &SOURCE_NETWORK_VERSION "2.1"
+  SOURCE_NETWORK_VERSION: &SOURCE_NETWORK_VERSION "2.1"
   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
 
 processing_steps:
@@ -42,7 +22,7 @@ processing_steps:
       source_model_directory: "{source_model_directory}\\{model_id}"
       model_name: "{model_name}"
       source_network:
-        file_name: *SOURCE_NETWORK
+        file_name: "{source_network}"
         version: *SOURCE_NETWORK_VERSION
         type: *SOURCE_NETWORK_TYPE
       min_flow_multiplier: 0.9
@@ -66,7 +46,7 @@ processing_steps:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       resolution: *RESOLUTION
       resolution_units: *RESOLUTION_UNITS
-      terrain_source_url: *TERRAIN_SOURCE_URL
+      terrain_source_url: "{terrain_source_url}"
       terrain_agreement_ignore_error: True
 
   create_model_run_normal_depth:
@@ -137,15 +117,6 @@ bridge_processing:
   BRIDGE_ELEV_UNITS: "meters"
   BRIDGE_ELEV_CONV_FACTOR: 3.28084  # Convert bridge elevation units to feet (units used by terrain and depth grids)
 
-flows2fim:
-  FLOW_FILES_DIR: C:\reference_data\flow_files
-  FLOWS2FIM_BIN_PATH: C:\OSGeo4W\bin\flows2fim.exe
-  GDAL_BINS_PATH: C:\OSGeo4W\bin
-  GDAL_SCRIPTS_PATH: C:\OSGeo4W\apps\Python312\Scripts
-
-qc:
-  QC_TEMPLATE_QGIS_FILE: C:\reference_data\qc_map.qgs
-
 polling:
   DEFAULT_POLL_WAIT: 5
   API_LAUNCH_JOBS_RETRY_WAIT: 0.5
@@ -155,6 +126,3 @@ database:
 
 execution:
   stop_on_error: False
-  OPTIMUM_PARALLEL_PROCESS_COUNT: 22  # Rule of thumb - use half the cores available.
-
-...

@@ -1,24 +1,21 @@
 import logging
 import os
-from pathlib import Path
 
-import yaml
-from dotenv import load_dotenv
+from .config import load_config, load_env
 
 _LOG_FORMAT = "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 # Loggers owned by this project. Everything else is third-party and is held at the
-# floor level unless promoted via `logging.FIRST_PARTY` in config.yaml.
+# floor level unless promoted via `logging.FIRST_PARTY` in default_config.yaml.
 PROJECT_LOGGERS = ("ripple1d_pipeline", "run_collection", "run_batch")
 
 
-def _first_party_loggers(config_file="config.yaml"):
-    """Read `logging.FIRST_PARTY` from config.yaml. A missing file or section is not fatal."""
+def _first_party_loggers():
+    """Read `logging.FIRST_PARTY` from config. A missing file or section is not fatal."""
     try:
-        with open(Path.cwd() / "ripple1d_pipeline" / config_file) as file:
-            config = yaml.safe_load(file) or {}
-    except (FileNotFoundError, yaml.YAMLError):
+        config = load_config()
+    except Exception:
         return ()
     return tuple((config.get("logging") or {}).get("FIRST_PARTY") or ())
 
@@ -54,7 +51,7 @@ def configure_logging(level=None, third_party_level=None):
     installed (e.g. by Jupyter/IPython or an earlier import).
     """
     # Best-effort load of .env so RP_* levels work before CollectionData runs.
-    load_dotenv(".env", override=False)
+    load_env()
 
     level = _resolve(level, "RP_LOG_LEVEL", "INFO")
     third_party_level = _resolve(third_party_level, "RP_THIRD_PARTY_LOG_LEVEL", "WARNING")
