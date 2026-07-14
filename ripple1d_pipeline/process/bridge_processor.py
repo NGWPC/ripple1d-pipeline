@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 from ..setup.collection_data import CollectionData
-from .extent_library import get_all_tif_paths, setup_gdal_environment
+from .extent_library import get_all_tif_paths
 
 logger = logging.getLogger(__name__)
 
@@ -173,8 +173,6 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
     conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
-
-    setup_gdal_environment(collection)
 
     reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
     logger.info(f"Found {len(reach_dirs)} reaches to process")

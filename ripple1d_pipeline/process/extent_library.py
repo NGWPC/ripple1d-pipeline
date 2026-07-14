@@ -17,22 +17,6 @@ from ..setup.collection_data import CollectionData
 logger = logging.getLogger(__name__)
 
 
-def setup_gdal_environment(collection: CollectionData) -> None:
-    """
-    Configure GDAL environment paths from collection settings.
-
-    Args:
-        collection: CollectionData object containing configuration settings
-    """
-    gdal_bins = collection.config["flows2fim"]["GDAL_BINS_PATH"]
-    gdal_scripts = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
-
-    if gdal_bins:
-        os.environ["PATH"] = str(gdal_bins) + os.pathsep + os.environ["PATH"]
-    if gdal_scripts:
-        os.environ["PATH"] = str(gdal_scripts) + os.pathsep + os.environ["PATH"]
-
-
 def create_extent_tif(tif_path: Path, tmp_dir: Path, dest_dir: Path) -> None:
     """
     Create extent TIFF from depth TIFF using GDAL operations.
@@ -252,8 +236,6 @@ def create_extent_lib(collection: type[CollectionData], print_progress: bool = F
     extent_library_dir = Path(collection.extent_library_dir)
     submodels_dir = Path(collection.submodels_dir)
     process_count = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
-
-    setup_gdal_environment(collection)
 
     # Process FIM extent files
     tif_paths = get_all_tif_paths(library_dir)

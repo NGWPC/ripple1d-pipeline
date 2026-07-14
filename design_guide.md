@@ -30,4 +30,6 @@ The repo is mainly separated into
 
 ## Dependencies & environment (pixi)
 
-This repo adopt `pixi` because it manage the whole enviornment in cluding non python dependencies, such as the GDAL command-line tools — originally we had OSGeo4W shell separate setup but it was brittle. `uv` alone can't do this as there is no reliable GDAL CLI on PyPI for Windows.
+This repo adopt `pixi` because it manage the whole enviornment in cluding non python dependencies, such as the GDAL command-line tools — originally we had OSGeo4W shell separate setup but it was brittle. `uv` alone can't do this as there is no reliable GDAL CLI on PyPI for Windows.\
+\
+`pixi` also provide benefit of not having to activate environment separately which we were doing before with .venv setup.

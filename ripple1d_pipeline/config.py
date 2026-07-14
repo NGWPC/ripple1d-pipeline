@@ -36,8 +36,6 @@ _ENV_OVERLAY = {
     "RP_S3_UPLOAD_FAILED_PREFIX": (("paths", "S3_UPLOAD_FAILED_PREFIX"), str),
     "RP_FLOW_FILES_DIR": (("flows2fim", "FLOW_FILES_DIR"), str),
     "RP_FLOWS2FIM_BIN_PATH": (("flows2fim", "FLOWS2FIM_BIN_PATH"), str),
-    "RP_GDAL_BINS_PATH": (("flows2fim", "GDAL_BINS_PATH"), str),
-    "RP_GDAL_SCRIPTS_PATH": (("flows2fim", "GDAL_SCRIPTS_PATH"), str),
     "RP_QC_TEMPLATE_QGIS_FILE": (("qc", "QC_TEMPLATE_QGIS_FILE"), str),
     "RP_OPTIMUM_PARALLEL_PROCESS_COUNT": (("execution", "OPTIMUM_PARALLEL_PROCESS_COUNT"), int),
 }
@@ -86,4 +84,11 @@ def load_config() -> dict:
     p = user_config_path()
     if p.exists():
         cfg = _deep_merge(cfg, yaml.safe_load(p.read_text()) or {})
-    return _overlay_env(cfg)
+    cfg = _overlay_env(cfg)
+
+    # flows2fim is installed into the pixi env prefix (on PATH) by the activation script,
+    # so the bare command resolves. RP_FLOWS2FIM_BIN_PATH overrides it.
+    cfg.setdefault("flows2fim", {})
+    if not cfg["flows2fim"].get("FLOWS2FIM_BIN_PATH"):
+        cfg["flows2fim"]["FLOWS2FIM_BIN_PATH"] = "flows2fim"
+    return cfg

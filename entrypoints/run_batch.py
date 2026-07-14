@@ -10,6 +10,7 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from monitoring_database import MonitoringDatabase
+
 from ripple1d_pipeline import configure_logging
 from ripple1d_pipeline.config import load_config
 
