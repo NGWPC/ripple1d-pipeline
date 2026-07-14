@@ -16,7 +16,10 @@ pystac-client = "==0.8.3"
 python-dotenv = "==1.0.1"
 pyyaml = "==6.0.2"
 requests = "==2.32.3"
-gdal = ">=3.13.1,<4"
+# GDAL and its Arrow/Parquet driver plugin must be the SAME version.
+# The GDAL 3.10 is the newest whose Parquet driver links against libarrow 17.
+gdal = "3.10.*"
+libgdal-arrow-parquet = "3.10.*"
 ipykernel = "==6.29.5"
 
 [pypi-dependencies]
