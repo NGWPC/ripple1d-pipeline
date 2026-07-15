@@ -14,17 +14,11 @@ class CollectionData:
 
     def __init__(self, stac_collection_id):
         self.stac_collection_id = stac_collection_id
-        self.load_env()
+        load_env(override=True)
         self.config = load_config()
+        self.RIPPLE1D_API_URL = self.config["endpoints"]["RIPPLE1D_API_URL"]
+        self.STAC_URL = self.config["endpoints"]["STAC_URL"]
         self.assign_paths()
-
-    def load_env(self):
-        try:
-            load_env(override=True)
-            self.RIPPLE1D_API_URL = os.getenv("RP_RIPPLE1D_API_URL")
-            self.STAC_URL = os.getenv("RP_STAC_URL")
-        except Exception:
-            raise ValueError("Invalid .env configuration")
 
     def assign_paths(self):
         """Assign filepaths to CollectionData object."""

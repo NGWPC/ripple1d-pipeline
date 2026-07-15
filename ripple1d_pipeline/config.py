@@ -26,6 +26,8 @@ DEFAULT_USER_CONFIG = _PKG.parent / "config.yaml"
 # RP_* environment variable -> (nested config keys, cast). See design_guide.md.
 _ENV_OVERLAY = {
     "RP_RIPPLE1D_VERSION": (("RIPPLE1D_VERSION",), str),
+    "RP_RIPPLE1D_API_URL": (("endpoints", "RIPPLE1D_API_URL"), str),
+    "RP_STAC_URL": (("endpoints", "STAC_URL"), str),
     "RP_COLLECTIONS_ROOT_DIR": (("paths", "COLLECTIONS_ROOT_DIR"), str),
     "RP_NWM_FLOWLINES_PATH": (("paths", "NWM_FLOWLINES_PATH"), str),
     "RP_MONITORING_DB_PATH": (("paths", "MONITORING_DB_PATH"), str),
