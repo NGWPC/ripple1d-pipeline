@@ -9,9 +9,10 @@ major design decisions so they don't have to be rederived or reargued later. Thi
 
 The repo is mainly separated into
 
-1. `entrypoints` - scripts and notebooks that are the ways to run the pipeline. Notebooks are in a separate folder to separate .py files from .ipynb
-2. `ripple1d_pipeline` - package containing building block for the pipeline. This is the package name, so it can't be `src`. Recommended `src/ripple1d_pipeline/`layout is not adapted because the benefit of src/pkg-name (not having pkg in sys.path so that imported pkg is always from the install not from the src code) does not out weight the simplicity here. This is not a distributed library, we always want to run against the source code anyways. This could be debated but we are deciding to go with a simpler approach.
-3. `tools` - completely separate and independent tools. No code from here is being used in main pipeline.
+1. `entrypoints` - scripts that are the ways to run the pipeline.
+2. `notebooks` - notebooks that are the ways to run the pipeline, step by step. Kept as a top-level folder separate from `entrypoints` to keep `.ipynb` files apart from the `.py` scripts.
+3. `ripple1d_pipeline` - package containing building block for the pipeline. This is the package name, so it can't be `src`. Recommended `src/ripple1d_pipeline/`layout is not adapted because the benefit of src/pkg-name (not having pkg in sys.path so that imported pkg is always from the install not from the src code) does not out weight the simplicity here. This is not a distributed library, we always want to run against the source code anyways. This could be debated but we are deciding to go with a simpler approach.
+4. `tools` - completely separate and independent tools. No code from here is being used in main pipeline.
 
 Entrypoint support code lives with its entrypoint, not in the package: `monitoring_database.py` is only used by `run_batch`, so it sits in `entrypoints/`. The decision if something belong in the pkg or here is "is it imported by any `ripple1d_pipeline.*` module?". If only an entrypoint uses it, it is not library code.
 

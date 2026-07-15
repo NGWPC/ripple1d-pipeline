@@ -12,7 +12,8 @@ For *why* the project is designed the way it is, see [design_guide.md](design_gu
     - [setup](ripple1d_pipeline/setup) -  initialization / pre-processing
     - [process](ripple1d_pipeline/process) -  Ripple1d API calls / processing
     - [qc](ripple1d_pipeline/qc) -  quality control / post-processing
-- [`entrypoints/`](entrypoints) -  the ways to run the pipeline (scripts and notebooks)
+- [`entrypoints/`](entrypoints) -  scripts that run the pipeline
+- [`notebooks/`](notebooks) -  notebooks that run the pipeline, step by step
 - [`tools/`](tools) -  independent tools, not used by the pipeline
 - [`pixi-scripts/`](pixi-scripts) -  environment provisioning invoked by pixi
 
@@ -122,9 +123,9 @@ Both accept `--log-level` (and `--third-party-log-level`); these can also be set
 
 ## Using Jupyter Notebooks
 
-The notebooks in [`entrypoints/notebooks/`](entrypoints/notebooks) do the same work as `run_collection.py`, step by step.
+The notebooks in [`notebooks/`](notebooks) do the same work as `run_collection.py`, but provide more user control.
 
-1. Open the repo in VSCode and open `entrypoints/notebooks/setup.ipynb`.
+1. Open the repo in VSCode and open `notebooks/setup.ipynb`.
 2. **Select Kernel** → the pixi environment (`.pixi\envs\dev\python.exe`). Use the `dev` environment: it has everything the pipeline needs plus the dev tooling.
 3. In the *Parameters* cell, set `collection_name` to the collection you want to process.
 4. Run `setup.ipynb` first, then `process.ipynb`, then `qc.ipynb`.

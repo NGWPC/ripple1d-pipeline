@@ -39,5 +39,5 @@ known-first-party = ["ripple1d_pipeline"]
 # Entry points and notebooks intentionally use `from ripple1d_pipeline.x import *` to pull in
 # the pipeline's building blocks. ruff cannot resolve names through a star import.
 "entrypoints/*.py" = ["F403", "F405"]
-"entrypoints/notebooks/*.ipynb" = ["F403", "F405"]
+"notebooks/*.ipynb" = ["F403", "F405"]
 "**/__init__.py" = ["F401", "F403"]
