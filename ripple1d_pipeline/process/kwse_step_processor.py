@@ -5,7 +5,7 @@ import requests
 
 from ..setup.collection_data import CollectionData
 from .base_reach_step_processor import BaseReachStepProcessor
-from .ikwse_step import get_min_max_elevation
+from .ikwse_step import get_max_elevation, get_min_elev_curve
 from .job_client import JobRecord
 from .reach import Reach
 
@@ -28,15 +28,16 @@ class KWSEStepProcessor(BaseReachStepProcessor):
     def _execute_single_request(self, reach: Reach) -> JobRecord:
         """KWSE-specific request implementation with elevation data"""
         submodels_dir = self.collection.submodels_dir
-        min_elev, max_elev = get_min_max_elevation(reach.to_id, submodels_dir)
+        min_elevation_curve = get_min_elev_curve(reach.to_id, submodels_dir)
+        max_elev = get_max_elevation(reach.to_id, submodels_dir)
 
-        if not min_elev or not max_elev:
+        if not min_elevation_curve or not max_elev:
             return JobRecord(reach, "", "not_accepted")
 
         url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config['processing_steps'][self.process_name]['api_process_name']}/execution"
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id)
-        payload.update({"min_elevation": min_elev, "max_elevation": max_elev})
+        payload.update({"min_elevation_curve": min_elevation_curve, "max_elevation": max_elev})
 
         for attempt in range(5):
             response = requests.post(url, json=payload)
