@@ -29,6 +29,7 @@ Entrypoint support code lives with its entrypoint, not in the package: `monitori
 - Config that varies between different machines are environments are also managed through the environment variable. This keeps per-machine values (`C:\Users\...`) out of source code entirely.
 - We read config and env one time at load so as not to have scattered `os.getenv` calls with the exception of secrets, which are read from the environment at point of use so as not to store them in the config object which has a vulnerability that it could be logged at some point.
 - Both YAML files and `.env` are located relative to the package, not the current working directory, so loading works identically from a script, a notebook, or a tool in any directory.
+- Some env variables are required and some are defaults, if a required env variable is missing, we fail at startup. The default values for env variables are stored in the code itself.
 
 ## Packaging (`pyproject.toml`)
 

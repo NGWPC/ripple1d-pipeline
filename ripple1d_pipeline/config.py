@@ -11,7 +11,10 @@ the behavior key-space.) See design_guide.md.
 
 import logging
 import os
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import yaml
 from dotenv import find_dotenv, load_dotenv
@@ -23,24 +26,38 @@ DEFAULTS_PATH = _PKG / "default_config.yaml"
 # repo root = package parent; resolves via __file__, not cwd
 DEFAULT_USER_CONFIG = _PKG.parent / "config.yaml"
 
-# RP_* environment variable -> (nested config keys, cast). See design_guide.md.
+
+@dataclass(frozen=True)
+class EnvVar:
+    """How one RP_* environment variable maps into the config object."""
+
+    keys: tuple[str, ...]  # nested config location, e.g. ("paths", "COLLECTIONS_ROOT_DIR")
+    cast: Callable[[str], Any] = str
+    required: bool = True
+    default: Any = None
+
+
 _ENV_OVERLAY = {
-    "RP_RIPPLE1D_VERSION": (("RIPPLE1D_VERSION",), str),
-    "RP_RIPPLE1D_API_URL": (("endpoints", "RIPPLE1D_API_URL"), str),
-    "RP_STAC_URL": (("endpoints", "STAC_URL"), str),
-    "RP_COLLECTIONS_ROOT_DIR": (("paths", "COLLECTIONS_ROOT_DIR"), str),
-    "RP_NWM_FLOWLINES_PATH": (("paths", "NWM_FLOWLINES_PATH"), str),
-    "RP_MONITORING_DB_PATH": (("paths", "MONITORING_DB_PATH"), str),
-    "RP_BRIDGE_TILE_INDEX_PATH": (("paths", "BRIDGE_TILE_INDEX_PATH"), str),
-    "RP_TERRAIN_SOURCE_URL": (("paths", "TERRAIN_SOURCE_URL"), str),
-    "RP_SOURCE_NETWORK": (("paths", "SOURCE_NETWORK"), str),
-    "RP_S3_UPLOAD_PREFIX": (("paths", "S3_UPLOAD_PREFIX"), str),
-    "RP_S3_UPLOAD_FAILED_PREFIX": (("paths", "S3_UPLOAD_FAILED_PREFIX"), str),
-    "RP_STAC_S3_KEY_PREFIX": (("paths", "STAC_S3_KEY_PREFIX"), str),
-    "RP_FLOW_FILES_DIR": (("flows2fim", "FLOW_FILES_DIR"), str),
-    "RP_FLOWS2FIM_BIN_PATH": (("flows2fim", "FLOWS2FIM_BIN_PATH"), str),
-    "RP_QC_TEMPLATE_QGIS_FILE": (("qc", "QC_TEMPLATE_QGIS_FILE"), str),
-    "RP_OPTIMUM_PARALLEL_PROCESS_COUNT": (("execution", "OPTIMUM_PARALLEL_PROCESS_COUNT"), int),
+    # Requireds
+    "RP_STAC_URL": EnvVar(("endpoints", "STAC_URL")),
+    "RP_RIPPLE1D_VERSION": EnvVar(("RIPPLE1D_VERSION",)),
+    "RP_COLLECTIONS_ROOT_DIR": EnvVar(("paths", "COLLECTIONS_ROOT_DIR")),
+    "RP_NWM_FLOWLINES_PATH": EnvVar(("paths", "NWM_FLOWLINES_PATH")),
+    "RP_MONITORING_DB_PATH": EnvVar(("paths", "MONITORING_DB_PATH")),
+    "RP_BRIDGE_TILE_INDEX_PATH": EnvVar(("paths", "BRIDGE_TILE_INDEX_PATH")),
+    "RP_TERRAIN_SOURCE_URL": EnvVar(("paths", "TERRAIN_SOURCE_URL")),
+    "RP_SOURCE_NETWORK": EnvVar(("paths", "SOURCE_NETWORK")),
+    "RP_FLOW_FILES_DIR": EnvVar(("flows2fim", "FLOW_FILES_DIR")),
+    "RP_QC_TEMPLATE_QGIS_FILE": EnvVar(("qc", "QC_TEMPLATE_QGIS_FILE")),
+    # Optionals
+    "RP_RIPPLE1D_API_URL": EnvVar(("endpoints", "RIPPLE1D_API_URL"), required=False, default="http://127.0.0.1"),
+    "RP_OPTIMUM_PARALLEL_PROCESS_COUNT": EnvVar(
+        ("execution", "OPTIMUM_PARALLEL_PROCESS_COUNT"), int, required=False, default=4
+    ),
+    "RP_FLOWS2FIM_BIN_PATH": EnvVar(("flows2fim", "FLOWS2FIM_BIN_PATH"), required=False, default="flows2fim"),
+    "RP_S3_UPLOAD_PREFIX": EnvVar(("paths", "S3_UPLOAD_PREFIX"), required=False, default=""),
+    "RP_S3_UPLOAD_FAILED_PREFIX": EnvVar(("paths", "S3_UPLOAD_FAILED_PREFIX"), required=False, default=""),
+    "RP_STAC_S3_KEY_PREFIX": EnvVar(("paths", "STAC_S3_KEY_PREFIX"), required=False, default=""),
 }
 
 
@@ -68,15 +85,26 @@ def _set_nested(cfg: dict, keys: tuple, value) -> None:
 
 
 def _overlay_env(cfg: dict) -> dict:
-    for env_var, (keys, cast) in _ENV_OVERLAY.items():
+    missing = []
+    for env_var, spec in _ENV_OVERLAY.items():
         raw = os.getenv(env_var)
-        if raw is None:
-            continue
-        try:
-            value = cast(raw)
-        except (TypeError, ValueError):
-            raise ValueError(f"{env_var}={raw!r} is not a valid {cast.__name__}")
-        _set_nested(cfg, keys, value)
+        if raw is None or raw == "":  # unset or empty
+            if spec.required:
+                missing.append(env_var)
+                continue
+            value = spec.default
+        else:
+            try:
+                value = spec.cast(raw)
+            except (TypeError, ValueError):
+                raise ValueError(f"{env_var}={raw!r} is not a valid {spec.cast.__name__}")
+        _set_nested(cfg, spec.keys, value)
+
+    if missing:
+        raise ValueError(
+            "Missing required environment variables (set them in your .env; see example.env): "
+            + ", ".join(sorted(missing))
+        )
     return cfg
 
 
@@ -87,11 +115,4 @@ def load_config() -> dict:
     p = user_config_path()
     if p.exists():
         cfg = _deep_merge(cfg, yaml.safe_load(p.read_text()) or {})
-    cfg = _overlay_env(cfg)
-
-    # flows2fim is installed into the pixi env prefix (on PATH) by the activation script,
-    # so the bare command resolves. RP_FLOWS2FIM_BIN_PATH overrides it.
-    cfg.setdefault("flows2fim", {})
-    if not cfg["flows2fim"].get("FLOWS2FIM_BIN_PATH"):
-        cfg["flows2fim"]["FLOWS2FIM_BIN_PATH"] = "flows2fim"
-    return cfg
+    return _overlay_env(cfg)
