@@ -36,6 +36,7 @@ _ENV_OVERLAY = {
     "RP_SOURCE_NETWORK": (("paths", "SOURCE_NETWORK"), str),
     "RP_S3_UPLOAD_PREFIX": (("paths", "S3_UPLOAD_PREFIX"), str),
     "RP_S3_UPLOAD_FAILED_PREFIX": (("paths", "S3_UPLOAD_FAILED_PREFIX"), str),
+    "RP_STAC_S3_KEY_PREFIX": (("paths", "STAC_S3_KEY_PREFIX"), str),
     "RP_FLOW_FILES_DIR": (("flows2fim", "FLOW_FILES_DIR"), str),
     "RP_FLOWS2FIM_BIN_PATH": (("flows2fim", "FLOWS2FIM_BIN_PATH"), str),
     "RP_QC_TEMPLATE_QGIS_FILE": (("qc", "QC_TEMPLATE_QGIS_FILE"), str),
