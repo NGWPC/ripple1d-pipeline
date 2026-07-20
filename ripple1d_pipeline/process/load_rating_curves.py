@@ -121,7 +121,7 @@ def load_rating_curve(db_path, reach_id, sub_db_path, timeout):
             try:
                 os.remove(sub_db_path)
             except Exception as e:
-                logger.error(f"Could not remove {sub_db_path} Error: {e}")
+                logger.exception(f"Could not remove {sub_db_path} Error: {e}")
     finally:
         conn.close()
 
@@ -143,7 +143,7 @@ def load_all_rating_curves(database: type[Database]) -> None:
                 try:
                     os.remove(sub_db_path)
                 except Exception as e:
-                    logger.error(f"Could not remove {sub_db_path} Error: {e}")
+                    logger.exception(f"Could not remove {sub_db_path} Error: {e}")
 
         logger.info("All rating curves loaded into central database")
     finally:

@@ -58,7 +58,7 @@ def exception_handler(table):
     try:
         yield
     except Exception as e:
-        logger.error(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
+        logger.exception(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
 
 
 def batch_pipeline(collection_list):
@@ -181,8 +181,7 @@ def batch_pipeline(collection_list):
                 error_message = str(e)
 
             except Exception as e:
-                logger.error(f"Unexpected error occurred: {e}")
-                logger.error(f"Executing run_pipeline on collection: {collection}")
+                logger.exception(f"Unexpected error occurred while executing run_pipeline on collection: {collection}")
                 logger.info(f"See {log_file} for more details.")
                 collection_status = "failed"
                 error_message = str(e)

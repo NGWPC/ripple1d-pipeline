@@ -163,21 +163,21 @@ def process(collection_name):
         process_bridges(collection)
         logger.info("<<<<< Finished bridge deck masking Step")
     except Exception:
-        logger.error("Error - bridge deck masking step failed")
+        logger.exception("Error - bridge deck masking step failed")
 
     try:
         logger.info("Starting create extent library Step >>>>>>")
         create_extent_lib(collection)
         logger.info("<<<<< Finished create extent library Step")
     except Exception:
-        logger.error("Error - create extent library step failed")
+        logger.exception("Error - create extent library step failed")
 
     try:
         logger.info("Creating f2f start file >>>>>>")
         create_f2f_start_file([reach.id for reach in outlet_reaches], collection.f2f_start_file)
         logger.info("<<<<< Created f2f start file")
     except Exception:
-        logger.error("Error - unable to create f2f start file")
+        logger.exception("Error - unable to create f2f start file")
 
 
 def run_qc(collection_name, execute_flows2fim=False):
@@ -221,7 +221,7 @@ def run_pipeline(collection: str):
         try:
             run_qc(collection, execute_flows2fim)
         except Exception as qc_error:
-            logger.error(f"QC failed: {str(qc_error)}")
+            logger.exception(f"QC failed: {str(qc_error)}")
 
 
 if __name__ == "__main__":

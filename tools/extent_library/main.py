@@ -171,7 +171,7 @@ def fim_worker(args: tuple) -> None:
         with tempfile.TemporaryDirectory() as tmp_dir:
             create_extent_tif(tif_path, Path(tmp_dir), dest_dir)
     except Exception as e:
-        logging.error(f"Error processing {tif_path}: {str(e)}")
+        logging.exception(f"Error processing {tif_path}: {str(e)}")
 
 
 def domain_worker(args: tuple) -> None:
@@ -193,7 +193,7 @@ def domain_worker(args: tuple) -> None:
             create_domain_tif(tif_path, Path(tmp_dir), gpkg_path, dest_dir)
 
     except Exception as e:
-        logging.error(f"Error processing domain {reach_id}: {str(e)}", exc_info=True)
+        logging.exception(f"Error processing domain {reach_id}: {str(e)}")
 
 
 def get_all_tif_paths(src_dir: Path) -> list[Path]:
