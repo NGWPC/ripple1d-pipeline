@@ -175,6 +175,16 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
     bridge_index_path = collection.bridge_tile_index_path
     conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
 
+    # Download bridge index locally if remote (avoids ~40s S3 latency per reach query)
+    if bridge_index_path.startswith("/vsis3") or bridge_index_path.startswith("/vsicurl"):
+        local_index = Path(library_dir.parent) / Path(bridge_index_path).name
+        if not local_index.exists():
+            logger.info(f"Downloading bridge index to {local_index}...")
+            t_dl = time.perf_counter()
+            run_cmd(["ogr2ogr", "-f", "Parquet", local_index, bridge_index_path], "download bridge index")
+            logger.info(f"Bridge index downloaded in {time.perf_counter() - t_dl:.1f}s")
+        bridge_index_path = str(local_index)
+
     reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
     logger.info(f"Found {len(reach_dirs)} reaches to process")
     logger.info(f"Bridge index: {bridge_index_path}")
