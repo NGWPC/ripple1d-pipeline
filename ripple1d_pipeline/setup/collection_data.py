@@ -78,5 +78,5 @@ class CollectionData:
             return models
 
         except Exception as e:
-            logger.error(f"Model discovery failed: {str(e)}", exc_info=True)
+            logger.exception(f"Model discovery failed: {str(e)}")
             return []

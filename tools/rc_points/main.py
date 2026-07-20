@@ -136,7 +136,7 @@ def create_rc_points_parquet(ripple_gpkg_path, submodels_dir, output_parquet_pat
             )
 
         except Exception as e:
-            logging.error(f"Error processing {reach_dir}: {str(e)}")
+            logging.exception(f"Error processing {reach_dir}: {str(e)}")
             continue
 
     if not features:
