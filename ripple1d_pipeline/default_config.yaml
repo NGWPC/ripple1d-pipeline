@@ -116,6 +116,7 @@ processing_steps:
 bridge_processing:
   BRIDGE_ELEV_UNITS: "meters"
   BRIDGE_ELEV_CONV_FACTOR: 3.28084  # Convert bridge elevation units to feet (units used by terrain and depth grids)
+  STRATEGY: "clearance"  # "current" for per-TIF mask+COG overwrite, "clearance" for one clearance TIF per reach
 
 polling:
   DEFAULT_POLL_WAIT: 5
