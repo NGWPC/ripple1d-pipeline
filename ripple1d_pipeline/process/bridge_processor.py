@@ -240,26 +240,40 @@ def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_
     with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_") as temp_dir:
         temp_dir = Path(temp_dir)
 
+        t = time.perf_counter()
         bridges_vrt = temp_dir / "bridges.vrt"
         run_cmd(["gdalbuildvrt", bridges_vrt] + intersecting_bridge_paths, "gdalbuildvrt")
+        logger.info(f"Reach {reach_id}: buildvrt done ({time.perf_counter() - t:.1f}s)")
 
         target_crs = "EPSG:5070"
 
         # Align DEM (bilinear is correct for continuous terrain)
+        t = time.perf_counter()
         aligned_dem = temp_dir / "aligned_dem.vrt"
         align_raster(dem_path, aligned_dem, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
+        logger.info(f"Reach {reach_id}: align DEM VRT done ({time.perf_counter() - t:.1f}s)")
 
         # Align bridges with nearest-neighbor (preserves discrete elevation values)
+        t = time.perf_counter()
         aligned_bridges = temp_dir / "aligned_bridges.vrt"
         align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=depth_nodata,
                      target_crs=target_crs, resampling="near")
+        logger.info(f"Reach {reach_id}: align bridges VRT done ({time.perf_counter() - t:.1f}s)")
 
-        # Materialize aligned DEM (needed for gdal_calc)
+        # Materialize aligned DEM and bridges (avoids lazy S3 re-fetch during gdal_calc)
+        t = time.perf_counter()
         aligned_dem_tif = temp_dir / "aligned_dem.tif"
         run_cmd(["gdal_translate", "-q", aligned_dem, aligned_dem_tif], "materialize DEM")
+        logger.info(f"Reach {reach_id}: materialize DEM done ({time.perf_counter() - t:.1f}s)")
+
+        t = time.perf_counter()
+        aligned_bridges_tif = temp_dir / "aligned_bridges.tif"
+        run_cmd(["gdal_translate", "-q", aligned_bridges, aligned_bridges_tif], "materialize bridges")
+        logger.info(f"Reach {reach_id}: materialize bridges done ({time.perf_counter() - t:.1f}s)")
 
         # Clearance = 0 means "no bridge" in the VRT expression ((B2 == 0) ? B1 : ...).
         # A real clearance of exactly 0 (bridge at ground level) is physically impossible.
+        t = time.perf_counter()
         clearance_expr = f"numpy.where((C == -9999) | numpy.isnan(C), 0, C * {conv_factor} - B)"
         clearance_temp = temp_dir / "clearance.tif"
         run_cmd(
@@ -270,7 +284,7 @@ def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_
                 "-B",
                 aligned_dem_tif,
                 "-C",
-                aligned_bridges,
+                aligned_bridges_tif,
                 "--outfile",
                 clearance_temp,
                 "--NoDataValue=0",
@@ -279,13 +293,16 @@ def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_
             ],
             "gdal_calc clearance",
         )
+        logger.info(f"Reach {reach_id}: gdal_calc clearance done ({time.perf_counter() - t:.1f}s)")
 
         # Write to library/<reach_id>/bridge_clearance.tif
+        t = time.perf_counter()
         clearance_output = reach_dir / "bridge_clearance.tif"
         run_cmd(
             ["gdal_translate", "-of", "GTiff", "-co", "COMPRESS=LZW", clearance_temp, clearance_output],
             "write clearance",
         )
+        logger.info(f"Reach {reach_id}: write clearance TIF done ({time.perf_counter() - t:.1f}s)")
 
     dt = time.perf_counter() - t_start
     size_kb = clearance_output.stat().st_size / 1024
