@@ -183,22 +183,28 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
 def _process_reach_current(reach_id, reach_dir, dem_path, intersecting_bridge_paths,
                            bounds, depth_res, depth_nodata, conv_factor, library_dir, num_workers):
     """Current strategy: mask each depth TIF in-place via multiprocessing."""
+    t_start = time.perf_counter()
     reach_tifs = [p for p in get_all_tif_paths(reach_dir) if p.name != "bridge_clearance.tif"]
 
     with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_") as reach_temp_dir:
         reach_temp_dir = Path(reach_temp_dir)
 
+        t = time.perf_counter()
         bridges_vrt = reach_temp_dir / "bridges.vrt"
         run_cmd(["gdalbuildvrt", bridges_vrt] + intersecting_bridge_paths, "gdalbuildvrt")
+        logger.info(f"Reach {reach_id}: buildvrt done ({time.perf_counter() - t:.1f}s)")
 
-        # Depth rasters are in EPSG:5070, reproject DEM and bridges to match
         target_crs = "EPSG:5070"
 
+        t = time.perf_counter()
         aligned_dem = reach_temp_dir / "aligned_dem.vrt"
         align_raster(dem_path, aligned_dem, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
+        logger.info(f"Reach {reach_id}: align DEM VRT done ({time.perf_counter() - t:.1f}s)")
 
+        t = time.perf_counter()
         aligned_bridges = reach_temp_dir / "aligned_bridges.vrt"
         align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
+        logger.info(f"Reach {reach_id}: align bridges VRT done ({time.perf_counter() - t:.1f}s)")
 
         worker_args = [
             (
@@ -213,6 +219,7 @@ def _process_reach_current(reach_id, reach_dir, dem_path, intersecting_bridge_pa
             for depth_path in reach_tifs
         ]
 
+        t = time.perf_counter()
         files_modified = []
         with multiprocessing.Pool(processes=num_workers) as pool:
             for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
@@ -220,8 +227,14 @@ def _process_reach_current(reach_id, reach_dir, dem_path, intersecting_bridge_pa
                     files_modified.append(depth_path)
                 else:
                     logger.error(f"Failed to process {depth_path}")
+        dt_mask = time.perf_counter() - t
+        logger.info(f"Reach {reach_id}: mask+COG {len(reach_tifs)} TIFs done ({dt_mask:.1f}s)")
 
-    logger.info(f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(intersecting_bridge_paths)} bridges")
+    dt_total = time.perf_counter() - t_start
+    logger.info(
+        f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with "
+        f"{len(intersecting_bridge_paths)} bridges (total: {dt_total:.1f}s)"
+    )
     return files_modified
 
 
