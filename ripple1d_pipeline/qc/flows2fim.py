@@ -7,25 +7,10 @@ from ..setup.collection_data import CollectionData
 logger = logging.getLogger(__name__)
 
 
-def setup_gdal_environment(collection: type[CollectionData]):
-    """
-    Add GDAL binaries to the system PATH
-    """
-    GDAL_BINS_PATH = collection.config["flows2fim"]["GDAL_BINS_PATH"]
-    GDAL_SCRIPTS_PATH = collection.config["flows2fim"]["GDAL_SCRIPTS_PATH"]
-
-    if GDAL_BINS_PATH:
-        # Add GDAL path to the system PATH
-        os.environ["PATH"] = GDAL_BINS_PATH + os.pathsep + os.environ["PATH"]
-
-    if GDAL_SCRIPTS_PATH:
-        os.environ["PATH"] = GDAL_SCRIPTS_PATH + os.pathsep + os.environ["PATH"]
-
-
 def run_flows2fim(
-    collection: type[CollectionData],
+    collection: CollectionData,
     output_subfolder: str = "qc",
-    start_reaches: list = [],
+    start_reaches: list | None = None,
     fim_format: str = "COG",
 ) -> None:
     """
@@ -42,14 +27,13 @@ def run_flows2fim(
         start_reaches (List): List of reaches to start.
         fim_format (str): Output format for FIM files ('GTiff' or 'VRT' or 'COG').
     """
+    start_reaches = start_reaches or []
     output_dir = collection.root_dir
     library_path = collection.library_dir
     library_db_path = collection.db_path
     start_file = collection.f2f_start_file
     flow_files_dir = collection.config["flows2fim"]["FLOW_FILES_DIR"]
     FLOWS2FIM_BIN_PATH = collection.config["flows2fim"]["FLOWS2FIM_BIN_PATH"]
-
-    setup_gdal_environment(collection)
 
     output_subfolder_path = os.path.join(output_dir, output_subfolder)
     if not os.path.exists(output_subfolder_path):

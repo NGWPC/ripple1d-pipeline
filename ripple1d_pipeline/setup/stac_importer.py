@@ -3,8 +3,8 @@ import os
 
 import boto3
 import pystac_client
-from dotenv import load_dotenv
 
+from ..config import load_env
 from .collection_data import CollectionData
 
 logger = logging.getLogger(__name__)
@@ -20,9 +20,10 @@ class STACImporter:
         self.stac_collection = collectiondata.stac_collection_id
         self.stac_endpoint = collectiondata.STAC_URL
         self.source_models_dir = collectiondata.source_models_dir
+        self.stac_s3_key_prefix = collectiondata.config["paths"].get("STAC_S3_KEY_PREFIX", "")
         self.models_data = None
         self.model_ids = None
-        load_dotenv(".env", override=True)
+        load_env(override=True)
 
     def get_models_from_stac(self) -> None:
         """
@@ -45,7 +46,7 @@ class STACImporter:
             for _, asset in item.assets.items():
                 if "ras-geometry-gpkg" in asset.roles:
                     s3_key = asset.extra_fields.get("s3_key", "")
-                    gpkg_key = f"s3://{os.environ.get('RP_S3_KEY_PREFIX', '')}{s3_key}"
+                    gpkg_key = f"s3://{self.stac_s3_key_prefix}{s3_key}"
                     break
             if gpkg_key:
                 models_data[item.id] = {

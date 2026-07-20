@@ -4,12 +4,12 @@ import argparse
 import logging
 
 # Import necessary modules
-from src import configure_logging
-from src.process import *
-from src.qc import *
-from src.setup import *
+from ripple1d_pipeline import configure_logging
+from ripple1d_pipeline.process import *
+from ripple1d_pipeline.qc import *
+from ripple1d_pipeline.setup import *
 
-logger = logging.getLogger("ripple_pipeline")
+logger = logging.getLogger("run_collection")
 
 
 def setup(collection_name):
@@ -162,22 +162,22 @@ def process(collection_name):
         logger.info("Starting bridge deck masking Step >>>>>>")
         process_bridges(collection)
         logger.info("<<<<< Finished bridge deck masking Step")
-    except:
-        logger.error("Error - bridge deck masking step failed")
+    except Exception:
+        logger.exception("Error - bridge deck masking step failed")
 
     try:
         logger.info("Starting create extent library Step >>>>>>")
         create_extent_lib(collection)
         logger.info("<<<<< Finished create extent library Step")
-    except:
-        logger.error("Error - create extent library step failed")
+    except Exception:
+        logger.exception("Error - create extent library step failed")
 
     try:
         logger.info("Creating f2f start file >>>>>>")
         create_f2f_start_file([reach.id for reach in outlet_reaches], collection.f2f_start_file)
         logger.info("<<<<< Created f2f start file")
-    except:
-        logger.error("Error - unable to create f2f start file")
+    except Exception:
+        logger.exception("Error - unable to create f2f start file")
 
 
 def run_qc(collection_name, execute_flows2fim=False):
@@ -221,7 +221,7 @@ def run_pipeline(collection: str):
         try:
             run_qc(collection, execute_flows2fim)
         except Exception as qc_error:
-            logger.error(f"QC failed: {str(qc_error)}")
+            logger.exception(f"QC failed: {str(qc_error)}")
 
 
 if __name__ == "__main__":

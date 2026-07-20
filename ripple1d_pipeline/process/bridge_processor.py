@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 
 from ..setup.collection_data import CollectionData
-from .extent_library import get_all_tif_paths, setup_gdal_environment
+from .extent_library import get_all_tif_paths
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ def apply_bridge_mask(args: tuple) -> tuple[str, bool]:
         return (str(depth_path), True)
 
     except Exception as e:
-        logger.error(f"Error processing {depth_path}: {e}", exc_info=True)
+        logger.exception(f"Error processing {depth_path}: {e}")
         return (str(depth_path), False)
 
 
@@ -173,8 +173,6 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
     conv_factor = collection.config["bridge_processing"]["BRIDGE_ELEV_CONV_FACTOR"]
-
-    setup_gdal_environment(collection)
 
     reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
     logger.info(f"Found {len(reach_dirs)} reaches to process")
@@ -219,7 +217,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
             intersecting_bridge_paths = lines[1:] if len(lines) > 1 else []
             logger.info(f"Reach {reach_id}: found {len(intersecting_bridge_paths)} intersecting bridges")
         except Exception as e:
-            logger.error(f"Error querying bridges for reach {reach_id}: {e}")
+            logger.exception(f"Error querying bridges for reach {reach_id}: {e}")
             continue
 
         if not intersecting_bridge_paths:

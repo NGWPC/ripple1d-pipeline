@@ -6,21 +6,17 @@ import os
 import pathlib
 import subprocess
 from datetime import datetime
-from pathlib import Path
 
-import yaml
-
-from ripple_pipeline import *
-from src.setup import *
+from ripple1d_pipeline.config import load_config
 
 
 def s3_move(collection: str, failed: bool = False):
 
-    config = load_config("config.yaml")
+    config = load_config()
 
     COLLECTIONS_ROOT_DIR = config["paths"]["COLLECTIONS_ROOT_DIR"]
-    S3_UPLOAD_PREFIX = config["paths"]["S3_UPLOAD_PREFIX"]
-    S3_UPLOAD_FAILED_PREFIX = config["paths"]["S3_UPLOAD_FAILED_PREFIX"]
+    S3_UPLOAD_PREFIX = config["paths"].get("S3_UPLOAD_PREFIX", "")
+    S3_UPLOAD_FAILED_PREFIX = config["paths"].get("S3_UPLOAD_FAILED_PREFIX", "")
     RIPPLE1D_VERSION = config["RIPPLE1D_VERSION"]
 
     if failed:
@@ -46,18 +42,6 @@ def s3_move(collection: str, failed: bool = False):
 
     subprocess.run(s3_mv_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
     logging.info(f"Submitted S3 mv command on collection: {collection} ...")
-
-
-def load_config(config_file):
-    try:
-        with open(str(Path.cwd() / "src" / config_file)) as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
-    except yaml.YAMLError:
-        raise ValueError("Invalid YAML configuration")
-
-    return config
 
 
 def batch_move(collection_list):

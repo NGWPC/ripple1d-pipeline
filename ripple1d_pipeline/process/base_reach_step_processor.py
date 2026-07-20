@@ -1,7 +1,6 @@
-
 from ..setup.collection_data import CollectionData
 from ..setup.database import Database
-from .base_step_processor import BaseStepProcessor
+from .base_step_processor import BaseStepProcessor, format_template
 from .reach import Reach
 
 
@@ -28,10 +27,9 @@ class BaseReachStepProcessor(BaseStepProcessor):
             "submodels_directory": self.collection.submodels_dir,
             "library_directory": self.collection.library_dir,
             "source_model_directory": self.collection.source_models_dir,
+            "terrain_source_url": self.collection.config["paths"]["TERRAIN_SOURCE_URL"],
         }
-        return {
-            key: value.format(**replacements) if isinstance(value, str) else value for key, value in template.items()
-        }
+        return {key: format_template(value, replacements) for key, value in template.items()}
 
     def _update_database(self, database: Database, status: str):
         """Common reach database update"""

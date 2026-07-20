@@ -8,26 +8,13 @@ import socket
 import subprocess
 from contextlib import contextmanager
 from datetime import datetime
-from pathlib import Path
-
-import yaml
 
 from monitoring_database import MonitoringDatabase
-from src import configure_logging
 
-logger = logging.getLogger("batch_ripple_pipeline")
+from ripple1d_pipeline import configure_logging
+from ripple1d_pipeline.config import load_config
 
-
-def load_config(config_file):
-    try:
-        with open(str(Path.cwd() / "src" / config_file)) as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        raise ValueError(f"File '{config_file}' not found. Ensure config.yaml is in the src directory.")
-    except yaml.YAMLError:
-        raise ValueError("Invalid YAML configuration")
-
-    return config
+logger = logging.getLogger("run_batch")
 
 
 def s3_move(
@@ -37,8 +24,8 @@ def s3_move(
 ):
 
     COLLECTIONS_ROOT_DIR = config["paths"]["COLLECTIONS_ROOT_DIR"]
-    S3_UPLOAD_PREFIX = config["paths"]["S3_UPLOAD_PREFIX"]
-    S3_UPLOAD_FAILED_PREFIX = config["paths"]["S3_UPLOAD_FAILED_PREFIX"]
+    S3_UPLOAD_PREFIX = config["paths"].get("S3_UPLOAD_PREFIX", "")
+    S3_UPLOAD_FAILED_PREFIX = config["paths"].get("S3_UPLOAD_FAILED_PREFIX", "")
     RIPPLE1D_VERSION = config["RIPPLE1D_VERSION"]
 
     if failed:
@@ -71,7 +58,7 @@ def exception_handler(table):
     try:
         yield
     except Exception as e:
-        logger.error(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
+        logger.exception(f"Monitoring database- {table} TABLE write failed. Error Message: \n\t {e}")
 
 
 def batch_pipeline(collection_list):
@@ -83,7 +70,7 @@ def batch_pipeline(collection_list):
             OR a string in quotes with space delimeted collections.
     """
 
-    config = load_config("config.yaml")
+    config = load_config()
 
     COLLECTIONS_ROOT_DIR = config["paths"]["COLLECTIONS_ROOT_DIR"]
     RIPPLE1D_VERSION = config["RIPPLE1D_VERSION"]
@@ -120,10 +107,10 @@ def batch_pipeline(collection_list):
 
     for collection in collections:
         logger.info(f"Starting processing for collection: {collection} ...")
-        # Construct the command to execute ripple_pipeline.py
+        # Construct the command to execute run_collection.py (sibling script, located via __file__)
         cmd = [
             "python",
-            "ripple_pipeline.py",
+            str(pathlib.Path(__file__).parent / "run_collection.py"),
             "--collection",
             collection,
         ]
@@ -194,8 +181,7 @@ def batch_pipeline(collection_list):
                 error_message = str(e)
 
             except Exception as e:
-                logger.error(f"Unexpected error occurred: {e}")
-                logger.error(f"Executing run_pipeline on collection: {collection}")
+                logger.exception(f"Unexpected error occurred while executing run_pipeline on collection: {collection}")
                 logger.info(f"See {log_file} for more details.")
                 collection_status = "failed"
                 error_message = str(e)
