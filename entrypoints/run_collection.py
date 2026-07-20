@@ -163,7 +163,7 @@ def process(collection_name):
         process_bridges(collection)
         logger.info("<<<<< Finished bridge deck masking Step")
     except Exception:
-        logger.error("Error - bridge deck masking step failed")
+        logger.error("Error - bridge deck masking step failed", exc_info=True)
 
     try:
         logger.info("Starting create extent library Step >>>>>>")
