@@ -181,8 +181,18 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
         return (str(depth_path), False)
 
 
-def _process_reach_current(reach_id, reach_dir, dem_path, intersecting_bridge_paths,
-                           bounds, depth_res, depth_nodata, conv_factor, library_dir, num_workers):
+def _process_reach_current(
+    reach_id,
+    reach_dir,
+    dem_path,
+    intersecting_bridge_paths,
+    bounds,
+    depth_res,
+    depth_nodata,
+    conv_factor,
+    library_dir,
+    num_workers,
+):
     """Current strategy: mask each depth TIF in-place via multiprocessing."""
     t_start = time.perf_counter()
     reach_tifs = [p for p in get_all_tif_paths(reach_dir) if not p.name.startswith("bridge_clearance")]
@@ -242,8 +252,9 @@ def _process_reach_current(reach_id, reach_dir, dem_path, intersecting_bridge_pa
 # ---------------------------------------------------------------------------
 # Strategy: "clearance" - one clearance TIF per reach
 # ---------------------------------------------------------------------------
-def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_paths,
-                             bounds, depth_res, depth_nodata, conv_factor, library_dir):
+def _process_reach_clearance(
+    reach_id, reach_dir, dem_path, intersecting_bridge_paths, bounds, depth_res, depth_nodata, conv_factor, library_dir
+):
     """Clearance strategy: produce one bridge_clearance.tif per reach.
 
     clearance = (bridge_elev * conv_factor) - DEM
@@ -270,8 +281,15 @@ def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_
         # Align bridges with nearest-neighbor (preserves discrete elevation values)
         t = time.perf_counter()
         aligned_bridges = temp_dir / "aligned_bridges.vrt"
-        align_raster(bridges_vrt, aligned_bridges, bounds, depth_res, nodata=depth_nodata,
-                     target_crs=target_crs, resampling="near")
+        align_raster(
+            bridges_vrt,
+            aligned_bridges,
+            bounds,
+            depth_res,
+            nodata=depth_nodata,
+            target_crs=target_crs,
+            resampling="near",
+        )
         logger.info(f"Reach {reach_id}: align bridges VRT done ({time.perf_counter() - t:.1f}s)")
 
         # Materialize aligned DEM and bridges (avoids lazy S3 re-fetch during gdal_calc)
@@ -330,8 +348,9 @@ def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_
 # ---------------------------------------------------------------------------
 # Strategy: "clearance_per_tile" - one clearance TIF per bridge tile
 # ---------------------------------------------------------------------------
-def _process_reach_clearance_per_tile(reach_id, reach_dir, dem_path, intersecting_bridge_paths,
-                                      bounds, depth_res, depth_nodata, conv_factor, library_dir):
+def _process_reach_clearance_per_tile(
+    reach_id, reach_dir, dem_path, intersecting_bridge_paths, bounds, depth_res, depth_nodata, conv_factor, library_dir
+):
     """Per-tile clearance strategy: one clearance TIF per bridge tile.
 
     Each output covers only the intersection of the bridge tile footprint with
@@ -372,8 +391,15 @@ def _process_reach_clearance_per_tile(reach_id, reach_dir, dem_path, intersectin
             align_raster(dem_path, aligned_dem, tile_bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
 
             aligned_bridge = temp_dir / "aligned_bridge.vrt"
-            align_raster(Path(bridge_path), aligned_bridge, tile_bounds, depth_res, nodata=depth_nodata,
-                         target_crs=target_crs, resampling="near")
+            align_raster(
+                Path(bridge_path),
+                aligned_bridge,
+                tile_bounds,
+                depth_res,
+                nodata=depth_nodata,
+                target_crs=target_crs,
+                resampling="near",
+            )
 
             aligned_dem_tif = temp_dir / "aligned_dem.tif"
             run_cmd(["gdal_translate", "-q", aligned_dem, aligned_dem_tif], "materialize DEM")
@@ -388,9 +414,12 @@ def _process_reach_clearance_per_tile(reach_id, reach_dir, dem_path, intersectin
                     "gdal_calc",
                     "--overwrite",
                     "--hideNoData",
-                    "-B", aligned_dem_tif,
-                    "-C", aligned_bridge_tif,
-                    "--outfile", clearance_temp,
+                    "-B",
+                    aligned_dem_tif,
+                    "-C",
+                    aligned_bridge_tif,
+                    "--outfile",
+                    clearance_temp,
                     "--NoDataValue=0",
                     "--quiet",
                     f"--calc={clearance_expr}",
@@ -410,10 +439,7 @@ def _process_reach_clearance_per_tile(reach_id, reach_dir, dem_path, intersectin
             clearance_outputs.append(str(clearance_output))
 
     dt_total = time.perf_counter() - t_start
-    logger.info(
-        f"Reach {reach_id}: {len(clearance_outputs)} per-tile clearance TIFs "
-        f"in {dt_total:.1f}s"
-    )
+    logger.info(f"Reach {reach_id}: {len(clearance_outputs)} per-tile clearance TIFs in {dt_total:.1f}s")
     return clearance_outputs
 
 
@@ -461,9 +487,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
             intersecting_bridge_paths = _query_bridges(bridge_index_path, xmin, ymin, xmax, ymax)
             dt_query = time.perf_counter() - t_query
 
-            logger.info(
-                f"Reach {reach_id}: {len(intersecting_bridge_paths)} bridges (query: {dt_query:.1f}s)"
-            )
+            logger.info(f"Reach {reach_id}: {len(intersecting_bridge_paths)} bridges (query: {dt_query:.1f}s)")
         except Exception as e:
             logger.exception(f"Error querying bridges for reach {reach_id}: {e}")
             continue
@@ -478,23 +502,44 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
         if strategy == "current":
             # based on the cpu utilization, the num_workers maybe increased by x1.5, or x2 or even x3.
             modified = _process_reach_current(
-                reach_id, reach_dir, dem_path, intersecting_bridge_paths,
-                bounds, depth_res, depth_nodata, conv_factor, library_dir,
+                reach_id,
+                reach_dir,
+                dem_path,
+                intersecting_bridge_paths,
+                bounds,
+                depth_res,
+                depth_nodata,
+                conv_factor,
+                library_dir,
                 num_workers * 2,
             )
             files_modified.extend(modified)
 
         elif strategy == "clearance":
             clearance_path = _process_reach_clearance(
-                reach_id, reach_dir, dem_path, intersecting_bridge_paths,
-                bounds, depth_res, depth_nodata, conv_factor, library_dir,
+                reach_id,
+                reach_dir,
+                dem_path,
+                intersecting_bridge_paths,
+                bounds,
+                depth_res,
+                depth_nodata,
+                conv_factor,
+                library_dir,
             )
             clearance_files.append(clearance_path)
 
         elif strategy == "clearance_per_tile":
             tile_paths = _process_reach_clearance_per_tile(
-                reach_id, reach_dir, dem_path, intersecting_bridge_paths,
-                bounds, depth_res, depth_nodata, conv_factor, library_dir,
+                reach_id,
+                reach_dir,
+                dem_path,
+                intersecting_bridge_paths,
+                bounds,
+                depth_res,
+                depth_nodata,
+                conv_factor,
+                library_dir,
             )
             clearance_files.extend(tile_paths)
 
