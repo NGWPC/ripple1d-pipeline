@@ -176,7 +176,7 @@ def apply_bridge_mask(args: Tuple) -> Tuple[str, bool]:
         return (str(depth_path), True)
 
     except Exception as e:
-        logger.error(f"Error processing {depth_path}: {e}", exc_info=True)
+        logger.exception(f"Error processing {depth_path}: {e}")
         return (str(depth_path), False)
 
 
@@ -380,7 +380,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 f"Reach {reach_id}: {len(intersecting_bridge_paths)} bridges (query: {dt_query:.1f}s)"
             )
         except Exception as e:
-            logger.error(f"Error querying bridges for reach {reach_id}: {e}")
+            logger.exception(f"Error querying bridges for reach {reach_id}: {e}")
             continue
 
         if not intersecting_bridge_paths:

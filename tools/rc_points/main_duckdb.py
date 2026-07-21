@@ -165,7 +165,7 @@ def create_rc_points_parquet(ripple_gpkg_path, submodels_dir, output_parquet_pat
             conn.execute(query)
 
         except Exception as e:
-            logging.error(f"Skipping {reach_id} due to error: {str(e)}")
+            logging.exception(f"Skipping {reach_id} due to error: {str(e)}")
             continue
 
         # finally:

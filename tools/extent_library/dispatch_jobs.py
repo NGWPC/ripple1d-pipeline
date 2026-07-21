@@ -51,7 +51,7 @@ def dispatch_job(
             logging.error(f"Response details: {e.response.status_code} - {e.response.text}")
         return ""
     except Exception as e:
-        logging.error(f"An unexpected error occurred: {str(e)}")
+        logging.exception(f"An unexpected error occurred: {str(e)}")
         return ""
 
 
@@ -90,7 +90,7 @@ def main():
         logging.error(f"Collection list file not found: {args.collection_list}")
         return
     except Exception as e:
-        logging.error(f"An error occurred while reading the collection list: {str(e)}")
+        logging.exception(f"An error occurred while reading the collection list: {str(e)}")
         return
 
     # Prepare CSV file to save results

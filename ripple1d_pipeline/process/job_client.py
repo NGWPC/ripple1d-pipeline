@@ -188,7 +188,7 @@ class JobClient:
                 results.append(row)
 
             except Exception as e:
-                logger.error(f"Failed to get job metadata. Error: {str(e)}")
+                logger.exception(f"Failed to get job metadata. Error: {str(e)}")
                 results.append(
                     {
                         "id": entity_id,
@@ -287,5 +287,5 @@ class JobClient:
                 else:
                     logger.error(f"Failed to dismiss {job.id} - Status {response.status_code}")
             except requests.RequestException as e:
-                logger.error(f"Error dismissing {job.id}: {str(e)}")
+                logger.exception(f"Error dismissing {job.id}: {str(e)}")
                 continue
