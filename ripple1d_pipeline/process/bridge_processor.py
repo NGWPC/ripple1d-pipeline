@@ -177,7 +177,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
 
     # Download bridge index locally if remote (avoids ~40s S3 latency per reach query)
     if bridge_index_path.startswith("/vsis3") or bridge_index_path.startswith("/vsicurl"):
-        local_index = Path(library_dir.parent) / Path(bridge_index_path).name
+        local_index = Path(collection.config["paths"]["COLLECTIONS_ROOT_DIR"]) / Path(bridge_index_path).name
         if not local_index.exists():
             logger.info(f"Downloading bridge index to {local_index}...")
             t_dl = time.perf_counter()
