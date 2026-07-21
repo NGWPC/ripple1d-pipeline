@@ -1,12 +1,13 @@
 """
 Bridge processor module for masking depth library TIFs based on bridge locations.
 
-Two strategies (controlled by bridge_processing.STRATEGY in config):
+Three strategies (controlled by bridge_processing.STRATEGY in config):
   - "current": per-TIF gdal_calc mask + COG overwrite (original approach)
-  - "clearance": one clearance TIF per reach, no depth TIF modification (proposed)
+  - "clearance": one clearance TIF per reach (3a-i)
+  - "clearance_per_tile": one clearance TIF per bridge tile (3a-ii)
 
-The clearance strategy produces library/<reach_id>/bridge_clearance.tif which
-downstream consumers (F2F, QGIS) use via VRT expression to apply masking on read.
+Clearance strategies produce bridge_clearance*.tif files in library/<reach_id>/
+which downstream consumers (F2F, QGIS) use via VRT expression to apply masking on read.
 """
 
 import json
@@ -184,7 +185,7 @@ def _process_reach_current(reach_id, reach_dir, dem_path, intersecting_bridge_pa
                            bounds, depth_res, depth_nodata, conv_factor, library_dir, num_workers):
     """Current strategy: mask each depth TIF in-place via multiprocessing."""
     t_start = time.perf_counter()
-    reach_tifs = [p for p in get_all_tif_paths(reach_dir) if p.name != "bridge_clearance.tif"]
+    reach_tifs = [p for p in get_all_tif_paths(reach_dir) if not p.name.startswith("bridge_clearance")]
 
     with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_") as reach_temp_dir:
         reach_temp_dir = Path(reach_temp_dir)
@@ -327,16 +328,100 @@ def _process_reach_clearance(reach_id, reach_dir, dem_path, intersecting_bridge_
 
 
 # ---------------------------------------------------------------------------
+# Strategy: "clearance_per_tile" - one clearance TIF per bridge tile
+# ---------------------------------------------------------------------------
+def _process_reach_clearance_per_tile(reach_id, reach_dir, dem_path, intersecting_bridge_paths,
+                                      bounds, depth_res, depth_nodata, conv_factor, library_dir):
+    """Per-tile clearance strategy: one clearance TIF per bridge tile.
+
+    Each output covers only the intersection of the bridge tile footprint with
+    the reach, so downstream VRT/GTI can skip them via SkipNonContributingSources.
+    """
+    t_start = time.perf_counter()
+    reach_xmin, reach_ymin, reach_xmax, reach_ymax = bounds
+    target_crs = "EPSG:5070"
+    clearance_outputs = []
+
+    for bridge_path in intersecting_bridge_paths:
+        bridge_stem = Path(bridge_path).stem
+        label = f"{reach_id}/tile_{bridge_stem}"
+
+        try:
+            bridge_bounds, _, _ = get_raster_info(Path(bridge_path))
+        except Exception as e:
+            logger.error(f"{label}: failed to read bridge tile info: {e}")
+            continue
+
+        bxmin, bymin, bxmax, bymax = bridge_bounds
+        ixmin = max(reach_xmin, bxmin)
+        iymin = max(reach_ymin, bymin)
+        ixmax = min(reach_xmax, bxmax)
+        iymax = min(reach_ymax, bymax)
+
+        if ixmin >= ixmax or iymin >= iymax:
+            logger.warning(f"{label}: no spatial overlap with reach, skipping")
+            continue
+
+        tile_bounds = (ixmin, iymin, ixmax, iymax)
+
+        with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_{bridge_stem}_") as temp_dir:
+            temp_dir = Path(temp_dir)
+
+            t = time.perf_counter()
+            aligned_dem = temp_dir / "aligned_dem.vrt"
+            align_raster(dem_path, aligned_dem, tile_bounds, depth_res, nodata=depth_nodata, target_crs=target_crs)
+
+            aligned_bridge = temp_dir / "aligned_bridge.vrt"
+            align_raster(Path(bridge_path), aligned_bridge, tile_bounds, depth_res, nodata=depth_nodata,
+                         target_crs=target_crs, resampling="near")
+
+            aligned_dem_tif = temp_dir / "aligned_dem.tif"
+            run_cmd(["gdal_translate", "-q", aligned_dem, aligned_dem_tif], "materialize DEM")
+
+            aligned_bridge_tif = temp_dir / "aligned_bridge.tif"
+            run_cmd(["gdal_translate", "-q", aligned_bridge, aligned_bridge_tif], "materialize bridge")
+
+            clearance_expr = f"numpy.where((C == -9999) | numpy.isnan(C), 0, C * {conv_factor} - B)"
+            clearance_temp = temp_dir / "clearance.tif"
+            run_cmd(
+                [
+                    "gdal_calc",
+                    "--overwrite",
+                    "--hideNoData",
+                    "-B", aligned_dem_tif,
+                    "-C", aligned_bridge_tif,
+                    "--outfile", clearance_temp,
+                    "--NoDataValue=0",
+                    "--quiet",
+                    f"--calc={clearance_expr}",
+                ],
+                "gdal_calc clearance",
+            )
+
+            clearance_output = reach_dir / f"bridge_clearance_{bridge_stem}.tif"
+            run_cmd(
+                ["gdal_translate", "-of", "GTiff", "-co", "COMPRESS=LZW", clearance_temp, clearance_output],
+                "write clearance",
+            )
+
+            dt = time.perf_counter() - t
+            size_kb = clearance_output.stat().st_size / 1024
+            logger.info(f"{label}: clearance TIF done ({dt:.1f}s, {size_kb:.0f} KB)")
+            clearance_outputs.append(str(clearance_output))
+
+    dt_total = time.perf_counter() - t_start
+    logger.info(
+        f"Reach {reach_id}: {len(clearance_outputs)} per-tile clearance TIFs "
+        f"in {dt_total:.1f}s"
+    )
+    return clearance_outputs
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 def process_bridges(collection: "CollectionData") -> dict[str, any]:
-    """Apply bridge masking to a collection's depth library.
-
-    # To be removed later
-    Strategy is controlled by bridge_processing.STRATEGY in config:
-      - "current": per-TIF mask + COG overwrite (original)
-      - "clearance": one clearance TIF per reach (proposed)
-    """
+    """Apply bridge masking to a collection's depth library."""
     library_dir = Path(collection.library_dir)
     submodels_dir = Path(collection.submodels_dir)
     bridge_index_path = collection.bridge_tile_index_path
@@ -358,7 +443,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
         logger.debug(f"Processing reach {reach_id}")
 
         sample_reach_tif = next(
-            (p for p in reach_dir.rglob("*.tif") if p.name != "bridge_clearance.tif"), None
+            (p for p in reach_dir.rglob("*.tif") if not p.name.startswith("bridge_clearance")), None
         )
         if sample_reach_tif is None:
             logger.warning(f"Reach {reach_id}: no TIF files found, skipping")
@@ -405,6 +490,13 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 bounds, depth_res, depth_nodata, conv_factor, library_dir,
             )
             clearance_files.append(clearance_path)
+
+        elif strategy == "clearance_per_tile":
+            tile_paths = _process_reach_clearance_per_tile(
+                reach_id, reach_dir, dem_path, intersecting_bridge_paths,
+                bounds, depth_res, depth_nodata, conv_factor, library_dir,
+            )
+            clearance_files.extend(tile_paths)
 
     dt_total = time.perf_counter() - t_total
     logger.info(

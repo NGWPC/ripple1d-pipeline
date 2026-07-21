@@ -1,7 +1,7 @@
 [workspace]
 name = "ripple1d-pipeline"
 channels = ["conda-forge"]
-platforms = ["win-64", "osx-arm64"]
+platforms = ["win-64"]
 
 [dependencies]
 python = "3.12.*"
