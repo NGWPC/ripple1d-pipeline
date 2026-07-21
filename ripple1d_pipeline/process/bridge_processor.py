@@ -57,6 +57,7 @@ def align_raster(
     res: tuple[float, float],
     nodata: float = None,
     target_crs: str = None,
+    resampling: str = "bilinear",
 ) -> None:
     """Align a raster to the specified extent and resolution, outputting a VRT.
 
@@ -78,7 +79,7 @@ def align_raster(
         xres,
         yres,
         "-r",
-        "bilinear",
+        resampling,
     ]
     if target_crs is not None:
         cmd.extend(["-t_srs", target_crs])
@@ -277,6 +278,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 depth_res,
                 nodata=depth_nodata,
                 target_crs=target_crs,
+                resampling="near",
             )
 
             worker_args = [
