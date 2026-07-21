@@ -9,7 +9,7 @@ numpy = "<2"
 pandas = "==2.2.2"
 geopandas = "==1.0.1"
 duckdb = "==1.0.0"
-pyarrow = "==17.0.0"
+pyarrow = ">=17"
 boto3 = "==1.35.5"
 openpyxl = "==3.1.5"
 pystac-client = "==0.8.3"
@@ -17,9 +17,9 @@ python-dotenv = "==1.0.1"
 pyyaml = "==6.0.2"
 requests = "==2.32.3"
 # GDAL and its Arrow/Parquet driver plugin must be the SAME version.
-# The GDAL 3.10 is the newest whose Parquet driver links against libarrow 17.
-gdal = "3.10.*"
-libgdal-arrow-parquet = "3.10.*"
+#  GDAL 3.12+ for improved GeoParquet spatial filtering on S3.
+gdal = "3.12.*"
+libgdal-arrow-parquet = "3.12.*"
 ipykernel = "==6.29.5"
 
 [pypi-dependencies]
