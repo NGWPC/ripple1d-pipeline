@@ -362,11 +362,13 @@ def _process_reach_clearance_per_tile(
     clearance_outputs = []
 
     for bridge_path in intersecting_bridge_paths:
-        bridge_stem = Path(bridge_path).stem
+        # bridge_path is a GDAL virtual path (/vsis3/...); Path() would convert
+        # forward slashes to backslashes on Windows, breaking GDAL.
+        bridge_stem = bridge_path.rsplit("/", 1)[-1].rsplit(".", 1)[0]
         label = f"{reach_id}/tile_{bridge_stem}"
 
         try:
-            bridge_bounds, _, _ = get_raster_info(Path(bridge_path))
+            bridge_bounds, _, _ = get_raster_info(bridge_path)
         except Exception as e:
             logger.error(f"{label}: failed to read bridge tile info: {e}")
             continue
@@ -392,7 +394,7 @@ def _process_reach_clearance_per_tile(
 
             aligned_bridge = temp_dir / "aligned_bridge.vrt"
             align_raster(
-                Path(bridge_path),
+                bridge_path,
                 aligned_bridge,
                 tile_bounds,
                 depth_res,
