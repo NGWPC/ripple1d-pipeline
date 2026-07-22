@@ -10,6 +10,7 @@ import multiprocessing
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 from ..setup.collection_data import CollectionData
@@ -56,6 +57,7 @@ def align_raster(
     res: tuple[float, float],
     nodata: float = None,
     target_crs: str = None,
+    resampling: str = "bilinear",
 ) -> None:
     """Align a raster to the specified extent and resolution, outputting a VRT.
 
@@ -77,7 +79,7 @@ def align_raster(
         xres,
         yres,
         "-r",
-        "bilinear",
+        resampling,
     ]
     if target_crs is not None:
         cmd.extend(["-t_srs", target_crs])
@@ -176,7 +178,9 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
 
     reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
     logger.info(f"Found {len(reach_dirs)} reaches to process")
+    logger.info(f"Bridge index: {bridge_index_path}")
 
+    t_total = time.perf_counter()
     reaches_with_bridges, reaches_without_bridges, files_modified = [], [], []
 
     for reach_dir in reach_dirs:
@@ -196,6 +200,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
         try:
             bounds, depth_res, depth_nodata = get_raster_info(sample_reach_tif)
             xmin, ymin, xmax, ymax = bounds
+            t_query = time.perf_counter()
             result = run_cmd(
                 [
                     "ogr2ogr",
@@ -213,9 +218,10 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 ],
                 "ogr2ogr bridge query",
             )
+            dt_query = time.perf_counter() - t_query
             lines = result.stdout.strip().split("\n")
             intersecting_bridge_paths = lines[1:] if len(lines) > 1 else []
-            logger.info(f"Reach {reach_id}: found {len(intersecting_bridge_paths)} intersecting bridges")
+            logger.debug(f"Reach {reach_id}: {len(intersecting_bridge_paths)} bridges (query: {dt_query:.3f}s)")
         except Exception as e:
             logger.exception(f"Error querying bridges for reach {reach_id}: {e}")
             continue
@@ -262,6 +268,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 depth_res,
                 nodata=depth_nodata,
                 target_crs=target_crs,
+                resampling="near",
             )
 
             worker_args = [
@@ -290,8 +297,10 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 f"Reach {reach_id}: processed {len(reach_tifs)} TIFs with {len(intersecting_bridge_paths)} bridges"
             )
 
+    dt_total = time.perf_counter() - t_total
     logger.info(
-        f"Bridge processing complete: {len(reaches_with_bridges)} reaches with bridges, {len(reaches_without_bridges)} reaches without bridges"
+        f"Bridge processing complete: {len(reaches_with_bridges)} with bridges, "
+        f"{len(reaches_without_bridges)} without, total: {dt_total:.1f}s"
     )
 
     return {
