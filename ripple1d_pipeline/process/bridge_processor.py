@@ -461,6 +461,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
 
     reach_dirs = [d for d in library_dir.iterdir() if d.is_dir()]
     logger.info(f"Found {len(reach_dirs)} reaches to process")
+    logger.info(f"Bridge index: {bridge_index_path}")
 
     t_total = time.perf_counter()
     reaches_with_bridges, reaches_without_bridges = [], []
@@ -489,7 +490,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
             intersecting_bridge_paths = _query_bridges(bridge_index_path, xmin, ymin, xmax, ymax)
             dt_query = time.perf_counter() - t_query
 
-            logger.info(f"Reach {reach_id}: {len(intersecting_bridge_paths)} bridges (query: {dt_query:.1f}s)")
+            logger.debug(f"Reach {reach_id}: {len(intersecting_bridge_paths)} bridges (query: {dt_query:.3f}s)")
         except Exception as e:
             logger.exception(f"Error querying bridges for reach {reach_id}: {e}")
             continue
