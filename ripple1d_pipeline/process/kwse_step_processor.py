@@ -31,6 +31,28 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         min_elevation_curve = get_min_elev_curve(reach.to_id, submodels_dir)
         max_elev = get_max_elevation(reach.to_id, submodels_dir)
 
+        consider_outlet = False
+        # if the .to_id reach is not in self.reaches then it has failed a previous step
+        # and do not have a reach db, hence consider the reach outlet
+        if (reach.to_id is None) or (reach.to_id not in [valid_reach.id for valid_reach in self.reaches]):
+            consider_outlet = True
+            logger.info(f"{reach.id} will be considered outlet")
+
+        # for outlet reaches, tailwater is the reach's d/s end itself
+        # for non outlet reaches, tailwater is the d/s reach's u/s end
+        tailwater_reach_id = reach.id if consider_outlet else reach.to_id
+        submodels_dir = self.collection.submodels_dir
+        min_elevation_curve = get_min_elev_curve(
+            tailwater_reach_id,
+            submodels_dir,
+            consider_outlet,
+        )
+        max_elev = get_max_elevation(
+            tailwater_reach_id,
+            submodels_dir,
+            consider_outlet,
+        )
+
         if not min_elevation_curve or not max_elev:
             return JobRecord(reach, "", "not_accepted")
 
