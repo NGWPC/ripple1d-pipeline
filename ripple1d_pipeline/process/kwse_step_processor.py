@@ -5,9 +5,9 @@ import requests
 
 from ..setup.collection_data import CollectionData
 from .base_reach_step_processor import BaseReachStepProcessor
-from .ikwse_step import get_max_elevation, get_min_elev_curve
 from .job_client import JobRecord
 from .reach import Reach
+from .tailwater import get_max_elevation, get_min_elev_curve
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +27,6 @@ class KWSEStepProcessor(BaseReachStepProcessor):
 
     def _execute_single_request(self, reach: Reach) -> JobRecord:
         """KWSE-specific request implementation with elevation data"""
-        submodels_dir = self.collection.submodels_dir
-        min_elevation_curve = get_min_elev_curve(reach.to_id, submodels_dir)
-        max_elev = get_max_elevation(reach.to_id, submodels_dir)
 
         consider_outlet = False
         # if the .to_id reach is not in self.reaches then it has failed a previous step
@@ -42,6 +39,9 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         # for non outlet reaches, tailwater is the d/s reach's u/s end
         tailwater_reach_id = reach.id if consider_outlet else reach.to_id
         submodels_dir = self.collection.submodels_dir
+
+        # At this point, these functions would query for both nd and ikwse rating  curves
+        # but that is not problamatic because new ikwse rcs are within the same range
         min_elevation_curve = get_min_elev_curve(
             tailwater_reach_id,
             submodels_dir,
@@ -54,6 +54,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         )
 
         if not min_elevation_curve or not max_elev:
+            logger.info(f"Could not retrieve min elev curve and/or max elev value for reach_id: {tailwater_reach_id}")
             return JobRecord(reach, "", "not_accepted")
 
         url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config['processing_steps'][self.process_name]['api_process_name']}/execution"
