@@ -6,7 +6,7 @@ Three strategies (controlled by bridge_processing.STRATEGY in config):
   - "clearance": one clearance TIF per reach (3a-i)
   - "clearance_per_tile": one clearance TIF per bridge tile (3a-ii)
 
-Clearance strategies produce bridge_clearance*.tif files in library/<reach_id>/
+Clearance strategies produce files in library/<reach_id>/bridge_heights/
 which downstream consumers (F2F, QGIS) use via VRT expression to apply masking on read.
 """
 
@@ -195,7 +195,7 @@ def _process_reach_current(
 ):
     """Current strategy: mask each depth TIF in-place via multiprocessing."""
     t_start = time.perf_counter()
-    reach_tifs = [p for p in get_all_tif_paths(reach_dir) if not p.name.startswith("bridge_clearance")]
+    reach_tifs = [p for p in get_all_tif_paths(reach_dir) if p.parent.name != "bridge_heights"]
 
     with tempfile.TemporaryDirectory(dir=str(library_dir.parent), prefix=f"{reach_id}_") as reach_temp_dir:
         reach_temp_dir = Path(reach_temp_dir)
@@ -255,7 +255,7 @@ def _process_reach_current(
 def _process_reach_clearance(
     reach_id, reach_dir, dem_path, intersecting_bridge_paths, bounds, depth_res, depth_nodata, conv_factor, library_dir
 ):
-    """Clearance strategy: produce one bridge_clearance.tif per reach.
+    """Clearance strategy: produce one bridge_heights/combined.tif per reach.
 
     clearance = (bridge_elev * conv_factor) - DEM
     Where no bridge: clearance = 0 (not nodata, so VRT expression keeps depth unchanged).
@@ -327,9 +327,10 @@ def _process_reach_clearance(
         )
         logger.info(f"Reach {reach_id}: gdal_calc clearance done ({time.perf_counter() - t:.1f}s)")
 
-        # Write to library/<reach_id>/bridge_clearance.tif
         t = time.perf_counter()
-        clearance_output = reach_dir / "bridge_clearance.tif"
+        bridge_heights_dir = reach_dir / "bridge_heights"
+        bridge_heights_dir.mkdir(exist_ok=True)
+        clearance_output = bridge_heights_dir / "combined.tif"
         run_cmd(
             ["gdal_translate", "-of", "GTiff", "-co", "COMPRESS=LZW", clearance_temp, clearance_output],
             "write clearance",
@@ -429,7 +430,9 @@ def _process_reach_clearance_per_tile(
                 "gdal_calc clearance",
             )
 
-            clearance_output = reach_dir / f"bridge_clearance_{bridge_stem}.tif"
+            bridge_heights_dir = reach_dir / "bridge_heights"
+            bridge_heights_dir.mkdir(exist_ok=True)
+            clearance_output = bridge_heights_dir / f"{bridge_stem}.tif"
             run_cmd(
                 ["gdal_translate", "-of", "GTiff", "-co", "COMPRESS=LZW", clearance_temp, clearance_output],
                 "write clearance",
@@ -472,7 +475,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
         logger.debug(f"Processing reach {reach_id}")
 
         sample_reach_tif = next(
-            (p for p in reach_dir.rglob("*.tif") if not p.name.startswith("bridge_clearance")), None
+            (p for p in reach_dir.rglob("*.tif") if p.parent.name != "bridge_heights"), None
         )
         if sample_reach_tif is None:
             logger.warning(f"Reach {reach_id}: no TIF files found, skipping")
