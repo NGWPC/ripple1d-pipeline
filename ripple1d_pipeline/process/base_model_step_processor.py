@@ -15,6 +15,7 @@ class BaseModelStepProcessor(BaseStepProcessor):
     def _format_model_payload(self, template: dict, model_id: str, model_name: str) -> dict:
         """Common model payload formatting"""
         replacements = {
+            **self.collection.config["ripple_settings"],
             "model_id": model_id,
             "model_name": model_name,
             "source_model_directory": self.collection.source_models_dir,

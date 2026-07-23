@@ -5,14 +5,17 @@ logging:
     # - urllib3
     # - s3transfer
 
+# Shared tuning values. Payload templates below reference these as {NAME}; the
+# reference is resolved when a request is built, after config.yaml overrides are
+# merged, so overriding a value here applies everywhere it is used.
 ripple_settings:
-  RAS_VERSION: &RAS_VERSION "631"
-  US_DEPTH_INCREMENT: &US_DEPTH_INCREMENT 0.5
-  DS_DEPTH_INCREMENT: &DS_DEPTH_INCREMENT 1
-  RESOLUTION: &RESOLUTION 3.0
-  RESOLUTION_UNITS: &RESOLUTION_UNITS "Meters"
-  SOURCE_NETWORK_VERSION: &SOURCE_NETWORK_VERSION "2.1"
-  SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
+  RAS_VERSION: "631"
+  US_DEPTH_INCREMENT: 0.5
+  DS_DEPTH_INCREMENT: 1
+  RESOLUTION: 3.0
+  RESOLUTION_UNITS: "Meters"
+  SOURCE_NETWORK_VERSION: "2.1"
+  SOURCE_NETWORK_TYPE: "nwm_hydrofabric"
 
 processing_steps:
   conflate_model:
@@ -23,8 +26,8 @@ processing_steps:
       model_name: "{model_name}"
       source_network:
         file_name: "{source_network}"
-        version: *SOURCE_NETWORK_VERSION
-        type: *SOURCE_NETWORK_TYPE
+        version: "{SOURCE_NETWORK_VERSION}"
+        type: "{SOURCE_NETWORK_TYPE}"
       min_flow_multiplier: 0.9
       max_flow_multiplier: 1.5
 
@@ -44,8 +47,8 @@ processing_steps:
     api_process_name: "create_ras_terrain"  # Different api_process_name
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-      resolution: *RESOLUTION
-      resolution_units: *RESOLUTION_UNITS
+      resolution: "{RESOLUTION}"
+      resolution_units: "{RESOLUTION_UNITS}"
       terrain_source_url: "{terrain_source_url}"
       terrain_agreement_ignore_error: True
 
@@ -56,7 +59,7 @@ processing_steps:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       plan_suffix: "ind"
       num_of_discharges_for_initial_normal_depth_runs: 15
-      ras_version: *RAS_VERSION
+      ras_version: "{RAS_VERSION}"
 
   run_incremental_normal_depth:
     domain: "reach"
@@ -64,8 +67,8 @@ processing_steps:
     payload_template:
       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
       plan_suffix: "nd"
-      depth_increment: *US_DEPTH_INCREMENT
-      ras_version: *RAS_VERSION
+      depth_increment: "{US_DEPTH_INCREMENT}"
+      ras_version: "{RAS_VERSION}"
 
   nd_create_rating_curves_db:
     domain: "reach"
@@ -88,8 +91,8 @@ processing_steps:
       plan_suffix: "kwse"
       min_elevation_curve: [[-9999, -9999]]
       max_elevation: -9999
-      depth_increment: *DS_DEPTH_INCREMENT
-      ras_version: *RAS_VERSION
+      depth_increment: "{DS_DEPTH_INCREMENT}"
+      ras_version: "{RAS_VERSION}"
       write_depth_grids: True
 
   kwse_create_rating_curves_db:
@@ -107,8 +110,8 @@ processing_steps:
       plans:
         - nd
         - kwse
-      resolution: *RESOLUTION
-      resolution_units: *RESOLUTION_UNITS
+      resolution: "{RESOLUTION}"
+      resolution_units: "{RESOLUTION_UNITS}"
       library_directory: "{library_directory}"
       cleanup: True
       cog: True
@@ -125,4 +128,4 @@ database:
   DB_CONN_TIMEOUT: 30
 
 execution:
-  stop_on_error: False
+  STOP_ON_ERROR: False
