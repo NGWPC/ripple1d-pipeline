@@ -41,7 +41,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         submodels_dir = self.collection.submodels_dir
 
         # At this point, these functions would query for both nd and ikwse rating  curves
-        # but that is not problamatic because new ikwse rcs are within the same range
+        # but that is not problamatic because new ikwse scenarios are within the same range
         min_elevation_curve = get_min_elev_curve(
             tailwater_reach_id,
             submodels_dir,

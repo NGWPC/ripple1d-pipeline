@@ -1,6 +1,6 @@
 # Ripple1D Pipeline
 
-Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/Dewberry/ripple1d) to generate FIMs and rating curves.
+Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/Dewberry/ripple1d) to generate FIMs for difference scenarios.
 
 Compatible with ripple1d==0.10.4. Use repository tags to get older versions.
 
@@ -152,11 +152,11 @@ Following outputs are produced for each batch that is processed:
 
 `library_extent`: Folder containing FIM extent rasters per reach and per flow and downstream boundary condition
 
-`qc`: Folder containing data to evaluate quality of produced FIM library and rating curves
+`qc`: Folder containing data to evaluate quality of produced FIM library and scenarios
 
 `error_report.xlsx`: Provide insight into the errors encountered during processing of each step
 
-`ripple.gpkg`: Geopackage (SQLITE Database) containing records for reaches, models and rating curves
+`ripple.gpkg`: Geopackage (SQLITE Database) containing records for reaches, models and scenarios
 
 `start_reaches.csv`: Flows2FIM start file which can be used to create composite FIMs using Flows2FIM software
 

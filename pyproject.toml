@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 name = "ripple1d_pipeline"
 # Version is drived from git tags
 dynamic = ["version"]
-description = "Workflow that uses Ripple1d to generate FIMs and rating curves."
+description = "Workflow that uses Ripple1d to generate FIMs and scenario databases."
 requires-python = ">=3.12,<3.13"
 # Runtime dependencies are managed by pixi (conda-forge). Kept empty so the
 # editable self-install does not pull PyPI copies of conda-provided packages.
