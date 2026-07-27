@@ -86,9 +86,9 @@
 #       depth_increment: "{US_DEPTH_INCREMENT}"
 #       ras_version: "{RAS_VERSION}"
 
-#   nd_create_rating_curves_db:
+#   nd_create_scenarios_db:
 #     domain: "reach"
-#     api_process_name: "create_rating_curves_db"
+#     api_process_name: "create_scenarios_db"
 #     payload_template:
 #       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
 #       plans: ["nd"]
@@ -96,7 +96,7 @@
 #   run_iknown_wse:
 #     domain: "reach"
 
-#   ikwse_create_rating_curves_db:
+#   ikwse_create_scenarios_db:
 #     domain: "reach"
 
 #   run_known_wse:
@@ -111,9 +111,9 @@
 #       ras_version: "{RAS_VERSION}"
 #       write_depth_grids: True
 
-#   kwse_create_rating_curves_db:
+#   kwse_create_scenarios_db:
 #     domain: "reach"
-#     api_process_name: "create_rating_curves_db"
+#     api_process_name: "create_scenarios_db"
 #     payload_template:
 #       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
 #       plans: ["kwse"]

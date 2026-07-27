@@ -115,45 +115,47 @@ def process(collection_name):
     create_model_step_processor.dismiss_timedout_jobs(jobclient)
     nd_step_processor.dismiss_timedout_jobs(jobclient)
 
-    logger.info("Starting nd create_rating_curves_db Step >>>>>>")
-    nd_rc_step_processor = GenericReachStepProcessor(
-        collection, nd_step_processor.valid_entities, "nd_create_rating_curves_db"
+    logger.info("Starting nd create_scenarios_db Step >>>>>>")
+    nd_scenarios_step_processor = GenericReachStepProcessor(
+        collection, nd_step_processor.valid_entities, "nd_create_scenarios_db"
     )
-    nd_rc_step_processor.execute_step(jobclient, database, timeout=15)
-    logger.info("<<<<< Finished nd create_rating_curves_db Step")
-    nd_rc_step_processor.dismiss_timedout_jobs(jobclient)
+    nd_scenarios_step_processor.execute_step(jobclient, database, timeout=15)
+    logger.info("<<<<< Finished nd create_scenarios_db Step")
+    nd_scenarios_step_processor.dismiss_timedout_jobs(jobclient)
 
-    logger.info("Starting Initial run_known_wse and Initial create_rating_curves_db Steps>>>>>>")
+    logger.info("Starting Initial run_known_wse and Initial create_scenarios_db Steps>>>>>>")
     execute_ikwse_for_network(
         outlet_reaches,
         collection,
         database,
         jobclient,
-        nd_rc_step_processor.valid_entities,
+        nd_scenarios_step_processor.valid_entities,
         timeout=20,
     )
-    logger.info("<<<<< Completed Initial run_known_wse and Initial create_rating_curves_db steps")
+    logger.info("<<<<< Completed Initial run_known_wse and Initial create_scenarios_db steps")
 
     logger.info("Starting Final execute_kwse_step >>>>>>")
-    kwse_step_processor = KWSEStepProcessor(collection, nd_rc_step_processor.valid_entities)
+    kwse_step_processor = KWSEStepProcessor(collection, nd_scenarios_step_processor.valid_entities)
     kwse_step_processor.execute_step(jobclient, database, timeout=240)
     logger.info("<<<<< Finished Final execute_kwse_step")
     kwse_step_processor.dismiss_timedout_jobs(jobclient)
 
-    logger.info("Starting kwse create_rating_curves_db Step >>>>>>")
-    kwse_rc_step_processor = GenericReachStepProcessor(
-        collection, kwse_step_processor.valid_entities, "kwse_create_rating_curves_db"
+    logger.info("Starting kwse create_scenarios_db Step >>>>>>")
+    kwse_scenarios_step_processor = GenericReachStepProcessor(
+        collection, kwse_step_processor.valid_entities, "kwse_create_scenarios_db"
     )
-    kwse_rc_step_processor.execute_step(jobclient, database, timeout=15)
-    logger.info("<<<<< Finished kwse create_rating_curves_db Step")
-    kwse_rc_step_processor.dismiss_timedout_jobs(jobclient)
+    kwse_scenarios_step_processor.execute_step(jobclient, database, timeout=15)
+    logger.info("<<<<< Finished kwse create_scenarios_db Step")
+    kwse_scenarios_step_processor.dismiss_timedout_jobs(jobclient)
 
     logger.info("Starting Merge Scenarios Step >>>>>>")
     load_all_scenarios(database)
     logger.info("<<<<< Finished Merge Scenarios Step")
 
     logger.info("Starting create_fim_lib Step >>>>>>")
-    fimlib_step_processor = GenericReachStepProcessor(collection, nd_rc_step_processor.valid_entities, "create_fim_lib")
+    fimlib_step_processor = GenericReachStepProcessor(
+        collection, nd_scenarios_step_processor.valid_entities, "create_fim_lib"
+    )
     fimlib_step_processor.execute_step(jobclient, database, timeout=150)
     logger.info("<<<<< Finished create_fim_lib Step")
     fimlib_step_processor.dismiss_timedout_jobs(jobclient)
