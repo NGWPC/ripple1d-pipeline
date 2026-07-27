@@ -7,7 +7,7 @@ from .ikwse_step import execute_ikwse_for_network
 from .job_client import JobClient
 from .kwse_step_processor import KWSEStepProcessor
 from .load_conflation import load_conflation
-from .load_rating_curves import load_all_rating_curves
+from .load_scenarios import load_all_scenarios
 from .model import Model
 from .move_fims_to_library import move_fims_to_library
 from .reach import Reach

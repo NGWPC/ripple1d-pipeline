@@ -15,7 +15,7 @@ downstream neighbor is resolved from the `network` table (updated_to_id, else
 nwm_to_id). Override with --ds-reach if needed.
 
 The GPKG must have:
-  * rating_curves(reach_id, us_flow, us_wse, ds_wse, boundary_condition)
+  * scenarios(reach_id, us_flow, us_wse, ds_wse, boundary_condition)
   * network(reach_id, nwm_to_id, updated_to_id)   [only for auto-resolve]
 
 Usage
@@ -59,7 +59,7 @@ def resolve_ds_reach(cur, up_reach):
 def fetch_side(cur, reach, field):
     """Return [[flow, wse, bc], ...] for reach using field 'us_wse' or 'ds_wse'."""
     rows = cur.execute(
-        f"SELECT us_flow, {field}, boundary_condition FROM rating_curves WHERE reach_id=? ORDER BY us_flow, " + field,
+        f"SELECT us_flow, {field}, boundary_condition FROM scenarios WHERE reach_id=? ORDER BY us_flow, " + field,
         (reach,),
     ).fetchall()
     return [[r[0], r[1], r[2]] for r in rows]
@@ -407,12 +407,12 @@ def main(argv=None):
 
     con = sqlite3.connect(str(args.gpkg))
     cur = con.cursor()
-    if not cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rating_curves'").fetchone():
-        sys.exit(f"error: no 'rating_curves' table in {args.gpkg}")
+    if not cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='scenarios'").fetchone():
+        sys.exit(f"error: no 'scenarios' table in {args.gpkg}")
     need = {"reach_id", "us_flow", "us_wse", "ds_wse", "boundary_condition"}
-    missing = need - table_cols(cur, "rating_curves")
+    missing = need - table_cols(cur, "scenarios")
     if missing:
-        sys.exit(f"error: rating_curves missing columns: {sorted(missing)}")
+        sys.exit(f"error: scenarios missing columns: {sorted(missing)}")
 
     up = args.up_reach
     down = args.ds_reach or resolve_ds_reach(cur, up)
@@ -426,9 +426,9 @@ def main(argv=None):
     ds_pts = fetch_side(cur, down, "us_wse")  # downstream reach, upstream END
     con.close()
     if not us_pts:
-        sys.exit(f"error: upstream reach {up} has no rows in rating_curves.")
+        sys.exit(f"error: upstream reach {up} has no rows in scenarios.")
     if not ds_pts:
-        sys.exit(f"error: downstream reach {down} has no rows in rating_curves. (Is it in this model? Try --ds-reach.)")
+        sys.exit(f"error: downstream reach {down} has no rows in scenarios. (Is it in this model? Try --ds-reach.)")
 
     series = [
         # upstream reach, d/s end: control line is the normal-depth curve

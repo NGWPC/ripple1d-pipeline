@@ -5,7 +5,7 @@ Fully AI Generated
 flow_envelope.py — Generate an interactive flow-envelope HTML chart from a
 ripple1d-style GeoPackage.
 
-The GPKG must contain a `rating_curves` table with columns:
+The GPKG must contain a `scenarios` table with columns:
     reach_id, us_flow, ds_wse, boundary_condition
 (the standard ripple1d schema). One chart is produced with:
   * X = discharge (us_flow, cfs), Y = downstream WSEL (ds_wse, ft)
@@ -48,27 +48,27 @@ GLYPH = {"circle": "●", "square": "▪", "triangle": "▲", "diamond": "◆"}
 
 
 def fetch_reaches(gpkg: Path, reach_ids):
-    """Return {reach_id: [[flow, ds_wse, bc], ...]} pulled from rating_curves."""
+    """Return {reach_id: [[flow, ds_wse, bc], ...]} pulled from scenarios."""
     con = sqlite3.connect(str(gpkg))
     cur = con.cursor()
     # sanity-check the table/columns exist
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rating_curves'")
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='scenarios'")
     if not cur.fetchone():
-        sys.exit(f"error: no 'rating_curves' table found in {gpkg}")
-    cols = {r[1] for r in cur.execute("PRAGMA table_info(rating_curves)")}
+        sys.exit(f"error: no 'scenarios' table found in {gpkg}")
+    cols = {r[1] for r in cur.execute("PRAGMA table_info(scenarios)")}
     need = {"reach_id", "us_flow", "ds_wse", "boundary_condition"}
     missing = need - cols
     if missing:
-        sys.exit(f"error: rating_curves is missing columns: {sorted(missing)}")
+        sys.exit(f"error: scenarios is missing columns: {sorted(missing)}")
 
     out = {}
     for rid in reach_ids:
         rows = cur.execute(
-            "SELECT us_flow, ds_wse, boundary_condition FROM rating_curves WHERE reach_id=? ORDER BY us_flow, ds_wse",
+            "SELECT us_flow, ds_wse, boundary_condition FROM scenarios WHERE reach_id=? ORDER BY us_flow, ds_wse",
             (rid,),
         ).fetchall()
         if not rows:
-            print(f"warning: reach {rid} has no rows in rating_curves — skipping", file=sys.stderr)
+            print(f"warning: reach {rid} has no rows in scenarios — skipping", file=sys.stderr)
             continue
         out[rid] = [[r[0], r[1], r[2]] for r in rows]
     con.close()
@@ -403,7 +403,7 @@ def main(argv=None):
 
     data = fetch_reaches(args.gpkg, [rid for rid, _ in parsed])
     if not data:
-        sys.exit("error: none of the requested reaches were found in rating_curves.")
+        sys.exit("error: none of the requested reaches were found in scenarios.")
 
     series = []
     for i, (rid, label) in enumerate(parsed):

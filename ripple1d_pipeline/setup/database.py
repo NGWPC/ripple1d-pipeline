@@ -188,7 +188,7 @@ class Database:
 
             cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS rating_curves (
+                CREATE TABLE IF NOT EXISTS scenarios (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     reach_id INTEGER,
                     us_flow INTEGER,
@@ -206,17 +206,17 @@ class Database:
 
             cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS rating_curves_metrics (
-                    rc_id INTEGER PRIMARY KEY,
+                CREATE TABLE IF NOT EXISTS scenario_metrics (
+                    scenario_id INTEGER PRIMARY KEY,
                     xs_overtopped BOOL CHECK(xs_overtopped IN (0, 1)),
-                    FOREIGN KEY (rc_id) REFERENCES rating_curves (id)
+                    FOREIGN KEY (scenario_id) REFERENCES scenarios (id)
                 );
             """
             )
 
             cursor.execute(
                 """
-                CREATE INDEX IF NOT EXISTS rating_curves_reach_id ON rating_curves (reach_id);
+                CREATE INDEX IF NOT EXISTS scenarios_reach_id ON scenarios (reach_id);
             """
             )
 

@@ -148,9 +148,9 @@ def process(collection_name):
     logger.info("<<<<< Finished kwse create_rating_curves_db Step")
     kwse_rc_step_processor.dismiss_timedout_jobs(jobclient)
 
-    logger.info("Starting Merge Rating Curves Step >>>>>>")
-    load_all_rating_curves(database)
-    logger.info("<<<<< Finished Merge Rating Curves Step")
+    logger.info("Starting Merge Scenarios Step >>>>>>")
+    load_all_scenarios(database)
+    logger.info("<<<<< Finished Merge Scenarios Step")
 
     logger.info("Starting create_fim_lib Step >>>>>>")
     fimlib_step_processor = GenericReachStepProcessor(collection, nd_rc_step_processor.valid_entities, "create_fim_lib")
