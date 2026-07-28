@@ -154,6 +154,20 @@ class Database:
             """
             )
 
+            # The reaches layer is written by geopandas, and the GPKG driver makes
+            # 'fid' the primary key and reach_id an ordinary column. SQLite requires
+            # a foreign key's parent column to be a primary key or uniquely indexed,
+            # so without this index every 'REFERENCES reaches (reach_id)' below is
+            # malformed and raises "foreign key mismatch" on write as soon as a
+            # client enables PRAGMA foreign_keys (python's sqlite3 leaves it off,
+            # which is why this stayed hidden).
+            # https://github.com/NGWPC/ripple1d-pipeline-archive/issues/34
+            cursor.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS reaches_reach_id ON reaches (reach_id);
+            """
+            )
+
             # Create network table to store network relationships
             cursor.execute(
                 """
