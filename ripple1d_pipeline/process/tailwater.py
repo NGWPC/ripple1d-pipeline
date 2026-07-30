@@ -30,7 +30,7 @@ def get_min_elev_curve(
         cursor.execute(
             f"""
             SELECT us_flow, MIN({wse_col})
-            FROM rating_curves
+            FROM scenarios
             WHERE us_flow IS NOT NULL AND {wse_col} IS NOT NULL
             GROUP BY us_flow
             ORDER BY us_flow
@@ -66,7 +66,7 @@ def get_max_elevation(
     conn = sqlite3.connect(submodel_db_path)
     try:
         cursor = conn.cursor()
-        cursor.execute(f"SELECT MAX({wse_col}) FROM rating_curves")
+        cursor.execute(f"SELECT MAX({wse_col}) FROM scenarios")
         (max_elevation,) = cursor.fetchone()
     finally:
         conn.close()

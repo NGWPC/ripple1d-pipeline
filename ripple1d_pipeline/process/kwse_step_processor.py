@@ -41,7 +41,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         submodels_dir = self.collection.submodels_dir
 
         # At this point, these functions would query for both nd and ikwse rating  curves
-        # but that is not problamatic because new ikwse rcs are within the same range
+        # but that is not problamatic because new ikwse scenarios are within the same range
         min_elevation_curve = get_min_elev_curve(
             tailwater_reach_id,
             submodels_dir,
@@ -60,7 +60,6 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         url = f"{self.collection.RIPPLE1D_API_URL}/processes/{self.collection.config['processing_steps'][self.process_name]['api_process_name']}/execution"
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id)
-        payload.update({"min_elevation_curve": min_elevation_curve, "max_elevation": max_elev})
         payload.update({"min_elevation_curve": min_elevation_curve, "max_elevation": max_elev})
 
         for attempt in range(5):

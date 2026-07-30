@@ -179,7 +179,7 @@ def create_rc_points_parquet(ripple_gpkg_path, submodels_dir, output_parquet_pat
                 reach_id,
                 us_flow AS flow_cfs,
                 ROUND(us_wse / 3.28084, 2) AS wse_m,
-            FROM sqlite_scan('{ripple_gpkg_path}', 'rating_curves')
+            FROM sqlite_scan('{ripple_gpkg_path}', 'scenarios')
             WHERE boundary_condition = 'nd'
             );"""
     )

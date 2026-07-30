@@ -35,7 +35,7 @@ def process_reach(
        reach, or the reach's own d/s end for a terminal reach
     2. Submit KWSE execution job to API and wait for it to finish
     3. Create FIM Library
-    4. Load rating curves to central database
+    4. Load scenarios to central database
     5. Put upstream reaches in queue for later processing
     """
 
@@ -65,28 +65,16 @@ def process_reach(
             )
             max_elevation = get_max_elevation(
                 tailwater_reach_id,
-            # for outlet reaches, tailwater is the reach's d/s end itself
-            # for non outlet reaches, tailwater is the d/s reach's u/s end
-            tailwater_reach_id = reach.id if consider_outlet else reach.to_id
-            min_elevation_curve = get_min_elev_curve(
-                tailwater_reach_id,
-                submodels_directory,
-                consider_outlet,
-            )
-            max_elevation = get_max_elevation(
-                tailwater_reach_id,
                 submodels_directory,
                 consider_outlet,
             )
 
-            if min_elevation_curve and max_elevation:
             if min_elevation_curve and max_elevation:
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
                 payload = json.dumps(
                     {
                         "submodel_directory": submodel_directory_path,
                         "plan_suffix": "ikwse",
-                        "min_elevation_curve": min_elevation_curve,
                         "min_elevation_curve": min_elevation_curve,
                         "max_elevation": max_elevation,
                         "depth_increment": DS_DEPTH_INCREMENT,
@@ -109,8 +97,8 @@ def process_reach(
                     with central_db_lock:
                         database.update_processing_table([(reach.id, job_id)], "run_iknown_wse", "successful")
 
-                    rc_db = f"{RIPPLE1D_API_URL}/processes/create_rating_curves_db/execution"
-                    rc_db_payload = json.dumps(
+                    scenarios_db = f"{RIPPLE1D_API_URL}/processes/create_scenarios_db/execution"
+                    scenarios_db_payload = json.dumps(
                         {
                             "submodel_directory": submodel_directory_path,
                             "plans": ["ikwse"],
@@ -118,30 +106,27 @@ def process_reach(
                     )
 
                     # todo: try to launch job with retry
-                    response = requests.post(rc_db, headers=headers, data=rc_db_payload)
-                    rc_db_response_json = response.json()
-                    rc_db_job_id = rc_db_response_json.get("jobID")
+                    response = requests.post(scenarios_db, headers=headers, data=scenarios_db_payload)
+                    scenarios_db_response_json = response.json()
+                    scenarios_db_job_id = scenarios_db_response_json.get("jobID")
 
-                    if not rc_db_job_id or not job_client.check_job_successful(
-                        rc_db_job_id, timeout_minutes=timeout_minutes
+                    if not scenarios_db_job_id or not job_client.check_job_successful(
+                        scenarios_db_job_id, timeout_minutes=timeout_minutes
                     ):
                         with central_db_lock:
                             database.update_processing_table(
-                                [(reach.id, rc_db_job_id)],
-                                "ikwse_create_rating_curves_db",
+                                [(reach.id, scenarios_db_job_id)],
+                                "ikwse_create_scenarios_db",
                                 "failed",
                             )
                     else:
                         with central_db_lock:
                             database.update_processing_table(
-                                [(reach.id, rc_db_job_id)],
-                                "ikwse_create_rating_curves_db",
+                                [(reach.id, scenarios_db_job_id)],
+                                "ikwse_create_scenarios_db",
                                 "successful",
                             )
             else:
-                logger.info(
-                    f"Could not retrieve min elev curve and/or max elev value for reach_id: {tailwater_reach_id}"
-                )
                 logger.info(
                     f"Could not retrieve min elev curve and/or max elev value for reach_id: {tailwater_reach_id}"
                 )
