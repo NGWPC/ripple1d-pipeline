@@ -18,31 +18,73 @@ from .reach import Reach
 logger = logging.getLogger(__name__)
 
 
-def get_min_max_elevation(
+def get_min_elev_curve(
     reach_id: int,
     submodels_directory: str,
     get_ds_wse: bool = False,
-) -> tuple[float | None, float | None]:
+) -> list[list[float]] | None:
     """
-    Fetch min and max upstream or downstream wsel for a reach
-    """
+    Build the minimum elevation curve for a reach.
+    It returns an ordered list of ``[discharge, minimum_wse]`` pairs describing the lowest
+    water-surface elevation for the reach at each discharge.
 
+    This curve could be extracted for reach u/s or d/s wsel depending on the value of `get_ds_wse` argument.
+    """
     submodel_db_path = os.path.join(submodels_directory, str(reach_id), f"{reach_id}.db")
     if not os.path.exists(submodel_db_path):
         logger.info(f"Submodel database not found for reach_id: {reach_id}")
-        return None, None
+        return None
+
+    wse_col = "ds_wse" if get_ds_wse else "us_wse"
 
     conn = sqlite3.connect(submodel_db_path)
     try:
         cursor = conn.cursor()
-        if get_ds_wse:
-            cursor.execute("SELECT MIN(ds_wse), MAX(ds_wse) FROM rating_curves")
-        else:
-            cursor.execute("SELECT MIN(us_wse), MAX(us_wse) FROM rating_curves")
-        min_elevation, max_elevation = cursor.fetchone()
+        cursor.execute(
+            f"""
+            SELECT us_flow, MIN({wse_col})
+            FROM rating_curves
+            WHERE us_flow IS NOT NULL AND {wse_col} IS NOT NULL
+            GROUP BY us_flow
+            ORDER BY us_flow
+            """
+        )
+        rows = cursor.fetchall()
     finally:
         conn.close()
-    return min_elevation, max_elevation
+
+    if not rows:
+        return None
+
+    return [[flow, wse] for flow, wse in rows]
+
+
+def get_max_elevation(
+    reach_id: int,
+    submodels_directory: str,
+    get_ds_wse: bool = False,
+) -> float | None:
+    """
+    Fetch the max wsel elevation for a reach.
+
+    This value could be extracted for reach u/s or d/s wsel depending on the value of `get_ds_wse` argument.
+    """
+    submodel_db_path = os.path.join(submodels_directory, str(reach_id), f"{reach_id}.db")
+    if not os.path.exists(submodel_db_path):
+        logger.info(f"Submodel database not found for reach_id: {reach_id}")
+        return None
+
+    wse_col = "ds_wse" if get_ds_wse else "us_wse"
+
+    conn = sqlite3.connect(submodel_db_path)
+    try:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT MAX({wse_col}) FROM rating_curves")
+        (max_elevation,) = cursor.fetchone()
+    finally:
+        conn.close()
+
+    return max_elevation
 
 
 def process_reach(
@@ -57,8 +99,9 @@ def process_reach(
 ) -> None:
     """
     Process a single reach for KWSE.
-    1. Find us min max elevation for non-terminal reach
-       and ds min max elevation for terminal reach to use as boundary conditions
+    1. Build the tailwater min-elevation curve and max elevation to use as boundary
+       conditions: from the u/s end of the downstream reach for a non-terminal
+       reach, or the reach's own d/s end for a terminal reach
     2. Submit KWSE execution job to API and wait for it to finish
     3. Create FIM Library
     4. Load rating curves to central database
@@ -81,19 +124,27 @@ def process_reach(
 
                 logger.info(f"{reach.id} will be considered outlet")
 
-            min_elevation, max_elevation = get_min_max_elevation(
-                reach.id if consider_outlet else reach.to_id,
+            # for outlet reaches, tailwater is the reach's d/s end itself
+            # for non outlet reaches, tailwater is the d/s reach's u/s end
+            tailwater_reach_id = reach.id if consider_outlet else reach.to_id
+            min_elevation_curve = get_min_elev_curve(
+                tailwater_reach_id,
+                submodels_directory,
+                consider_outlet,
+            )
+            max_elevation = get_max_elevation(
+                tailwater_reach_id,
                 submodels_directory,
                 consider_outlet,
             )
 
-            if min_elevation and max_elevation:
+            if min_elevation_curve and max_elevation:
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
                 payload = json.dumps(
                     {
                         "submodel_directory": submodel_directory_path,
                         "plan_suffix": "ikwse",
-                        "min_elevation": min_elevation,
+                        "min_elevation_curve": min_elevation_curve,
                         "max_elevation": max_elevation,
                         "depth_increment": DS_DEPTH_INCREMENT,
                         "ras_version": RAS_VERSION,
@@ -145,7 +196,9 @@ def process_reach(
                                 "successful",
                             )
             else:
-                logger.info(f"Could not retrieve min/max elevation for reach_id: {reach.to_id}")
+                logger.info(
+                    f"Could not retrieve min elev curve and/or max elev value for reach_id: {tailwater_reach_id}"
+                )
 
         upstream_reaches = database.get_upstream_reaches(reach.id, central_db_lock)
         for upstream_reach in upstream_reaches:
