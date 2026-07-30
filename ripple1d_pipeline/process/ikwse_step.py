@@ -65,16 +65,28 @@ def process_reach(
             )
             max_elevation = get_max_elevation(
                 tailwater_reach_id,
+            # for outlet reaches, tailwater is the reach's d/s end itself
+            # for non outlet reaches, tailwater is the d/s reach's u/s end
+            tailwater_reach_id = reach.id if consider_outlet else reach.to_id
+            min_elevation_curve = get_min_elev_curve(
+                tailwater_reach_id,
+                submodels_directory,
+                consider_outlet,
+            )
+            max_elevation = get_max_elevation(
+                tailwater_reach_id,
                 submodels_directory,
                 consider_outlet,
             )
 
+            if min_elevation_curve and max_elevation:
             if min_elevation_curve and max_elevation:
                 url = f"{RIPPLE1D_API_URL}/processes/run_known_wse/execution"
                 payload = json.dumps(
                     {
                         "submodel_directory": submodel_directory_path,
                         "plan_suffix": "ikwse",
+                        "min_elevation_curve": min_elevation_curve,
                         "min_elevation_curve": min_elevation_curve,
                         "max_elevation": max_elevation,
                         "depth_increment": DS_DEPTH_INCREMENT,
@@ -127,6 +139,9 @@ def process_reach(
                                 "successful",
                             )
             else:
+                logger.info(
+                    f"Could not retrieve min elev curve and/or max elev value for reach_id: {tailwater_reach_id}"
+                )
                 logger.info(
                     f"Could not retrieve min elev curve and/or max elev value for reach_id: {tailwater_reach_id}"
                 )

@@ -61,6 +61,7 @@ class KWSEStepProcessor(BaseReachStepProcessor):
         template = self.collection.config["processing_steps"][self.process_name]["payload_template"]
         payload = self._format_reach_payload(template, reach.id)
         payload.update({"min_elevation_curve": min_elevation_curve, "max_elevation": max_elev})
+        payload.update({"min_elevation_curve": min_elevation_curve, "max_elevation": max_elev})
 
         for attempt in range(5):
             response = requests.post(url, json=payload)
