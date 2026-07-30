@@ -1,14 +1,17 @@
-# Ripple1D Pipeline: OWP Operational Guide
+# Ripple1D Pipeline: Single Machine Setup
 
 Step-by-step guide to run the Ripple1D Pipeline on a single Windows machine.
 This guide covers local setup and processing.
 S3 upload and multi-machine scaling are covered in optional sections at the end.
 
+> **Note:** The versions referenced in this document (e.g. `v0.11.0`) are current at the time of writing and may not be the latest when you follow this guide.
+> Update to the desired versions as needed by checking the release pages of each repository.
+
 ## Prerequisites
 
-The following must be installed before starting:
+The following are required before starting:
 
-- Windows Server with Desktop Experience (GUI, not headless)
+- Windows machine with Desktop Experience (GUI, not headless)
 - HEC-RAS v6.3.1, opened once in the GUI to accept the EULA
 - Git
 - AWS CLI (only needed for the optional S3 section)
@@ -31,11 +34,12 @@ pixi --version
 ## 2. Clone the repository
 
 ```cmd
-git clone --branch v0.11.0-rc.2 https://github.com/NGWPC/ripple1d-pipeline.git C:\ripple1d-pipeline
+git clone --branch v0.11.0 https://github.com/NGWPC/ripple1d-pipeline.git C:\ripple1d-pipeline
 cd /d C:\ripple1d-pipeline
 ```
 
-> **Note:** The pipeline and ripple1d versions must match. Use the same release tag for both.
+> **Note:** The `ripple1d-pipeline` and `ripple1d` versions must be compatible.
+> See the README and Changelog of both repos to track version compatibility.
 
 ## 3. Install the pipeline environment
 
@@ -62,10 +66,10 @@ cd /d C:\venvs
 python -m venv ripple1d
 cd ripple1d
 Scripts\activate.bat
-pip install git+https://github.com/NGWPC/ripple1d.git@v0.11.0-rc.2
+pip install git+https://github.com/NGWPC/ripple1d.git@v0.11.0
 ```
 
-> **Note:** Replace `v0.11.0-rc.2` with the latest release tag from the [NGWPC/ripple1d releases](https://github.com/NGWPC/ripple1d/releases).
+> **Note:** Replace `v0.11.0` with the desired release tag from the [NGWPC/ripple1d releases](https://github.com/NGWPC/ripple1d/releases).
 
 Verify the install:
 
@@ -76,6 +80,10 @@ pip show ripple1d
 ## 5. Stage reference data
 
 The pipeline expects reference data at fixed local paths.
+
+If your data is on cloud storage, GDAL VSI paths (e.g. `/vsis3/`, `/vsicurl/`) should work for all parquet files and VRTs, but this is not tested.
+In that case you can skip downloading those datasets to local disk.
+
 Stage the following files on disk before running:
 
 | Dataset | Expected path |
@@ -88,8 +96,6 @@ Stage the following files on disk before running:
 | OWP bridge tile index (parquet or geopackage) | `C:\reference_data\bridge_index.parquet` |
 
 These paths are configured in `.env` and can be changed to match your layout.
-
-> **Note:** The bridge tile index can also be read from S3 using a `/vsis3/` path (e.g. `/vsis3/bucket/path/bridge_index.parquet`), but local storage is recommended.
 
 ## 6. Configure the environment file
 
@@ -105,7 +111,7 @@ Edit `.env` and set the values for your machine.
 | Variable | What to set |
 |----------|-------------|
 | `RP_STAC_URL` | URL of the STAC API serving the model catalog |
-| `RP_RIPPLE1D_VERSION` | `0.11.0-rc.2` |
+| `RP_RIPPLE1D_VERSION` | `0.11.0` |
 | `RP_COLLECTIONS_ROOT_DIR` | Local directory for processing output (e.g. `C:\collections`) |
 | `RP_NWM_FLOWLINES_PATH` | Path to `nwm_flowlines.parquet` (from step 5) |
 | `RP_TERRAIN_SOURCE_URL` | Path to the DEM VRT (from step 5) |
@@ -135,6 +141,21 @@ Edit `.env` and set the values for your machine.
 | `RP_STAC_AWS_REGION` | |
 | `RP_S3_UPLOAD_PREFIX` | Not used by `run_collection.py`; see the optional S3 section |
 | `RP_S3_UPLOAD_FAILED_PREFIX` | Not used by `run_collection.py`; see the optional S3 section |
+
+### Config and tuning
+
+The pipeline's behavior defaults are in `ripple1d_pipeline/default_config.yaml`.
+Key tuning values:
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| `RESOLUTION` | `3.0` | Raster resolution in meters |
+| `RESOLUTION_UNITS` | `Meters` | |
+| `US_DEPTH_INCREMENT` | `0.5` | Upstream depth increment for normal depth runs |
+| `DS_DEPTH_INCREMENT` | `1` | Downstream depth increment for known WSE runs |
+| `RAS_VERSION` | `631` | Must match the installed HEC-RAS version |
+
+To override any of these for your machine, copy `config.example.yaml` to `config.yaml` at the repo root and uncomment the keys you want to change.
 
 ## 7. Start the ripple1d server
 
@@ -193,14 +214,15 @@ After a successful run, check the collection output directory (e.g. `C:\collecti
 Some per-reach failures are expected and appear in `failed_jobs_report.xlsx`.
 These are not deployment defects.
 
-## 10. Cleanup and restart
+## 10. Troubleshooting: cleanup and restart
 
-Before re-running on the same machine:
+This step is not required for normal operation.
+If you need to re-run on the same machine with a clean state:
 
 1. Stop the ripple1d server (close the Huey and Flask terminal windows)
-2. Delete leftover job files:
-   - `C:\Users\<username>\jobs*`
-   - `C:\Users\<username>\server-logs`
+2. Delete ripple1d job database and log files for a fresh start:
+   - `C:\venvs\ripple1d\jobs*`
+   - `C:\venvs\ripple1d\server-logs`
 3. Clear the collections output directory if needed
 4. Restart the ripple1d server (step 7)
 
@@ -217,7 +239,8 @@ Before re-running on the same machine:
 - `RP_S3_UPLOAD_PREFIX` and `RP_S3_UPLOAD_FAILED_PREFIX` set in `.env`
 - `RP_MONITORING_DB_PATH` set to a real path in `.env` (e.g. `C:\monitoring.sqlite`)
 
-> **Warning:** Do not leave `RP_S3_UPLOAD_PREFIX` and `RP_S3_UPLOAD_FAILED_PREFIX` blank when using `run_batch.py`.
+> [!WARNING]
+> Do not leave `RP_S3_UPLOAD_PREFIX` and `RP_S3_UPLOAD_FAILED_PREFIX` blank when using `run_batch.py`.
 > Empty prefixes cause a silent local move that loses data.
 
 ### Configure S3 prefixes
@@ -239,12 +262,13 @@ pixi run python entrypoints/run_batch.py -l "C:\collection_lists\collections.lst
 
 ### Shutdown procedure
 
-After batch processing completes, **do not terminate the instance immediately**.
-`run_batch.py` fires S3 uploads asynchronously -- they may still be in progress.
+> [!WARNING]
+> Do not terminate the instance immediately after batch processing completes.
+> `run_batch.py` fires S3 uploads asynchronously -- they may still be in progress.
 
 1. Check your `RP_COLLECTIONS_ROOT_DIR` folder properties -- wait until the file count reaches 0
 2. If files remain and the count is decreasing, S3 upload is still running; wait
-3. If files remain and the count is not decreasing, investigate which collections are stuck
+3. If files remain and the count is not decreasing, investigate which collections are stuck and redo the S3 move commands for them
 4. Only shut down once the file count is 0
 
 ### Monitoring
@@ -261,7 +285,7 @@ This guide covers single-machine processing.
 To process multiple collections in parallel across machines:
 
 1. Complete all steps above on one machine and verify it works
-2. Create an AMI from the working machine
+2. Create an AMI snapshot from the working machine (after completing step 9 successfully)
 3. Launch additional instances from that AMI
 4. Distribute the collection list across instances (non-overlapping subsets)
 5. Each instance runs its own `run_batch.py` with its own monitoring database
