@@ -21,7 +21,8 @@ class BaseReachStepProcessor(BaseStepProcessor):
     ) -> dict:
         """Common reach payload formatting"""
         replacements = {
-            "nwm_reach_id": reach_id,
+            **self.collection.config["ripple_settings"],
+            "nwm_reach_id": str(reach_id),
             "model_id": model_id or "",
             "model_name": model_name or "",
             "submodels_directory": self.collection.submodels_dir,

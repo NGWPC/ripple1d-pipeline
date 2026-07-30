@@ -10,7 +10,7 @@ def delete_reach_data(
     db_location,
     delete_submodels=False,
     delete_library=False,
-    delete_rc_records=False,
+    delete_scenario_records=False,
     reset_network_records=False,
     reset_porcessing_job_records=False,
     # delete_kwse_files=False,
@@ -22,9 +22,9 @@ def delete_reach_data(
     cursor = conn.cursor()
 
     # Delete records from the database if option is enabled
-    if delete_rc_records:
+    if delete_scenario_records:
         placeholders = ", ".join("?" for _ in reach_ids)
-        cursor.execute(f"DELETE FROM rating_curves WHERE reach_id IN ({placeholders});", reach_ids)
+        cursor.execute(f"DELETE FROM scenarios WHERE reach_id IN ({placeholders});", reach_ids)
         conn.commit()
 
     # Reset conflation_records

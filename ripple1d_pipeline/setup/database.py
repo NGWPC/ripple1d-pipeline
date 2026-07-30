@@ -154,6 +154,20 @@ class Database:
             """
             )
 
+            # The reaches layer is written by geopandas, and the GPKG driver makes
+            # 'fid' the primary key and reach_id an ordinary column. SQLite requires
+            # a foreign key's parent column to be a primary key or uniquely indexed,
+            # so without this index every 'REFERENCES reaches (reach_id)' below is
+            # malformed and raises "foreign key mismatch" on write as soon as a
+            # client enables PRAGMA foreign_keys (python's sqlite3 leaves it off,
+            # which is why this stayed hidden).
+            # https://github.com/NGWPC/ripple1d-pipeline-archive/issues/34
+            cursor.execute(
+                """
+                CREATE UNIQUE INDEX IF NOT EXISTS reaches_reach_id ON reaches (reach_id);
+            """
+            )
+
             # Create network table to store network relationships
             cursor.execute(
                 """
@@ -188,7 +202,7 @@ class Database:
 
             cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS rating_curves (
+                CREATE TABLE IF NOT EXISTS scenarios (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     reach_id INTEGER,
                     us_flow INTEGER,
@@ -197,6 +211,7 @@ class Database:
                     ds_depth REAL,
                     ds_wse REAL,
                     boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
+                    map_exists BOOL CHECK(map_exists IN (0, 1)) NOT NULL,
                     FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
                     UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
                 );
@@ -205,35 +220,17 @@ class Database:
 
             cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS rating_curves_no_map (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    reach_id INTEGER,
-                    us_flow INTEGER,
-                    us_depth REAL,
-                    us_wse REAL,
-                    ds_depth REAL,
-                    ds_wse REAL,
-                    boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
+                CREATE TABLE IF NOT EXISTS scenario_metrics (
+                    scenario_id INTEGER PRIMARY KEY,
                     xs_overtopped BOOL CHECK(xs_overtopped IN (0, 1)),
-                    FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
-                    UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
+                    FOREIGN KEY (scenario_id) REFERENCES scenarios (id)
                 );
             """
             )
 
             cursor.execute(
                 """
-                CREATE TABLE IF NOT EXISTS rating_curves_metrics (
-                    rc_id INTEGER PRIMARY KEY,
-                    xs_overtopped BOOL CHECK(xs_overtopped IN (0, 1)),
-                    FOREIGN KEY (rc_id) REFERENCES rating_curves (id)
-                );
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE INDEX IF NOT EXISTS rating_curves_reach_id ON rating_curves (reach_id);
+                CREATE INDEX IF NOT EXISTS scenarios_reach_id ON scenarios (reach_id);
             """
             )
 
@@ -253,16 +250,16 @@ class Database:
                     create_model_run_normal_depth_status TEXT,
                     run_incremental_normal_depth_job_id TEXT,
                     run_incremental_normal_depth_status TEXT,
-                    nd_create_rating_curves_db_job_id TEXT,
-                    nd_create_rating_curves_db_status TEXT,
+                    nd_create_scenarios_db_job_id TEXT,
+                    nd_create_scenarios_db_status TEXT,
                     run_iknown_wse_job_id TEXT,
                     run_iknown_wse_status TEXT,
-                    ikwse_create_rating_curves_db_job_id TEXT,
-                    ikwse_create_rating_curves_db_status TEXT,
+                    ikwse_create_scenarios_db_job_id TEXT,
+                    ikwse_create_scenarios_db_status TEXT,
                     run_known_wse_job_id TEXT,
                     run_known_wse_status TEXT,
-                    kwse_create_rating_curves_db_job_id TEXT,
-                    kwse_create_rating_curves_db_status TEXT,
+                    kwse_create_scenarios_db_job_id TEXT,
+                    kwse_create_scenarios_db_status TEXT,
                     create_fim_lib_job_id TEXT,
                     create_fim_lib_status TEXT,
                     FOREIGN KEY (collection_id, model_id) REFERENCES models (collection_id, model_id),

@@ -115,4 +115,7 @@ def load_config() -> dict:
     p = user_config_path()
     if p.exists():
         cfg = _deep_merge(cfg, yaml.safe_load(p.read_text()) or {})
+        logger.info(f"Config: defaults from {DEFAULTS_PATH} overridden by {p}")
+    else:
+        logger.info(f"Config: defaults from {DEFAULTS_PATH} only (no user config at {p})")
     return _overlay_env(cfg)

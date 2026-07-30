@@ -80,7 +80,7 @@ def create_rc_points_parquet(ripple_gpkg_path, submodels_dir, output_parquet_pat
         with sqlite3.connect(ripple_gpkg_path) as conn:
             models_df = pd.read_sql("SELECT model_id, reach_id FROM processing;", conn)
             us_rcs_df = pd.read_sql(
-                "SELECT reach_id, us_flow, us_wse FROM rating_curves WHERE boundary_condition = 'nd';",
+                "SELECT reach_id, us_flow, us_wse FROM scenarios WHERE boundary_condition = 'nd';",
                 conn,
             )
     except Exception as e:

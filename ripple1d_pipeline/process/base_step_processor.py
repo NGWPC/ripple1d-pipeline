@@ -11,10 +11,15 @@ logger = logging.getLogger(__name__)
 def format_template(value, replacements: dict):
     """Recursively substitute {placeholders} in a payload template.
 
-    Applies str.format(**replacements) to every string, at any nesting depth
-    (dicts, lists), leaving non-strings (numbers, bools) untouched.
+    A string that is exactly one placeholder (e.g. "{RESOLUTION}") is replaced by the
+    referenced value with its original type preserved, so numbers stay numbers. Any
+    other string goes through str.format(**replacements) as before. Non-strings
+    (numbers, bools) are left untouched; dicts and lists are handled recursively.
     """
     if isinstance(value, str):
+        key = value[1:-1]
+        if value[:1] == "{" and value[-1:] == "}" and "{" not in key and key in replacements:
+            return replacements[key]
         return value.format(**replacements)
     if isinstance(value, dict):
         return {k: format_template(v, replacements) for k, v in value.items()}
