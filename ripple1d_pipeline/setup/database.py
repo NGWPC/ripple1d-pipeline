@@ -197,24 +197,7 @@ class Database:
                     ds_depth REAL,
                     ds_wse REAL,
                     boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
-                    FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
-                    UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
-                );
-            """
-            )
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS rating_curves_no_map (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    reach_id INTEGER,
-                    us_flow INTEGER,
-                    us_depth REAL,
-                    us_wse REAL,
-                    ds_depth REAL,
-                    ds_wse REAL,
-                    boundary_condition TEXT CHECK(boundary_condition IN ('nd','kwse')) NOT NULL,
-                    xs_overtopped BOOL CHECK(xs_overtopped IN (0, 1)),
+                    map_exists BOOL CHECK(map_exists IN (0, 1)) NOT NULL,
                     FOREIGN KEY (reach_id) REFERENCES reaches (reach_id),
                     UNIQUE(reach_id, us_flow, ds_wse, boundary_condition)
                 );

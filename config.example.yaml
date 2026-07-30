@@ -4,8 +4,14 @@
 ## the default settings in  ripple1d_pipeline/default_config.yaml.
 ## This file is gitignored.
 
-## For deeply nested keys, uncomment only the the lines you want to edit.
-## For example these if you want to modify max_flow_multiplier_ras
+## Shared tuning values live in `ripple_settings`. Payload templates reference them
+## as {NAME} (e.g. resolution: "{RESOLUTION}"), so to change resolution, a depth
+## increment, the RAS version, etc. everywhere they are used, override the value in
+## `ripple_settings` below -- you do NOT need to touch any payload_template.
+
+## Override a payload_template leaf only for a per-step value that is not in
+## ripple_settings. For deeply nested keys, uncomment only the lines you want to edit.
+## For example, to modify just max_flow_multiplier_ras:
 ## processing_steps:
 ##   extract_submodel:
 ##     payload_template:
@@ -19,13 +25,13 @@
 #     # - s3transfer
 
 # ripple_settings:
-#   RAS_VERSION: &RAS_VERSION "631"
-#   US_DEPTH_INCREMENT: &US_DEPTH_INCREMENT 0.5
-#   DS_DEPTH_INCREMENT: &DS_DEPTH_INCREMENT 1
-#   RESOLUTION: &RESOLUTION 3.0
-#   RESOLUTION_UNITS: &RESOLUTION_UNITS "Meters"
-#   SOURCE_NETWORK_VERSION: &SOURCE_NETWORK_VERSION "2.1"
-#   SOURCE_NETWORK_TYPE: &SOURCE_NETWORK_TYPE "nwm_hydrofabric"
+#   RAS_VERSION: "631"
+#   US_DEPTH_INCREMENT: 0.5
+#   DS_DEPTH_INCREMENT: 1
+#   RESOLUTION: 3.0
+#   RESOLUTION_UNITS: "Meters"
+#   SOURCE_NETWORK_VERSION: "2.1"
+#   SOURCE_NETWORK_TYPE: "nwm_hydrofabric"
 
 # processing_steps:
 #   conflate_model:
@@ -36,8 +42,8 @@
 #       model_name: "{model_name}"
 #       source_network:
 #         file_name: "{source_network}"
-#         version: *SOURCE_NETWORK_VERSION
-#         type: *SOURCE_NETWORK_TYPE
+#         version: "{SOURCE_NETWORK_VERSION}"
+#         type: "{SOURCE_NETWORK_TYPE}"
 #       min_flow_multiplier: 0.9
 #       max_flow_multiplier: 1.5
 
@@ -57,8 +63,8 @@
 #     api_process_name: "create_ras_terrain"  # Different api_process_name
 #     payload_template:
 #       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
-#       resolution: *RESOLUTION
-#       resolution_units: *RESOLUTION_UNITS
+#       resolution: "{RESOLUTION}"
+#       resolution_units: "{RESOLUTION_UNITS}"
 #       terrain_source_url: "{terrain_source_url}"
 #       terrain_agreement_ignore_error: True
 
@@ -69,7 +75,7 @@
 #       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
 #       plan_suffix: "ind"
 #       num_of_discharges_for_initial_normal_depth_runs: 15
-#       ras_version: *RAS_VERSION
+#       ras_version: "{RAS_VERSION}"
 
 #   run_incremental_normal_depth:
 #     domain: "reach"
@@ -77,8 +83,8 @@
 #     payload_template:
 #       submodel_directory: "{submodels_directory}\\{nwm_reach_id}"
 #       plan_suffix: "nd"
-#       depth_increment: *US_DEPTH_INCREMENT
-#       ras_version: *RAS_VERSION
+#       depth_increment: "{US_DEPTH_INCREMENT}"
+#       ras_version: "{RAS_VERSION}"
 
 #   nd_create_rating_curves_db:
 #     domain: "reach"
@@ -101,8 +107,8 @@
 #       plan_suffix: "kwse"
 #       min_elevation_curve: [[-9999, -9999]]
 #       max_elevation: -9999
-#       depth_increment: *DS_DEPTH_INCREMENT
-#       ras_version: *RAS_VERSION
+#       depth_increment: "{DS_DEPTH_INCREMENT}"
+#       ras_version: "{RAS_VERSION}"
 #       write_depth_grids: True
 
 #   kwse_create_rating_curves_db:
@@ -120,8 +126,8 @@
 #       plans:
 #         - nd
 #         - kwse
-#       resolution: *RESOLUTION
-#       resolution_units: *RESOLUTION_UNITS
+#       resolution: "{RESOLUTION}"
+#       resolution_units: "{RESOLUTION_UNITS}"
 #       library_directory: "{library_directory}"
 #       cleanup: True
 #       cog: True
@@ -138,4 +144,4 @@
 #   DB_CONN_TIMEOUT: 30
 
 # execution:
-#   stop_on_error: False
+#   STOP_ON_ERROR: False

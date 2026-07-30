@@ -17,11 +17,11 @@ def process_reach_db_batch(reach_db_rcs_batch, library_conn):
     cursor.executemany(
         """
         INSERT OR IGNORE INTO rating_curves (
-            reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition
+            reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, map_exists
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """,
-        [rc[:7] for rc in reach_db_rcs_batch],
+        [rc[:8] for rc in reach_db_rcs_batch],
     )
 
     placeholders = ", ".join(["(?, ?, ?, ?)"] * len(reach_db_rcs_batch))
@@ -40,7 +40,7 @@ def process_reach_db_batch(reach_db_rcs_batch, library_conn):
     # Get mapping
     rc_id_map = {(row[0], row[1], row[2], row[3]): row[4] for row in cursor.fetchall()}
 
-    metrics_data = [(rc_id_map[(rc[0], rc[1], rc[5], rc[6])], rc[7]) for rc in reach_db_rcs_batch if rc[7] is not None]
+    metrics_data = [(rc_id_map[(rc[0], rc[1], rc[5], rc[6])], rc[8]) for rc in reach_db_rcs_batch if rc[8] is not None]
 
     if metrics_data:
         cursor.executemany(
@@ -61,12 +61,14 @@ def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> No
         reach_cursor = reach_conn.cursor()
         reach_cursor.execute(
             """
-            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, xs_overtopped
+            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition,
+                   map_exist, xs_overtopped
             FROM rating_curves
-            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS TRUE
+            WHERE plan_suffix IN ('nd', 'kwse')
             """
         )
-        reach_db_rcs = reach_cursor.fetchall()
+        # map_exist is nullable in the submodel schema and may be stored as '0'/'1'; normalize to 0/1
+        reach_db_rcs = [rc[:7] + (int(rc[7] or 0), rc[8]) for rc in reach_cursor.fetchall()]
 
         if not reach_db_rcs:
             return
@@ -78,32 +80,6 @@ def process_reach_db(reach_db_path: str, library_conn: sqlite3.Connection) -> No
         for i in range(0, len(reach_db_rcs), batch_size):
             batch = reach_db_rcs[i : i + batch_size]
             process_reach_db_batch(batch, library_conn)
-
-        # Handle the no_map records
-        reach_cursor.execute(
-            """
-            SELECT reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, xs_overtopped
-            FROM rating_curves
-            WHERE plan_suffix IN ('nd', 'kwse') AND map_exist IS FALSE
-            """
-        )
-        rows = reach_cursor.fetchall()
-
-        # Process no_map records in batches too (8 variables per record)
-        no_map_batch_size = 120  # 120 * 8 = 960 variables
-
-        cursor = library_conn.cursor()
-        for i in range(0, len(rows), no_map_batch_size):
-            batch = rows[i : i + no_map_batch_size]
-            cursor.executemany(
-                """
-                INSERT OR IGNORE INTO rating_curves_no_map (
-                    reach_id, us_flow, us_depth, us_wse, ds_depth, ds_wse, boundary_condition, xs_overtopped
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                batch,
-            )
 
         library_conn.commit()
     finally:
