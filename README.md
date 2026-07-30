@@ -1,8 +1,8 @@
 # Ripple1D Pipeline
 
-Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/Dewberry/ripple1d) to generate FIMs and rating curves.
+Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/NGWPC/ripple1d) to generate FIMs and rating curves.
 
-Compatible with ripple1d==0.10.4. Use repository tags to get older versions.
+Compatible with [ripple1d v0.11.0-rc.2](https://github.com/NGWPC/ripple1d/releases/tag/v0.11.0-rc.2). Use repository tags to get older versions.
 
 For *why* the project is designed the way it is, see [design_guide.md](design_guide.md).
 
@@ -24,7 +24,7 @@ pixi manages Python, GDAL, and flows2fim. The rest must be installed separately:
 - Windows environment with Desktop Experience (GUI, not headless Windows, not non logged in sessions)
 - [pixi](https://pixi.sh)
 - HEC-RAS (v6.3.1)
-- [Ripple1d](https://github.com/Dewberry/ripple1d) server (runs in its own environment)
+- [Ripple1d](https://github.com/NGWPC/ripple1d) server (runs in its own environment)
 - AWS credentials (access key id and secret access key) for pulling models from STAC
 - Reference data (DEM, NWM flowlines, flow files) on disk
 
@@ -79,11 +79,12 @@ The DEM and NWM flowline paths are also set in `.env`.
 The Ripple1d server runs in its **own** environment (it is not managed by this project's pixi environment) and must run on a Windows machine with HEC-RAS installed.
 
 ```cmd
+mkdir C:\venvs
 cd /d C:\venvs
-python3 -m venv ripple1d_<ripple1d version>
-cd ripple1d_<ripple1d version>
+python3 -m venv ripple1d
+cd ripple1d
 Scripts\activate.bat
-pip install ripple1d==<ripple1d version>
+pip install git+https://github.com/NGWPC/ripple1d.git@v0.11.0-rc.2
 ripple1d start --thread_count <number less than total available CPUs>
 ```
 

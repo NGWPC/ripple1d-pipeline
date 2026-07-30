@@ -13,7 +13,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-VERSION = "v0.4.1"
+VERSION = "v0.5.0-rc.4"
 URL = f"https://github.com/NGWPC/flows2fim/releases/download/{VERSION}/flows2fim-windows-amd64.zip"
 
 
