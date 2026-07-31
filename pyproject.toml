@@ -16,7 +16,7 @@ dependencies = []
 # Version comes from git tags. tag_regex ignores the non-semver tags (e.g. vfim100-production).
 [tool.hatch.version]
 source = "vcs"
-raw-options = { tag_regex = '^v(?P<version>\d+\.\d+\.\d+)$' }
+raw-options = { tag_regex = '^v(?P<version>\d+\.\d+\.\d+(?:[._-]?\w+(?:\.\d+)*)?)$' }
 
 [tool.hatch.build.targets.wheel]
 packages = ["ripple1d_pipeline"]
