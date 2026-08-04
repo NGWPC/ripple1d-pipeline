@@ -162,11 +162,11 @@ To override any of these for your machine, copy `config.example.yaml` to `config
 Open a **separate** Command Prompt window:
 
 ```cmd
-cd /d C:\venvs\ripple1d
-Scripts\activate.bat
+C:\venvs\ripple1d\Scripts\activate.bat
 ripple1d start --thread_count 22
 ```
 
+Do not start the server from inside the venv directory -- start from any other location.
 Two new terminal windows will appear (Huey consumer and Flask API).
 Minimize them but do not close them.
 The server is ready when both windows are running.
