@@ -2,7 +2,7 @@
 
 Ripple1D Pipeline is a workflow that utilizes the [Ripple1d](https://github.com/NGWPC/ripple1d) to generate FIMs for difference scenarios.
 
-Compatible with [ripple1d v0.11.0-rc.2](https://github.com/NGWPC/ripple1d/releases/tag/v0.11.0-rc.2). Use repository tags to get older versions.
+Compatible with [ripple1d v0.11.0](https://github.com/NGWPC/ripple1d/releases/tag/v0.11.0). Use repository tags to get older versions.
 
 For *why* the project is designed the way it is, see [design_guide.md](design_guide.md).
 
@@ -84,7 +84,7 @@ cd /d C:\venvs
 python3 -m venv ripple1d
 cd ripple1d
 Scripts\activate.bat
-pip install git+https://github.com/NGWPC/ripple1d.git@v0.11.0-rc.2
+pip install git+https://github.com/NGWPC/ripple1d.git@v0.11.0
 ripple1d start --thread_count <number less than total available CPUs>
 ```
 
