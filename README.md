@@ -81,7 +81,7 @@ The Ripple1d server runs in its **own** environment (it is not managed by this p
 ```cmd
 mkdir C:\venvs
 cd /d C:\venvs
-python3 -m venv ripple1d
+python -m venv ripple1d
 cd ripple1d
 Scripts\activate.bat
 pip install git+https://github.com/NGWPC/ripple1d.git@v0.11.0
