@@ -60,7 +60,7 @@ def align_raster(
     target_crs: str = None,
     resampling: str = "bilinear",
 ) -> None:
-    """Align a raster to the specified extent and resolution, outputting a VRT.
+    """Align a raster to the specified extent and resolution, outputting a GeoTIFF.
 
     If target_crs is provided, the source raster will be reprojected to that CRS.
     """
@@ -70,7 +70,11 @@ def align_raster(
         "gdalwarp",
         "-overwrite",
         "-of",
-        "VRT",
+        "GTiff",
+        "-co",
+        "COMPRESS=LZW",
+        "-co",
+        "TILED=YES",
         "-te",
         xmin,
         ymin,
@@ -94,8 +98,8 @@ def apply_bridge_mask(args: tuple) -> tuple[str, bool]:
     """
     Process a single depth TIF with bridge masking (worker function for multiprocessing).
 
-    Expects pre-aligned DEM and bridge VRTs. Runs gdal_calc for the masking computation
-    and overwrites the original file on success.
+    Expects pre-aligned local DEM and bridge rasters. Runs gdal_calc for the masking
+    computation and overwrites the original file on success.
     """
     (
         depth_path,
@@ -251,7 +255,8 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
             # Depth rasters are in EPSG:5070, reproject DEM and bridges to match
             target_crs = "EPSG:5070"
 
-            aligned_dem = reach_temp_dir / "aligned_dem.vrt"
+            t_align = time.perf_counter()
+            aligned_dem = reach_temp_dir / "aligned_dem.tif"
             align_raster(
                 dem_path,
                 aligned_dem,
@@ -261,7 +266,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 target_crs=target_crs,
             )
 
-            aligned_bridges = reach_temp_dir / "aligned_bridges.vrt"
+            aligned_bridges = reach_temp_dir / "aligned_bridges.tif"
             align_raster(
                 bridges_vrt,
                 aligned_bridges,
@@ -271,6 +276,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 target_crs=target_crs,
                 resampling="near",
             )
+            logger.debug(f"Reach {reach_id}: aligned DEM and bridges ({time.perf_counter() - t_align:.1f}s)")
 
             worker_args = [
                 (
