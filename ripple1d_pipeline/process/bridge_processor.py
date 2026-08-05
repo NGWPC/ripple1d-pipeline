@@ -13,6 +13,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from ..logging_utils import configure_logging
 from ..setup.collection_data import CollectionData
 from .extent_library import get_all_tif_paths
 
@@ -284,9 +285,12 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 for depth_path in reach_tifs
             ]
 
-            # based on the cpu utilization, the num_workers maybe increased by x1.5, or x2 or even x3.
-            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"] * 2
-            with multiprocessing.Pool(processes=num_workers) as pool:
+            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+            # Spawned workers start with a bare root logger that drops anything below
+            # WARNING, so they need configure_logging too (it re-reads the levels from the
+            # RP_* env vars they inherit). Their records go to the child's own stderr, which
+            # under Jupyter is the kernel's output channel rather than the cell.
+            with multiprocessing.Pool(processes=num_workers, initializer=configure_logging) as pool:
                 for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
                     if success:
                         files_modified.append(depth_path)
