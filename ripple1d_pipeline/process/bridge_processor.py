@@ -13,6 +13,7 @@ import tempfile
 import time
 from pathlib import Path
 
+from ..logging_utils import configure_logging
 from ..setup.collection_data import CollectionData
 from .extent_library import get_all_tif_paths
 
@@ -59,7 +60,7 @@ def align_raster(
     target_crs: str = None,
     resampling: str = "bilinear",
 ) -> None:
-    """Align a raster to the specified extent and resolution, outputting a VRT.
+    """Align a raster to the specified extent and resolution, outputting a GeoTIFF.
 
     If target_crs is provided, the source raster will be reprojected to that CRS.
     """
@@ -69,7 +70,11 @@ def align_raster(
         "gdalwarp",
         "-overwrite",
         "-of",
-        "VRT",
+        "GTiff",
+        "-co",
+        "COMPRESS=LZW",
+        "-co",
+        "TILED=YES",
         "-te",
         xmin,
         ymin,
@@ -93,8 +98,8 @@ def apply_bridge_mask(args: tuple) -> tuple[str, bool]:
     """
     Process a single depth TIF with bridge masking (worker function for multiprocessing).
 
-    Expects pre-aligned DEM and bridge VRTs. Runs gdal_calc for the masking computation
-    and overwrites the original file on success.
+    Expects pre-aligned local DEM and bridge rasters. Runs gdal_calc for the masking
+    computation and overwrites the original file on success.
     """
     (
         depth_path,
@@ -250,7 +255,8 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
             # Depth rasters are in EPSG:5070, reproject DEM and bridges to match
             target_crs = "EPSG:5070"
 
-            aligned_dem = reach_temp_dir / "aligned_dem.vrt"
+            t_align = time.perf_counter()
+            aligned_dem = reach_temp_dir / "aligned_dem.tif"
             align_raster(
                 dem_path,
                 aligned_dem,
@@ -260,7 +266,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 target_crs=target_crs,
             )
 
-            aligned_bridges = reach_temp_dir / "aligned_bridges.vrt"
+            aligned_bridges = reach_temp_dir / "aligned_bridges.tif"
             align_raster(
                 bridges_vrt,
                 aligned_bridges,
@@ -270,6 +276,7 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 target_crs=target_crs,
                 resampling="near",
             )
+            logger.debug(f"Reach {reach_id}: aligned DEM and bridges ({time.perf_counter() - t_align:.1f}s)")
 
             worker_args = [
                 (
@@ -284,9 +291,12 @@ def process_bridges(collection: "CollectionData") -> dict[str, any]:
                 for depth_path in reach_tifs
             ]
 
-            # based on the cpu utilization, the num_workers maybe increased by x1.5, or x2 or even x3.
-            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"] * 2
-            with multiprocessing.Pool(processes=num_workers) as pool:
+            num_workers = collection.config["execution"]["OPTIMUM_PARALLEL_PROCESS_COUNT"]
+            # Spawned workers start with a bare root logger that drops anything below
+            # WARNING, so they need configure_logging too (it re-reads the levels from the
+            # RP_* env vars they inherit). Their records go to the child's own stderr, which
+            # under Jupyter is the kernel's output channel rather than the cell.
+            with multiprocessing.Pool(processes=num_workers, initializer=configure_logging) as pool:
                 for depth_path, success in pool.imap_unordered(apply_bridge_mask, worker_args):
                     if success:
                         files_modified.append(depth_path)
